@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: delivery
+      POSTGRES_USER: delivery
+      POSTGRES_PASSWORD: delivery
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: uvicorn delivery_platform.api.main:app --host 0.0.0.0 --port 8000
+    environment:
+      DATABASE_URL: postgresql+psycopg://delivery:delivery@db:5432/delivery
+      DEMO_MODE: "true"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  web:
+    build:
+      context: app/web
+    command: npm run dev -- --hostname 0.0.0.0
+    environment:
+      API_INTERNAL_BASE_URL: http://api:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api

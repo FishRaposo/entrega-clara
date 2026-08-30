@@ -1,0 +1,1 @@
+"""Core delivery domain rules."""
