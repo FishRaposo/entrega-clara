@@ -10,5 +10,9 @@ The repository root is a stable governance contract. Application code is contain
 - `.env.example` contains only development-safe, non-secret defaults.
 - `.superpowers/` is ignored private task working state and is not versioned.
 - `docs/superpowers/specs/` is public, versioned product documentation; it retains the governing seed design.
+- `docs/research/` records dated, source-backed research and assumptions.
+- `docs/roadmap/` records staged future capabilities, dependencies, and exit evidence.
+- `docs/architecture/` records API, event, persistence, routing, and integration contracts.
+- `docs/adr/` records durable technical decisions and rejected alternatives.
 
 Later tasks extend these contracts without renaming targets or services.

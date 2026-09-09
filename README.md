@@ -37,6 +37,8 @@ The local web shell provides role selection for Customer, Restaurant, Courier, a
 
 See the [local development runbook](docs/runbooks/local-development.md) for local URLs and service details, and the [demo-mode runbook](docs/runbooks/demo-mode.md) for deterministic reset, advancement, replay, and role-navigation instructions.
 
+For the next implementation phase, read the [M1 development runbook](docs/runbooks/milestone-1-development.md), the [M1 design](docs/superpowers/specs/2026-09-01-milestone-1-core-delivery-loop-design.md), and the [platform build research](docs/research/2026-09-01-platform-build-research.md). The [platform evolution roadmap](docs/roadmap/platform-evolution.md) records the capabilities intentionally deferred beyond M1.
+
 ## Commands
 
 | Command | Purpose |

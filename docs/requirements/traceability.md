@@ -2,6 +2,16 @@
 
 The [seed design](../superpowers/specs/2026-08-29-food-delivery-platform-seed-design.md) is the governing specification. This table reproduces every source requirement and maps it to a product surface, acceptance evidence, and its linked dependencies. `—` means the seed design defines no linked requirement identifier.
 
+## Milestone 1 interpretation
+
+The table below is the full product requirement set, not a claim that every requirement belongs in M1. The current [M1 core delivery-loop design](../superpowers/specs/2026-09-01-milestone-1-core-delivery-loop-design.md) includes the operational path through `delivered`, while reviews/ratings, support/chat, real authentication, real providers, and multi-delivery optimization remain deferred. The [platform evolution roadmap](../roadmap/platform-evolution.md) records the enabling order for those later capabilities.
+
+| M1 treatment | Requirements |
+| --- | --- |
+| Core delivery loop | RF01, RF02, RF03, RF05, RF06, RF08, RF09, RF10, RF13, RF14 |
+| Core boundary/subset | RF07, RF12, RNF01, RNF02, RNF03, RNF04, RNF05, RNF06, RNF07, RNF08, RNF09, RNF10 |
+| Deferred beyond M1 | RF04, RF11 |
+
 ## Functional requirements
 
 | ID | Requirement name | Product surface | Acceptance evidence | Linked dependency identifiers |

@@ -4,7 +4,7 @@ Entrega Clara is a modular monolith with explicit interfaces. Application source
 
 | Boundary | Owns | Must not depend on directly |
 | --- | --- | --- |
-| Web client | Responsive Customer, Restaurant, Courier, and Admin demo surfaces; role navigation | Provider SDKs, production credentials, or authorization-by-visibility |
+| Web client | Responsive Customer, Restaurant, Courier, and Admin demo surfaces; role navigation; one MapLibre renderer adapter | Provider business SDKs, production credentials, or authorization-by-visibility |
 | API | Typed HTTP boundary, request validation, health and deterministic demo routes | Frontend-only state or vendor-specific business logic |
 | Domain | Order state transitions, business rules, errors, and provider-neutral contracts | FastAPI, browser components, or vendor SDKs |
 | Demo and simulation | Seed loading, deterministic clock/event progression, reset, replay, and simulated updates | Wall-clock-dependent outcomes, live GPS, or external services |
@@ -23,3 +23,9 @@ Configuration values are supplied at runtime, not baked into images. The root Py
 The demo stores only safe test labels or token-like payment references; it does not store raw card numbers or security codes and does not claim PCI-DSS certification. GPS, maps, notifications, support, and role selection are simulated or staged interfaces. Authorization belongs at the API/domain boundary when protected operations are implemented, not only in frontend navigation.
 
 This architecture supports a portfolio demonstration, not a certified production system. It does not claim real payment processing, live courier identity verification, real-time provider connectivity, operational support coverage, or measured uptime.
+
+## M1 map clarification
+
+The web client may contain one isolated MapLibre GL adapter because map rendering is a browser concern. That adapter may read a restricted, browser-visible MapTiler key and public style configuration. Customer, restaurant, courier, and operations components must depend on the adapter's provider-neutral map props, not on MapTiler or map-library APIs. The backend owns route calculation and returns route geometry; the browser never calls provider directions to decide the business route.
+
+If the map provider is absent or unavailable, the adapter renders a clear fallback and the order/tracking workflow remains usable. A MapTiler service token, payment SDK, geocoder, or notification provider must not enter the browser bundle.
