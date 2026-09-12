@@ -59,9 +59,9 @@ python -m pytest tests/repo/test_repository_layout.py -q
 
 ## Release and publication status
 
-This local scaffold is prepared for publication but is not represented as already published. Its intended public location is [FishRaposo/entrega-clara](https://github.com/FishRaposo/entrega-clara); no remote SHA is asserted here. Follow the [public demo release runbook](docs/runbooks/public-demo-release.md) to reproduce local validation, record any Docker-unavailable check as unverified, and publish only after independently verifying that exact remote repository.
+This scaffold is public at [FishRaposo/entrega-clara](https://github.com/FishRaposo/entrega-clara). It remains a non-production demo platform: follow the [public demo release runbook](docs/runbooks/public-demo-release.md) to reproduce local validation, and record any Docker-unavailable check as unverified rather than passed.
 
-After that canonical repository has been published publicly and independently verified, clone it with:
+Clone it with:
 
 ```bash
 git clone https://github.com/FishRaposo/entrega-clara.git
