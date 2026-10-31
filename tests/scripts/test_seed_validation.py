@@ -60,33 +60,33 @@ def test_lunch_rush_seed_contains_required_demo_entities():
     assert result.secret_like_fields == ()
 
 
-def test_seed_validation_reports_missing_entities_and_secret_like_inputs(tmp_path):
+def test_seed_validation_reports_missing_actions_and_secret_like_inputs(tmp_path):
     seed = json.loads(Path("data/scenarios/lunch-rush.json").read_text(encoding="utf-8"))
-    del seed["initial_state"]["coupon"]
-    seed["initial_state"]["payment"]["api_key"] = "not-a-real-secret"
-    seed["initial_state"]["payment"]["reference"] = "sk_live_abc123"
+    seed["steps"] = [s for s in seed["steps"] if s["action"] != "checkout"]
+    seed["steps"][0]["params"]["api_key"] = "not-a-real-secret"
+    seed["steps"][0]["params"]["reference"] = "sk_live_abc123"
     seed_path = write_seed(tmp_path, seed)
 
     result = validate_seed(seed_path)
 
     assert result.valid is False
-    assert result.missing_entities == ("coupon",)
+    assert result.missing_entities == ("checkout",)
     assert result.secret_like_fields == (
-        "initial_state.payment.api_key",
-        "initial_state.payment.reference",
+        "steps[0].params.api_key",
+        "steps[0].params.reference",
     )
 
 
 @pytest.mark.parametrize(
     "mutate",
     (
-        lambda seed: seed.update(events=[]),
-        lambda seed: seed["events"][0].pop("minutes"),
-        lambda seed: seed["events"][0].update(notification=42),
-        lambda seed: seed["events"][0].update(courier_update={"status": "teleporting"}),
+        lambda seed: seed.update(steps=[]),
+        lambda seed: seed["steps"][0].pop("action"),
+        lambda seed: seed["steps"][0].update(action="teleport.order"),
+        lambda seed: seed["steps"][0].update(id=""),
     ),
 )
-def test_seed_validation_rejects_malformed_event_schema(tmp_path, mutate):
+def test_seed_validation_rejects_malformed_step_schema(tmp_path, mutate):
     seed = json.loads(Path("data/scenarios/lunch-rush.json").read_text(encoding="utf-8"))
     mutate(seed)
 
@@ -96,12 +96,17 @@ def test_seed_validation_rejects_malformed_event_schema(tmp_path, mutate):
     assert result.schema_errors
 
 
-def test_seed_validation_dry_runs_the_full_transition_sequence(tmp_path):
+def test_seed_validation_dry_runs_the_full_command_sequence(tmp_path):
     seed = json.loads(Path("data/scenarios/lunch-rush.json").read_text(encoding="utf-8"))
-    seed["events"][3]["order_state"] = "delivered"
+    # Reordering prepare before confirm breaks the real transition contract.
+    steps = seed["steps"]
+    confirm_idx = next(i for i, s in enumerate(steps) if s["action"] == "restaurant.confirm")
+    prepare_idx = next(i for i, s in enumerate(steps) if s["action"] == "restaurant.prepare")
+    steps[confirm_idx], steps[prepare_idx] = steps[prepare_idx], steps[confirm_idx]
 
     result = validate_seed(write_seed(tmp_path, seed))
 
     assert result.valid is False
     assert result.schema_errors == ()
-    assert result.replay_error == "The next demo event cannot be applied."
+    assert result.replay_error is not None
+    assert "falhou" in result.replay_error

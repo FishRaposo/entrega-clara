@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FoodExpress — App de Delivery</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="page-header">
+    <h1>FoodExpress</h1>
+    <p>App de delivery — wireframe de média fidelidade</p>
+  </header>
+
+  <main class="screens-container">
+    <!-- Tela Home -->
+    <section class="phone-frame" aria-label="Tela Home">
+      <div class="phone-device">
+        <div class="status-bar">
+          <span class="status-time">9:41</span>
+          <div class="status-icons" aria-hidden="true">
+            <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><rect x="0" y="6" width="3" height="6" rx="1"/><rect x="4.5" y="4" width="3" height="8" rx="1"/><rect x="9" y="2" width="3" height="10" rx="1"/><rect x="13.5" y="0" width="2.5" height="12" rx="1"/></svg>
+            <svg width="15" height="12" viewBox="0 0 15 12" fill="currentColor"><path d="M7.5 2.5C10 2.5 12.2 3.6 13.8 5.3L15 4C13.1 1.9 10.4 0.5 7.5 0.5C4.6 0.5 1.9 1.9 0 4L1.2 5.3C2.8 3.6 5 2.5 7.5 2.5ZM7.5 6.5C8.9 6.5 10.1 7 11 7.9L12.2 6.7C10.9 5.4 9.3 4.7 7.5 4.7C5.7 4.7 4.1 5.4 2.8 6.7L4 7.9C4.9 7 6.1 6.5 7.5 6.5ZM9.7 9.1L7.5 11.3L5.3 9.1C5.9 8.8 6.7 8.6 7.5 8.6C8.3 8.6 9.1 8.8 9.7 9.1Z"/></svg>
+            <svg width="25" height="12" viewBox="0 0 25 12" fill="currentColor"><rect x="0.5" y="0.5" width="20" height="11" rx="2.5" stroke="currentColor" fill="none"/><rect x="2" y="2" width="15" height="8" rx="1.5"/><rect x="22" y="4" width="2.5" height="4" rx="1"/></svg>
+          </div>
+        </div>
+
+        <div class="phone-screen">
+          <header class="app-header">
+            <div class="brand-logo">
+              <span class="brand-icon" aria-hidden="true">🍽</span>
+              <span class="brand-name">FoodExpress</span>
+            </div>
+          </header>
+
+          <div class="search-bar">
+            <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input type="search" placeholder="Buscar por comida..." aria-label="Buscar por comida" />
+          </div>
+
+          <div class="welcome-row">
+            <div>
+              <p class="welcome-text">Bem-vindo!</p>
+              <p class="welcome-sub">O que vamos pedir hoje?</p>
+            </div>
+            <button type="button" class="profile-block" aria-label="Minha Conta">
+              <div class="profile-circle">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                </svg>
+              </div>
+              <span class="profile-label">Minha Conta</span>
+            </button>
+          </div>
+
+          <div class="action-buttons">
+            <button type="button" class="action-card">
+              <span class="action-icon restaurants" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11h18M5 11V7a2 2 0 0 1 2-2h2v10M11 5v10M15 5v10M19 7a2 2 0 0 1 2 2v2"/></svg>
+              </span>
+              Restaurantes
+            </button>
+            <button type="button" class="action-card">
+              <span class="action-icon categories" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              </span>
+              Categorias
+            </button>
+          </div>
+
+          <h2 class="section-title">Pedidos recentes</h2>
+
+          <ul class="order-list">
+            <li>
+              <button type="button" class="order-card">
+                <div class="order-thumb pizza" aria-hidden="true">🍕</div>
+                <div class="order-info">
+                  <span class="order-name">Restaurante X</span>
+                  <span class="order-meta">Pizza · Pedido #2847</span>
+                </div>
+                <svg class="order-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+            </li>
+            <li>
+              <button type="button" class="order-card">
+                <div class="order-thumb salad" aria-hidden="true">🥗</div>
+                <div class="order-info">
+                  <span class="order-name">Restaurante X</span>
+                  <span class="order-meta">Salada · Pedido #2812</span>
+                </div>
+                <svg class="order-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+            </li>
+          </ul>
+
+          <nav class="bottom-nav" aria-label="Navegação principal">
+            <button type="button" class="nav-item active" aria-label="Home" aria-current="page">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+              <span>Home</span>
+            </button>
+            <button type="button" class="nav-item" aria-label="Carrinho">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+              <span>Carrinho</span>
+            </button>
+            <button type="button" class="nav-item" aria-label="Notificações">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              <span>Avisos</span>
+            </button>
+          </nav>
+        </div>
+      </div>
+      <p class="screen-label">Home</p>
+    </section>
+
+    <!-- Tela Login / Cadastro -->
+    <section class="phone-frame" aria-label="Tela Login e Cadastro">
+      <div class="phone-device">
+        <div class="status-bar">
+          <span class="status-time">9:41</span>
+          <div class="status-icons" aria-hidden="true">
+            <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><rect x="0" y="6" width="3" height="6" rx="1"/><rect x="4.5" y="4" width="3" height="8" rx="1"/><rect x="9" y="2" width="3" height="10" rx="1"/><rect x="13.5" y="0" width="2.5" height="12" rx="1"/></svg>
+            <svg width="15" height="12" viewBox="0 0 15 12" fill="currentColor"><path d="M7.5 2.5C10 2.5 12.2 3.6 13.8 5.3L15 4C13.1 1.9 10.4 0.5 7.5 0.5C4.6 0.5 1.9 1.9 0 4L1.2 5.3C2.8 3.6 5 2.5 7.5 2.5ZM7.5 6.5C8.9 6.5 10.1 7 11 7.9L12.2 6.7C10.9 5.4 9.3 4.7 7.5 4.7C5.7 4.7 4.1 5.4 2.8 6.7L4 7.9C4.9 7 6.1 6.5 7.5 6.5ZM9.7 9.1L7.5 11.3L5.3 9.1C5.9 8.8 6.7 8.6 7.5 8.6C8.3 8.6 9.1 8.8 9.7 9.1Z"/></svg>
+            <svg width="25" height="12" viewBox="0 0 25 12" fill="currentColor"><rect x="0.5" y="0.5" width="20" height="11" rx="2.5" stroke="currentColor" fill="none"/><rect x="2" y="2" width="15" height="8" rx="1.5"/><rect x="22" y="4" width="2.5" height="4" rx="1"/></svg>
+          </div>
+        </div>
+
+        <div class="phone-screen login-screen">
+          <header class="auth-header">
+            <div class="brand-logo large">
+              <span class="brand-icon" aria-hidden="true">🍽</span>
+              <span class="brand-name">FoodExpress</span>
+            </div>
+            <h2 class="auth-title">Login / Cadastro</h2>
+            <p class="auth-subtitle">Entre para fazer seu pedido</p>
+          </header>
+
+          <div class="tab-switcher" role="tablist">
+            <button type="button" class="tab active" role="tab" aria-selected="true" data-tab="login">Login</button>
+            <button type="button" class="tab" role="tab" aria-selected="false" data-tab="signup">Cadastra-se</button>
+          </div>
+
+          <form class="auth-form" action="#" method="post">
+            <div class="input-group">
+              <label for="email">E-mail</label>
+              <div class="input-field">
+                <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                <input type="email" id="email" placeholder="seu@email.com" />
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label for="password">Senha</label>
+              <div class="input-field">
+                <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="password" placeholder="••••••••" />
+              </div>
+            </div>
+
+            <button type="button" class="btn-primary">Entrar</button>
+
+            <div class="form-options">
+              <label class="checkbox-label">
+                <input type="checkbox" />
+                <span class="checkbox-custom" aria-hidden="true"></span>
+                Lembrar-me
+              </label>
+              <a href="#" class="link">Esqueceu a senha?</a>
+            </div>
+
+            <p class="signup-prompt">
+              Não possui conta? <a href="#" class="link accent">Cadastre-se</a>
+            </p>
+          </form>
+
+          <div class="divider">
+            <span>ou</span>
+          </div>
+
+          <div class="social-buttons">
+            <button type="button" class="btn-social facebook">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+              Entrar com Facebook
+            </button>
+            <button type="button" class="btn-social google">
+              <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+              Entrar com Google
+            </button>
+          </div>
+        </div>
+      </div>
+      <p class="screen-label">Login / Cadastro</p>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

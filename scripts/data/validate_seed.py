@@ -1,4 +1,9 @@
-"""Validate deterministic demo scenario seed files."""
+"""Validate the lunch-rush scenario script.
+
+Checks the strict script schema, the required command coverage, secret-like
+content, and — most importantly — replays the whole script through the real
+command layer inside a throwaway memory container.
+"""
 
 from __future__ import annotations
 
@@ -10,13 +15,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-REQUIRED_INITIAL_STATE_ENTITIES = (
-    "customer",
-    "restaurant",
-    "courier",
-    "active_order",
-    "coupon",
-    "payment",
+REQUIRED_STEP_ACTIONS = (
+    "cart.add_item",
+    "checkout",
+    "restaurant.confirm",
+    "restaurant.prepare",
+    "restaurant.ready",
+    "courier.accept",
+    "courier.pickup",
+    "courier.start",
+    "courier.complete",
 )
 SECRET_LIKE_KEY = re.compile(
     r"(?:api[_-]?key|access[_-]?key|auth(?:entication)?[_-]?token|"
@@ -28,11 +36,13 @@ SECRET_LIKE_VALUE = re.compile(
     r"ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{20,}|"
     r"sk_live_[A-Za-z0-9]+|xox[baprs]-[A-Za-z0-9-]+)"
 )
+REPO_ROOT = Path(__file__).resolve().parents[2]
+REFERENCE_SEED = REPO_ROOT / "data" / "seed" / "brazil.json"
 
 
 @dataclass(frozen=True)
 class SeedValidationResult:
-    """The deterministic validation outcome for one scenario seed."""
+    """The deterministic validation outcome for one scenario script."""
 
     valid: bool
     missing_entities: tuple[str, ...]
@@ -43,7 +53,7 @@ class SeedValidationResult:
 
 def _ensure_backend_source_on_path() -> None:
     """Make the application package importable from a source checkout."""
-    backend_source = Path(__file__).resolve().parents[2] / "app" / "backend" / "src"
+    backend_source = REPO_ROOT / "app" / "backend" / "src"
     backend_source_text = str(backend_source)
     if backend_source_text not in sys.path:
         sys.path.insert(0, backend_source_text)
@@ -80,47 +90,49 @@ def _secret_like_fields(value: Any, path: str = "") -> tuple[str, ...]:
 
 
 def validate_seed(path: str | Path) -> SeedValidationResult:
-    """Return deterministic validation findings for a lunch-rush scenario file."""
+    """Return deterministic validation findings for a scenario script file."""
     _ensure_backend_source_on_path()
 
     from delivery_platform.demo.models import validate_scenario_seed
-    from delivery_platform.demo.scenario import DemoScenario
+    from delivery_platform.demo.runner import ScenarioRunner
     from delivery_platform.domain.errors import DemoScenarioError
     from pydantic import ValidationError
 
-    seed_path = Path(path)
-    seed = json.loads(seed_path.read_text(encoding="utf-8"))
-    initial_state = seed.get("initial_state") if isinstance(seed, dict) else None
+    seed = json.loads(Path(path).read_text(encoding="utf-8"))
 
-    missing = []
+    missing: list[str] = []
     if not isinstance(seed, dict) or seed.get("scenario_id") != "lunch-rush":
         missing.append("scenario_id")
-    if not isinstance(initial_state, dict):
-        missing.append("initial_state")
-        initial_state = {}
-    elif initial_state.get("scenario_id") != "lunch-rush":
-        missing.append("initial_state.scenario_id")
-
-    missing.extend(
-        entity
-        for entity in REQUIRED_INITIAL_STATE_ENTITIES
-        if not isinstance(initial_state.get(entity), dict)
-    )
-    if not isinstance(seed, dict) or not isinstance(seed.get("events"), list):
-        missing.append("events")
+    if not isinstance(seed, dict) or not isinstance(seed.get("steps"), list):
+        missing.append("steps")
+    else:
+        actions = {
+            step.get("action") for step in seed["steps"] if isinstance(step, dict)
+        }
+        missing.extend(
+            action for action in REQUIRED_STEP_ACTIONS if action not in actions
+        )
+    if not isinstance(seed, dict) or not isinstance(seed.get("description"), str):
+        missing.append("description")
 
     missing_entities = tuple(sorted(missing))
     secret_like_fields = _secret_like_fields(seed)
     schema_errors: tuple[str, ...] = ()
     replay_error: str | None = None
     try:
-        validated_seed = validate_scenario_seed(seed)
+        script = validate_scenario_seed(seed)
     except ValidationError as error:
         schema_errors = _validation_error_paths(error)
     else:
         try:
-            scenario = DemoScenario(validated_seed)
-            scenario.advance_events(len(validated_seed.events))
+            from delivery_platform.adapters.seed.loader import load_reference_seed_file
+            from delivery_platform.application.container import build_container
+            from delivery_platform.core.config import Settings
+
+            container = build_container(Settings())
+            load_reference_seed_file(container.store, REFERENCE_SEED)
+            runner = ScenarioRunner(container, script)
+            runner.advance_events(len(script.steps))
         except DemoScenarioError as error:
             replay_error = str(error)
     return SeedValidationResult(
@@ -143,7 +155,7 @@ def main() -> int:
     args = parser.parse_args()
     result = validate_seed(args.path)
     if result.valid:
-        print(f"Seed validation passed: {args.path}")
+        print(f"Seed validation passed: {args.path.as_posix()}")
         return 0
 
     if result.missing_entities:

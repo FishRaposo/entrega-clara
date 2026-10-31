@@ -1,104 +1,135 @@
-import json
-import threading
-import time
-from concurrent.futures import ThreadPoolExecutor
+"""Scenario runner tests: command-script replay through real handlers."""
+
+import uuid
 from pathlib import Path
 
 import pytest
-from delivery_platform.demo.scenario import DemoScenario
+from delivery_platform.adapters.seed.loader import load_reference_seed_file
+from delivery_platform.application.commands.cart import CartCommands
+from delivery_platform.application.commands.checkout import CheckoutCommands
+from delivery_platform.application.container import AppContainer, build_container
+from delivery_platform.application.context import CommandContext
+from delivery_platform.application.identity import IdentityContext
+from delivery_platform.core.config import Settings
+from delivery_platform.demo.models import validate_scenario_seed
+from delivery_platform.demo.runner import ScenarioRunner
 from delivery_platform.domain.errors import DemoScenarioError
+from delivery_platform.domain.order_states import OrderState
+
+SCENARIO_PATH = Path("data/scenarios/lunch-rush.json")
+SEED_PATH = Path("data/seed/brazil.json")
 
 
-def test_demo_reset_returns_the_initial_lunch_rush_snapshot():
-    scenario = DemoScenario.from_seed_file("data/scenarios/lunch-rush.json")
-
-    snapshot = scenario.reset()
-
-    assert snapshot["scenario_id"] == "lunch-rush"
-    assert snapshot["clock_minutes"] == 0
-    assert snapshot["active_order"]["state"] == "placed"
+def _container() -> AppContainer:
+    container = build_container(Settings())
+    load_reference_seed_file(container.store, SEED_PATH)
+    return container
 
 
-def test_demo_advance_is_replayable():
-    scenario = DemoScenario.from_seed_file("data/scenarios/lunch-rush.json")
-
-    first = scenario.reset()
-    first_after_event = scenario.advance_event()
-    scenario.reset()
-    second_after_event = scenario.advance_event()
-
-    assert first["scenario_id"] == "lunch-rush"
-    assert first_after_event == second_after_event
+def _runner(container: AppContainer) -> ScenarioRunner:
+    return ScenarioRunner.from_seed_file(container, SCENARIO_PATH)
 
 
-def test_demo_advance_minutes_changes_only_the_deterministic_clock():
-    scenario = DemoScenario.from_seed_file("data/scenarios/lunch-rush.json")
+def _customer_ctx() -> CommandContext:
+    return CommandContext(
+        identity=IdentityContext(identity_id="demo-customer", role="customer"),
+        correlation_id="cor-test",
+        command_id="cmd-test",
+        idempotency_key=f"key-{uuid.uuid4().hex[:8]}",
+    )
 
-    snapshot = scenario.advance_minutes(12)
 
-    assert snapshot["clock_minutes"] == 12
-    assert snapshot["active_order"]["state"] == "placed"
+def test_full_script_replay_produces_a_real_delivered_order():
+    container = _container()
+    runner = _runner(container)
+
+    snapshot = runner.advance_events(runner.remaining_event_count)
+
+    assert snapshot["order"]["state"] == "delivered"
+    assert snapshot["delivery"]["status"] == "delivered"
+    assert snapshot["route"]["graph_id"] == "sao-paulo-centro"
+    assert snapshot["tracking_points"] == 2
+    assert snapshot["remaining_steps"] == 0
+
+    order_id = snapshot["order"]["id"]
+    with container.uow() as uow:
+        order = uow.orders.get(order_id)
+        assert order.scenario_id == "lunch-rush"
+        delivery = uow.deliveries.find_by_order(order_id)
+        assert delivery is not None and delivery.scenario_id == "lunch-rush"
+        route = uow.route_plans.find_by_delivery(delivery.id)
+        assert route is not None and route.scenario_id == "lunch-rush"
+        events = uow.event_log.list_for_aggregate(order_id)
+        assert {e.type for e in events} >= {
+            "order.placed",
+            "payment.approved",
+            "order.confirmed",
+            "order.preparing",
+            "order.ready",
+        }
+        uow.rollback()
 
 
-def test_demo_cannot_advance_beyond_seeded_events():
-    scenario = DemoScenario.from_seed_file("data/scenarios/lunch-rush.json")
+def test_scenario_reset_removes_only_scenario_records():
+    container = _container()
+    runner = _runner(container)
+    scenario_order_id = runner.advance_events(runner.remaining_event_count)["order"]["id"]
 
-    for _ in range(10):
-        scenario.advance_event()
+    # A dynamic order created outside the scenario must survive the reset.
+    ctx = _customer_ctx()
+    CartCommands(container).add_item(ctx, menu_item_id="menu-sm-01", quantity=1)
+    dynamic = CheckoutCommands(container).checkout(
+        ctx, address_id="addr-casa", payment_method="pix"
+    )
+
+    runner.reset()
+
+    with container.uow() as uow:
+        assert uow.orders.find(scenario_order_id) is None
+        assert uow.orders.find(dynamic.order.id) is not None
+        assert all(
+            order.scenario_id != "lunch-rush"
+            for order in uow.orders.list_by_state(OrderState.DELIVERED)
+        )
+        uow.rollback()
+    assert runner.remaining_event_count > 0
+
+
+def test_runner_rejects_advancing_past_the_end():
+    container = _container()
+    runner = _runner(container)
+    runner.advance_events(runner.remaining_event_count)
 
     with pytest.raises(DemoScenarioError, match="No more demo events"):
-        scenario.advance_event()
+        runner.advance_events(1)
 
 
-def test_demo_snapshots_and_reset_are_isolated_from_nested_mutations():
-    scenario = DemoScenario.from_seed_file("data/scenarios/lunch-rush.json")
-    snapshot = scenario.snapshot()
-
-    snapshot["active_order"]["state"] = "delivered"
-    snapshot["courier"]["latitude"] = 0
-
-    assert scenario.snapshot()["active_order"]["state"] == "placed"
-    assert scenario.reset()["courier"]["latitude"] == 0.001
-
-
-def test_demo_batch_rolls_back_when_a_later_event_is_invalid():
-    seed = json.loads(Path("data/scenarios/lunch-rush.json").read_text(encoding="utf-8"))
-    seed["events"][1]["order_state"] = "delivered"
-    scenario = DemoScenario.from_seed_data(seed)
-    before = scenario.snapshot()
-
-    with pytest.raises(DemoScenarioError, match="cannot be applied"):
-        scenario.advance_events(2)
-
-    assert scenario.snapshot() == before
-    assert scenario.remaining_event_count == len(seed["events"])
+def test_runner_wraps_step_failures_in_demo_error():
+    container = _container()
+    script = validate_scenario_seed(
+        {
+            "scenario_id": "lunch-rush",
+            "description": "broken",
+            "steps": [
+                {
+                    "id": "bad-step",
+                    "actor": "demo-customer",
+                    "action": "checkout",
+                    "params": {"order_id": "$missing_var"},
+                }
+            ],
+        }
+    )
+    broken = ScenarioRunner(container, script)
+    with pytest.raises(DemoScenarioError, match="Variável de cenário ausente"):
+        broken.advance_events(1)
 
 
-def test_concurrent_demo_batches_are_serialized():
-    class InstrumentedScenario(DemoScenario):
-        active_applications = 0
-        maximum_active_applications = 0
-        observation_lock = threading.Lock()
-
-        def _apply_event_to_state(self, state, event):  # type: ignore[no-untyped-def]
-            with self.observation_lock:
-                self.active_applications += 1
-                self.maximum_active_applications = max(
-                    self.maximum_active_applications,
-                    self.active_applications,
-                )
-            time.sleep(0.02)
-            try:
-                super()._apply_event_to_state(state, event)
-            finally:
-                with self.observation_lock:
-                    self.active_applications -= 1
-
-    scenario = InstrumentedScenario.from_seed_file("data/scenarios/lunch-rush.json")
-
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        snapshots = list(executor.map(scenario.advance_events, (1, 1)))
-
-    assert len(snapshots) == 2
-    assert scenario.maximum_active_applications == 1
-    assert scenario.snapshot()["active_order"]["state"] == "preparing"
+def test_reset_is_replayable_across_runs():
+    container = _container()
+    runner = _runner(container)
+    for _ in range(2):
+        runner.advance_events(runner.remaining_event_count)
+        runner.reset()
+    runner.advance_events(runner.remaining_event_count)
+    assert runner.snapshot()["order"]["state"] == "delivered"

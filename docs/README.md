@@ -7,6 +7,7 @@ The seed design and the user-approved M1 design under `docs/superpowers/specs/` 
 - [Platform build research](research/2026-09-01-platform-build-research.md) — source-backed technical, product, security, privacy, provider, testing, and operations findings.
 - [M1 core delivery loop](superpowers/specs/2026-09-01-milestone-1-core-delivery-loop-design.md) — the current implementation contract.
 - [Platform evolution roadmap](roadmap/platform-evolution.md) — M1 through portfolio release, with dependencies and exit evidence.
+- [Portfolio improvement plan](roadmap/portfolio-improvements.md) — review findings and a prioritized backlog (routing, benchmarks, reviewer experience, Windows tooling) within the Python + Node toolchain.
 - [M1 development runbook](runbooks/milestone-1-development.md) — local modes, planned commands, acceptance journey, and release checks.
 
 ## Architecture
@@ -17,6 +18,7 @@ The seed design and the user-approved M1 design under `docs/superpowers/specs/` 
 - [Persistence and seeding guide](architecture/persistence-and-seeding.md)
 - [Routing contract](architecture/routing-contract.md)
 - [Repository layout](architecture/repository-layout.md)
+- [External dependencies](architecture/external-dependencies.md)
 
 ## Durable decisions
 
@@ -26,3 +28,8 @@ The seed design and the user-approved M1 design under `docs/superpowers/specs/` 
 - [ADR 0004: local routing and provider-neutral map rendering](adr/0004-local-routing-and-provider-neutral-map-rendering.md)
 - [ADR 0005: SSE for M1 realtime updates](adr/0005-sse-for-m1-realtime-updates.md)
 - [ADR 0006: defer real providers behind ports](adr/0006-defer-real-providers-behind-ports.md)
+
+## Source materials
+
+- [Original requirements document](requirements/Levantamento%20de%20Requisitos_%20Aplicativo%20de%20Delivery%20de%20Comida.docx) — the college requirements exercise (pt-BR, DOCX) that the seed design summarizes.
+- [FoodExpress wireframe](design/foodexpress/README.md) — the medium-fidelity wireframe built alongside that exercise.

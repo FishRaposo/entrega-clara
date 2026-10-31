@@ -4,29 +4,19 @@ import { useEffect, useState } from "react";
 
 import {
   advanceDemo,
-  type DemoScenario,
+  advanceDemoClock,
   getDemoScenario,
   resetDemo,
 } from "../lib/api-client";
+import type { DemoSnapshot } from "../lib/api-types";
+import { deliveryStatusLabel, formatBRL, orderStateLabel } from "../lib/format";
 
 type DemoStatusCardProps = {
   locationLabel: string;
 };
 
-const stageLabels: Record<string, string> = {
-  placed: "feito",
-  confirmed: "confirmado",
-  preparing: "em preparo",
-  ready_for_pickup: "pronto para retirada",
-  courier_assigned: "entregador atribuído",
-  picked_up: "retirado",
-  en_route: "a caminho",
-  delivered: "entregue",
-  rated: "avaliado",
-};
-
 export function DemoStatusCard({ locationLabel }: DemoStatusCardProps) {
-  const [scenario, setScenario] = useState<DemoScenario | null>(null);
+  const [scenario, setScenario] = useState<DemoSnapshot | null>(null);
   const [pending, setPending] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -51,7 +41,7 @@ export function DemoStatusCard({ locationLabel }: DemoStatusCardProps) {
     };
   }, []);
 
-  const runCommand = async (command: () => Promise<DemoScenario>) => {
+  const runCommand = async (command: () => Promise<DemoSnapshot>) => {
     setPending(true);
     setErrorMessage(null);
     try {
@@ -63,26 +53,64 @@ export function DemoStatusCard({ locationLabel }: DemoStatusCardProps) {
     }
   };
 
-  const stage = scenario
-    ? (stageLabels[scenario.active_order.state] ?? scenario.active_order.state)
-    : "carregando";
-
   return (
     <section aria-labelledby="demo-status-title" className="demo-status-card">
-      <div className="status-label" role="status">Estado simulado · API local</div>
-      <h2 id="demo-status-title">Hora do almoço: Demo Kitchen</h2>
-      {scenario ? <p>Pedido #{scenario.active_order.id}</p> : null}
-      <p>Estado atual: <strong>{stage}</strong>.</p>
-      {scenario ? <p className="quiet">Relógio simulado: {scenario.clock_minutes} min.</p> : null}
+      <div className="status-label" role="status">Cenário guiado · API local</div>
+      <h2 id="demo-status-title">Hora do almoço: {scenario?.scenario_id ?? "…"}</h2>
+      {scenario?.order ? (
+        <p>
+          Pedido #{scenario.order.id} —{" "}
+          <strong>{orderStateLabel(scenario.order.state)}</strong> ·{" "}
+          {formatBRL(scenario.order.total_minor)}
+        </p>
+      ) : (
+        <p>Pedido ainda não iniciado.</p>
+      )}
+      {scenario?.delivery ? (
+        <p>
+          Entrega {scenario.delivery.id}: {deliveryStatusLabel(scenario.delivery.status)}
+          {scenario.delivery.courier_id ? ` · ${scenario.delivery.courier_id}` : ""}
+        </p>
+      ) : null}
+      {scenario?.route ? (
+        <p className="quiet">
+          Rota {(scenario.route.distance_meters / 1000).toFixed(1)} km · ~
+          {Math.max(1, Math.round(scenario.route.estimated_seconds / 60))} min
+        </p>
+      ) : null}
+      {scenario ? (
+        <p className="quiet">
+          Passo {scenario.step_index}/{scenario.steps_total} · restantes {scenario.remaining_steps} ·
+          relógio {new Date(scenario.clock).toLocaleTimeString("pt-BR")}
+        </p>
+      ) : null}
+      {scenario && scenario.notifications.length > 0 ? (
+        <details>
+          <summary>Notificações ({scenario.notifications.length})</summary>
+          <ul className="stacked-list">
+            {scenario.notifications.map((message, index) => (
+              <li key={index}>{message}</li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
       <p className="quiet">Local de referência configurado: {locationLabel}.</p>
       {errorMessage ? <p role="alert">{errorMessage}</p> : null}
       <div className="demo-actions">
         <button
-          disabled={pending}
+          disabled={pending || (scenario?.remaining_steps ?? 0) === 0}
           onClick={() => void runCommand(() => advanceDemo(1))}
           type="button"
         >
-          Avançar cenário
+          Avançar passo
+        </button>
+        <button
+          className="secondary-button"
+          disabled={pending}
+          onClick={() => void runCommand(() => advanceDemoClock(5))}
+          type="button"
+        >
+          +5 min simulados
         </button>
         <button
           className="secondary-button"
@@ -93,7 +121,7 @@ export function DemoStatusCard({ locationLabel }: DemoStatusCardProps) {
           Reiniciar cenário
         </button>
       </div>
-      <p className="quiet">Esta demonstração de portfólio não coleta dados pessoais nem processa pagamentos ou localização reais.</p>
+      <p className="quiet">Este cenário executa os mesmos comandos das telas de papel: sacola, checkout, preparo e entrega.</p>
     </section>
   );
 }

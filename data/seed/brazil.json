@@ -1,0 +1,330 @@
+{
+  "market": "br",
+  "identities": [
+    {
+      "id": "demo-customer",
+      "name": "Cliente Demo",
+      "role": "customer"
+    },
+    {
+      "id": "demo-customer-2",
+      "name": "Cliente Demo Dois",
+      "role": "customer"
+    },
+    {
+      "id": "demo-rest-seu-manoel",
+      "name": "Operador Seu Manoel",
+      "role": "restaurant",
+      "restaurant_id": "rest-seu-manoel"
+    },
+    {
+      "id": "demo-rest-donna-nonna",
+      "name": "Operadora Donna Nonna",
+      "role": "restaurant",
+      "restaurant_id": "rest-donna-nonna"
+    },
+    {
+      "id": "demo-rest-tanaka",
+      "name": "Operador Tanaka",
+      "role": "restaurant",
+      "restaurant_id": "rest-tanaka"
+    },
+    {
+      "id": "demo-rest-verde",
+      "name": "Operadora Verde Leve",
+      "role": "restaurant",
+      "restaurant_id": "rest-verde-leve"
+    },
+    {
+      "id": "demo-rest-madrugada",
+      "name": "Operador Madrugada",
+      "role": "restaurant",
+      "restaurant_id": "rest-madrugada"
+    },
+    {
+      "id": "demo-courier",
+      "name": "Ana Entregas",
+      "role": "courier",
+      "courier_id": "courier-ana"
+    },
+    {
+      "id": "demo-courier-bruno",
+      "name": "Bruno Rodas",
+      "role": "courier",
+      "courier_id": "courier-bruno"
+    },
+    {
+      "id": "demo-operations",
+      "name": "Operações Demo",
+      "role": "operations"
+    }
+  ],
+  "restaurants": [
+    {
+      "id": "rest-seu-manoel",
+      "name": "Seu Manoel Marmitas",
+      "cuisine": "brasileira",
+      "description": "Marmitas caseiras do centro.",
+      "available": true,
+      "latitude": -23.5482,
+      "longitude": -46.6371,
+      "address_label": "Centro, São Paulo",
+      "delivery_fee_minor": 500
+    },
+    {
+      "id": "rest-donna-nonna",
+      "name": "Donna Nonna Massas",
+      "cuisine": "italiana",
+      "description": "Massas artesanais e molhos de família.",
+      "available": true,
+      "latitude": -23.5501,
+      "longitude": -46.6402,
+      "address_label": "República, São Paulo",
+      "delivery_fee_minor": 700
+    },
+    {
+      "id": "rest-tanaka",
+      "name": "Tanaka Sushi Express",
+      "cuisine": "japonesa",
+      "description": "Combinados rápidos para o almoço.",
+      "available": true,
+      "latitude": -23.5448,
+      "longitude": -46.6345,
+      "address_label": "Liberdade, São Paulo",
+      "delivery_fee_minor": 800
+    },
+    {
+      "id": "rest-verde-leve",
+      "name": "Verde Leve Saladas",
+      "cuisine": "saudável",
+      "description": "Saladas, wraps e sucos.",
+      "available": true,
+      "latitude": -23.5522,
+      "longitude": -46.6299,
+      "address_label": "Sé, São Paulo",
+      "delivery_fee_minor": 600
+    },
+    {
+      "id": "rest-madrugada",
+      "name": "Lanches da Madrugada",
+      "cuisine": "lanches",
+      "description": "Lanches noturnos — fecha cedo.",
+      "available": false,
+      "latitude": -23.5455,
+      "longitude": -46.6445,
+      "address_label": "Consolação, São Paulo",
+      "delivery_fee_minor": 500
+    }
+  ],
+  "menu_items": [
+    {
+      "id": "menu-sm-01",
+      "restaurant_id": "rest-seu-manoel",
+      "name": "Marmita executiva de frango",
+      "description": "Arroz, feijão, frango grelhado e salada.",
+      "category": "marmitas",
+      "price_minor": 2290,
+      "currency": "BRL",
+      "available": true
+    },
+    {
+      "id": "menu-sm-02",
+      "restaurant_id": "rest-seu-manoel",
+      "name": "Marmita de feijoada",
+      "description": "Feijoada completa com couve e laranja.",
+      "category": "marmitas",
+      "price_minor": 2790,
+      "currency": "BRL",
+      "available": true
+    },
+    {
+      "id": "menu-sm-03",
+      "restaurant_id": "rest-seu-manoel",
+      "name": "Guaraná lata",
+      "description": "350 ml gelado.",
+      "category": "bebidas",
+      "price_minor": 600,
+      "currency": "BRL",
+      "available": true
+    },
+    {
+      "id": "menu-sm-04",
+      "restaurant_id": "rest-seu-manoel",
+      "name": "Pudim da casa",
+      "description": "Fatia de pudim de leite.",
+      "category": "sobremesas",
+      "price_minor": 890,
+      "currency": "BRL",
+      "available": false
+    },
+    {
+      "id": "menu-dn-01",
+      "restaurant_id": "rest-donna-nonna",
+      "name": "Talharim al pomodoro",
+      "description": "Molho de tomate fresco e manjericão.",
+      "category": "massas",
+      "price_minor": 3290,
+      "currency": "BRL",
+      "available": true
+    },
+    {
+      "id": "menu-dn-02",
+      "restaurant_id": "rest-donna-nonna",
+      "name": "Lasanha à bolonhesa",
+      "description": "Clássica, assada na hora.",
+      "category": "massas",
+      "price_minor": 3890,
+      "currency": "BRL",
+      "available": true
+    },
+    {
+      "id": "menu-dn-03",
+      "restaurant_id": "rest-donna-nonna",
+      "name": "Suco de uva integral",
+      "description": "300 ml.",
+      "category": "bebidas",
+      "price_minor": 900,
+      "currency": "BRL",
+      "available": true
+    },
+    {
+      "id": "menu-tk-01",
+      "restaurant_id": "rest-tanaka",
+      "name": "Combinado 16 peças",
+      "description": "Sushis e sashimis variados.",
+      "category": "combinados",
+      "price_minor": 4590,
+      "currency": "BRL",
+      "available": true
+    },
+    {
+      "id": "menu-tk-02",
+      "restaurant_id": "rest-tanaka",
+      "name": "Temaki de salmão",
+      "description": "Cone com salmão fresco e cream cheese.",
+      "category": "temakis",
+      "price_minor": 2490,
+      "currency": "BRL",
+      "available": true
+    },
+    {
+      "id": "menu-tk-03",
+      "restaurant_id": "rest-tanaka",
+      "name": "Sunomono",
+      "description": "Salada de pepino agridoce.",
+      "category": "entradas",
+      "price_minor": 990,
+      "currency": "BRL",
+      "available": false
+    },
+    {
+      "id": "menu-vl-01",
+      "restaurant_id": "rest-verde-leve",
+      "name": "Salada césar com frango",
+      "description": "Alface, frango grelhado, parmesão e croutons.",
+      "category": "saladas",
+      "price_minor": 2690,
+      "currency": "BRL",
+      "available": true
+    },
+    {
+      "id": "menu-vl-02",
+      "restaurant_id": "rest-verde-leve",
+      "name": "Wrap integral de legumes",
+      "description": "Legumes assados e homus.",
+      "category": "wraps",
+      "price_minor": 2190,
+      "currency": "BRL",
+      "available": true
+    },
+    {
+      "id": "menu-vl-03",
+      "restaurant_id": "rest-verde-leve",
+      "name": "Suco verde",
+      "description": "Couve, maçã e gengibre, 300 ml.",
+      "category": "bebidas",
+      "price_minor": 990,
+      "currency": "BRL",
+      "available": true
+    },
+    {
+      "id": "menu-md-01",
+      "restaurant_id": "rest-madrugada",
+      "name": "X-Madrugada",
+      "description": "Hambúrguer duplo com ovo e bacon.",
+      "category": "lanches",
+      "price_minor": 2890,
+      "currency": "BRL",
+      "available": true
+    }
+  ],
+  "addresses": [
+    {
+      "id": "addr-casa",
+      "customer_id": "demo-customer",
+      "label": "Casa",
+      "formatted": "Apto de demonstração — Sé, São Paulo/SP",
+      "latitude": -23.5515,
+      "longitude": -46.632
+    },
+    {
+      "id": "addr-trabalho",
+      "customer_id": "demo-customer",
+      "label": "Trabalho",
+      "formatted": "Escritório de demonstração — República, São Paulo/SP",
+      "latitude": -23.546,
+      "longitude": -46.641
+    }
+  ],
+  "coupons": [
+    {
+      "code": "BEM-VINDO-DEMO",
+      "description": "R$ 5 de desconto no primeiro pedido demo.",
+      "discount_minor": 500,
+      "currency": "BRL",
+      "min_subtotal_minor": 2500,
+      "active": true
+    },
+    {
+      "code": "SEMANA10",
+      "description": "R$ 10 acima de R$ 40.",
+      "discount_minor": 1000,
+      "currency": "BRL",
+      "min_subtotal_minor": 4000,
+      "active": true
+    },
+    {
+      "code": "EXPIRADO2020",
+      "description": "Cupom antigo expirado.",
+      "discount_minor": 800,
+      "currency": "BRL",
+      "min_subtotal_minor": 0,
+      "active": true,
+      "expires_at": "2020-01-01T00:00:00Z"
+    },
+    {
+      "code": "INATIVO",
+      "description": "Cupom desativado.",
+      "discount_minor": 500,
+      "currency": "BRL",
+      "min_subtotal_minor": 0,
+      "active": false
+    }
+  ],
+  "couriers": [
+    {
+      "id": "courier-ana",
+      "name": "Ana Entregas",
+      "status": "available",
+      "latitude": -23.549,
+      "longitude": -46.636
+    },
+    {
+      "id": "courier-bruno",
+      "name": "Bruno Rodas",
+      "status": "offline",
+      "latitude": -23.553,
+      "longitude": -46.638
+    }
+  ]
+}

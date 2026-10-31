@@ -1,7 +1,6 @@
 import json
-from pathlib import Path
-
 import tomllib
+from pathlib import Path
 
 ROOT = Path(__file__).parents[2]
 

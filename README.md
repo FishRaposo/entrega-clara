@@ -1,10 +1,22 @@
 # Entrega Clara
 
-Entrega Clara is a Brazil-first, internationally extensible food-delivery platform whose distinctive portfolio thesis is making the customer-to-delivery operation visible, measurable, and replaceable from a legacy route baseline. It is a production-shaped scaffold with a working FastAPI demo scenario, API-backed web controls, role-based web surfaces, and a solver-independent routing baseline.
+Entrega Clara is a Brazil-first, internationally extensible food-delivery platform whose distinctive portfolio thesis is making the customer-to-delivery operation visible, measurable, and replaceable from a legacy route baseline. The first milestone ships a real vertical slice: seeded Brazilian catalog, cart and coupons, idempotent checkout with simulated payment, restaurant and courier lifecycle commands, deterministic graph routing, post-commit domain events, authorized SSE tracking, an operations read model, and a guided demo — all running with only Python and Node.
+
+## Para recrutadores (iFood)
+
+Este repositório demonstra, de ponta a ponta e sem dependências externas, o mesmo recorte operacional que um app de delivery resolve em produção: cardápio → sacola → checkout idempotente → fila do restaurante → oferta, coleta, rota e entrega do entregador → rastreamento por SSE → visão de operações.
+
+- **Domínio real, não mock**: os mesmos handlers de comando atendem a API, as telas de papel e o cenário guiado (`data/scenarios/lunch-rush.json`).
+- **Invariantes de negócio**: transições de estado válidas, um restaurante por sacola, cupom com validade/mínimo, uma entrega ativa por entregador, posições de GPS monotônicas, autorização por identidade resolvida no servidor.
+- **Arquitetura substituível**: portas de aplicação (UoW, pagamento, roteirização, identidade, eventos) isolam os adapters; PostgreSQL, MapLibre/MapTiler, provedores de pagamento e autenticação real são expansões documentadas, não requisitos.
+- **Qualidade verificável**: ~140 testes de API/domínio, lint Ruff, mypy estrito, suíte E2E Playwright com varreduras de acessibilidade (axe), validação de seeds e cobertura de requisitos.
+- **Brasil de verdade**: pt-BR, BRL em centavos, PIX, seed de São Paulo, cópia consciente de LGPD.
+
+Comece pelo [guia de desenvolvimento local](docs/runbooks/local-development.md) e pelo [modo demonstração](docs/runbooks/demo-mode.md).
 
 ## Primary demo story
 
-The implemented lunch-rush scenario resets and atomically replays a seeded order from `placed` through `rated`, including restaurant preparation, courier state and location updates, notifications, and a deterministic clock. The web Demo Mode inspects, advances, and resets that running API scenario. Customer checkout, operational role workflows, route visualization, and production integrations remain explicitly deferred scaffold scope.
+Two stories share one code path. Interactively, each role page drives real commands: the customer builds a cart and checks out (idempotent, simulated payment), the restaurant confirms/prepares/marks ready, the courier accepts an offer, picks up, starts the graph-computed route, streams GPS points, and completes the delivery — while the customer watches a live SSE stream and map. The guided lunch-rush scenario replays the same journey step-by-step through those same handlers via Demo Mode, with scoped reset that preserves dynamically created orders.
 
 ## Market boundary
 
@@ -14,26 +26,48 @@ Brazil is the default market: `pt-BR`, BRL, PIX, cards, wallets, Brazilian seed 
 
 | Path | Purpose |
 | --- | --- |
-| `app/backend/` | FastAPI health/demo boundaries, domain state machine, and routing baseline |
-| `app/web/` | Responsive role shell and API-backed demo controls |
-| `data/seed/` | Deterministic seed data |
-| `data/scenarios/` | Replayable demo scenarios |
-| `docs/` | Architecture, ADRs, requirements, and governing specifications |
-| `scripts/` | Development and demo automation |
-| `tests/` | Repository and application tests |
+| `app/backend/` | FastAPI surface, domain entities/state machine, application commands, memory adapters, routing solvers |
+| `app/web/` | pt-BR role surfaces (cliente, restaurante, entregador, operações), SSE client, deterministic map fallback |
+| `data/seed/` | Deterministic Brazil reference seed (synthetic, no real personal data) |
+| `data/graph/` | Versioned synthetic street graph for A*/Dijkstra route solving |
+| `data/scenarios/` | Command-script demo scenarios replayed through real handlers |
+| `docs/` | Architecture, ADRs, requirements traceability, runbooks, and governing specifications |
+| `scripts/` | Development, demo, validation, and quality automation |
+| `tests/` | Backend, frontend, repository, and e2e test suites |
 
 All application source belongs under `app/`.
 
 ## Demo access
 
-The local web shell provides role selection for Customer, Restaurant, Courier, and Admin. The role switcher is a demo aid rather than real authentication; support is represented by the intended admin/support-facing surface.
+The local web shell provides working surfaces for Customer (`/customer`), Restaurant (`/restaurant`), Courier (`/courier`), and Operations (`/admin`), plus the guided scenario at `/demo`. Each surface sends a fixed `X-Demo-Identity` header resolved server-side — a demo aid, never real authentication.
 
 ## Local setup
 
-1. Copy `.env.example` to `.env` and adjust only local, non-production values.
-2. Run `make install` to install the declared backend and web development dependencies.
-3. Run `make check` to validate deterministic data, repository quality gates, and application checks.
-4. Run `make dev` to start the local Compose services `db`, `api`, and `web` when Docker Compose is available.
+Requires only Python 3.11+ and Node 22+ — no Docker, database, `make`, or provider accounts.
+
+1. Copy `.env.example` to `.env` (optional; safe defaults, no credentials needed).
+2. Install dependencies:
+
+   ```bash
+   python -m pip install -e "app/backend[dev]"
+   cd app/web && npm install
+   ```
+
+3. Start the API from the repository root:
+
+   ```bash
+   uvicorn delivery_platform.api.main:app --port 8000
+   ```
+
+4. Start the web shell in a second terminal:
+
+   ```bash
+   cd app/web && npm run dev
+   ```
+
+5. Open `http://localhost:3000`; the API listens on `http://localhost:8000` (`GET /api/v1/health`).
+
+Docker Compose, PostgreSQL, MapTiler, and external providers are documented future expansions, not requirements — see [external dependencies](docs/architecture/external-dependencies.md).
 
 See the [local development runbook](docs/runbooks/local-development.md) for local URLs and service details, and the [demo-mode runbook](docs/runbooks/demo-mode.md) for deterministic reset, advancement, replay, and role-navigation instructions.
 
@@ -41,15 +75,22 @@ For the next implementation phase, read the [M1 development runbook](docs/runboo
 
 ## Commands
 
+Run from the repository root (the Makefile wraps the same commands when `make` is available):
+
 | Command | Purpose |
 | --- | --- |
-| `make test` | Run backend and web tests |
-| `make lint` | Run backend and web linters |
-| `make typecheck` | Run backend and web type checks |
-| `make check` | Run lint, type checking, and tests |
-| `make dev` | Start the local Compose services `api`, `web`, and `db` |
-| `make demo-reset` | Reset the running local API scenario |
-| `make demo-preview` | Preview the offline seed without contacting the API |
+| `python -m pytest tests -q` | Backend and repository tests |
+| `cd app/web && npm test -- --run` | Frontend tests |
+| `ruff check app/backend/src tests` | Backend lint |
+| `cd app/web && npm run lint` | Frontend lint |
+| `mypy app/backend/src` | Backend type check |
+| `cd app/web && npm run typecheck` | Frontend type check |
+| `python scripts/data/validate_seed.py data/scenarios/lunch-rush.json` | Validate deterministic seed |
+| `python scripts/quality/check_requirement_coverage.py docs/requirements/traceability.md` | Requirement coverage |
+| `python scripts/repo/check_app_boundary.py` | Application source boundary |
+| `python scripts/demo/reset_demo.py` | Reset the running local API scenario |
+| `python scripts/demo/reset_demo.py --seed-preview` | Preview the offline seed without contacting the API |
+| `cd app/web && npx playwright test` | E2E journey + axe scans (needs `npx playwright install` once) |
 
 The repository smoke test can run before application tooling exists:
 

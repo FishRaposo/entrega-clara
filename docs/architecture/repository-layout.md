@@ -14,5 +14,6 @@ The repository root is a stable governance contract. Application code is contain
 - `docs/roadmap/` records staged future capabilities, dependencies, and exit evidence.
 - `docs/architecture/` records API, event, persistence, routing, and integration contracts.
 - `docs/adr/` records durable technical decisions and rejected alternatives.
+- `docs/design/` retains historical design artifacts such as the original FoodExpress wireframe; they are reference material, not product surfaces.
 
 Later tasks extend these contracts without renaming targets or services.

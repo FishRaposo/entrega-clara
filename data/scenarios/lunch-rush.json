@@ -1,26 +1,114 @@
 {
   "scenario_id": "lunch-rush",
-  "initial_state": {
-    "scenario_id": "lunch-rush",
-    "clock_minutes": 0,
-    "customer": {"id": "demo-customer", "name": "Demo Customer"},
-    "restaurant": {"id": "demo-restaurant", "name": "Demo Kitchen", "latitude": 0.000, "longitude": 0.000},
-    "courier": {"id": "demo-courier", "name": "Demo Courier", "status": "available", "latitude": 0.001, "longitude": 0.001},
-    "active_order": {"id": "demo-order-001", "state": "placed", "total_brl_centavos": 4290},
-    "coupon": {"code": "DEMO10", "valid": true, "discount_brl_centavos": 500},
-    "payment": {"method": "pix", "outcome": "approved", "reference": "demo-payment-reference"},
-    "notifications": []
-  },
-  "events": [
-    {"minutes": 1, "order_state": "confirmed", "notification": "Pedido confirmado."},
-    {"minutes": 4, "order_state": "preparing", "notification": "Cozinha iniciou o preparo."},
-    {"minutes": 7, "order_state": "ready_for_pickup", "notification": "Pedido pronto para retirada."},
-    {"minutes": 2, "order_state": "courier_assigned", "courier_update": {"status": "assigned"}, "notification": "O entregador de demonstração aceitou a entrega."},
-    {"minutes": 3, "courier_update": {"latitude": 0.000, "longitude": 0.000}},
-    {"minutes": 1, "order_state": "picked_up", "courier_update": {"status": "delivering"}, "notification": "Pedido retirado."},
-    {"minutes": 2, "order_state": "en_route", "notification": "O entregador de demonstração está a caminho."},
-    {"minutes": 6, "courier_update": {"latitude": 0.002, "longitude": 0.002}},
-    {"minutes": 5, "order_state": "delivered", "courier_update": {"status": "available"}, "notification": "Pedido entregue."},
-    {"minutes": 1, "order_state": "rated", "notification": "Avaliação registrada."}
+  "description": "Almoço de demonstração: cliente pede marmitas, restaurante prepara, entregadora conclui.",
+  "steps": [
+    {
+      "id": "add-marmitas",
+      "actor": "demo-customer",
+      "action": "cart.add_item",
+      "params": {"menu_item_id": "menu-sm-01", "quantity": 2}
+    },
+    {
+      "id": "add-guarana",
+      "actor": "demo-customer",
+      "action": "cart.add_item",
+      "params": {"menu_item_id": "menu-sm-03", "quantity": 2}
+    },
+    {
+      "id": "apply-coupon",
+      "actor": "demo-customer",
+      "action": "cart.apply_coupon",
+      "params": {"code": "BEM-VINDO-DEMO"}
+    },
+    {
+      "id": "checkout",
+      "actor": "demo-customer",
+      "action": "checkout",
+      "params": {"address_id": "addr-casa", "payment_method": "pix"}
+    },
+    {
+      "id": "confirm-order",
+      "actor": "demo-rest-seu-manoel",
+      "action": "restaurant.confirm",
+      "params": {"order_id": "$order_id"}
+    },
+    {
+      "id": "kitchen-wait",
+      "action": "clock.advance",
+      "params": {"minutes": 4}
+    },
+    {
+      "id": "start-preparing",
+      "actor": "demo-rest-seu-manoel",
+      "action": "restaurant.prepare",
+      "params": {"order_id": "$order_id"}
+    },
+    {
+      "id": "preparation-wait",
+      "action": "clock.advance",
+      "params": {"minutes": 7}
+    },
+    {
+      "id": "mark-ready",
+      "actor": "demo-rest-seu-manoel",
+      "action": "restaurant.ready",
+      "params": {"order_id": "$order_id"}
+    },
+    {
+      "id": "courier-accepts",
+      "actor": "demo-courier",
+      "action": "courier.accept",
+      "params": {"delivery_id": "$delivery_id"}
+    },
+    {
+      "id": "courier-arrives",
+      "action": "clock.advance",
+      "params": {"minutes": 2}
+    },
+    {
+      "id": "pickup",
+      "actor": "demo-courier",
+      "action": "courier.pickup",
+      "params": {"delivery_id": "$delivery_id"}
+    },
+    {
+      "id": "start-route",
+      "actor": "demo-courier",
+      "action": "courier.start",
+      "params": {"delivery_id": "$delivery_id"}
+    },
+    {
+      "id": "location-midway",
+      "actor": "demo-courier",
+      "action": "courier.location",
+      "params": {
+        "delivery_id": "$delivery_id",
+        "sequence": 1,
+        "latitude": -23.5495,
+        "longitude": -46.6355
+      }
+    },
+    {
+      "id": "location-near-customer",
+      "actor": "demo-courier",
+      "action": "courier.location",
+      "params": {
+        "delivery_id": "$delivery_id",
+        "sequence": 2,
+        "latitude": -23.5508,
+        "longitude": -46.6335
+      }
+    },
+    {
+      "id": "final-leg",
+      "action": "clock.advance",
+      "params": {"minutes": 3}
+    },
+    {
+      "id": "delivered",
+      "actor": "demo-courier",
+      "action": "courier.complete",
+      "params": {"delivery_id": "$delivery_id"}
+    }
   ]
 }

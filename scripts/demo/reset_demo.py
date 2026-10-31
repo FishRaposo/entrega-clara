@@ -21,9 +21,15 @@ class DemoResetError(Exception):
 
 
 def preview_seed(path: Path = DEFAULT_SCENARIO_PATH) -> dict[str, Any]:
-    """Return a fresh initial-state copy without contacting or mutating the API."""
+    """Return a fresh script summary without contacting or mutating the API."""
     scenario = json.loads(path.read_text(encoding="utf-8"))
-    return copy.deepcopy(scenario["initial_state"])
+    return copy.deepcopy(
+        {
+            "scenario_id": scenario["scenario_id"],
+            "description": scenario.get("description", ""),
+            "steps": [step["id"] for step in scenario["steps"]],
+        }
+    )
 
 
 def reset_demo(api_url: str = DEFAULT_API_URL) -> dict[str, Any]:

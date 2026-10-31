@@ -11,12 +11,14 @@ def test_seed_preview_returns_a_fresh_state_without_modifying_the_source_seed():
     source_before = seed_path.read_bytes()
 
     first_state = preview_seed(seed_path)
-    first_state["customer"]["name"] = "Changed in memory"
+    first_state["steps"].append("mutated-step")
     second_state = preview_seed(seed_path)
 
-    assert second_state["customer"]["name"] == "Demo Customer"
+    assert second_state["scenario_id"] == "lunch-rush"
+    assert "mutated-step" not in second_state["steps"]
+    assert "checkout" in second_state["steps"]
     assert second_state is not first_state
-    assert second_state["customer"] is not first_state["customer"]
+    assert second_state["steps"] is not first_state["steps"]
     assert seed_path.read_bytes() == source_before
 
 

@@ -60,6 +60,10 @@ Reviews and ratings are intentionally not part of M1. They begin in M2.
 | M1.6 Events and tracking | Event envelope, audit/notification projections, SSE snapshot/stream, deterministic simulator | Reconnect restores snapshot; timeline remains useful without provider/network |
 | M1.7 Operations and hardening | Read-only operations view, errors, accessibility, E2E, docs, seed safety, CI | Full happy path plus negative cases passes in both persistence modes |
 
+### PostgreSQL re-entry (deferred adapter)
+
+M1 shipped memory-only: the copy-on-write `UnitOfWork` and repository ports are the persistence contract, and `PERSISTENCE_MODE=postgres` fails fast with an explicit message until a real adapter lands. Re-entry prerequisites: Docker or local PostgreSQL, `sqlalchemy` + `alembic` + `psycopg`, initial migrations for the entity model, optimistic-version enforcement, and the same repository contract tests running against both adapters. Until then, the two definition-of-done lines below referencing "both persistence modes" are honestly reported as deferred rather than met.
+
 ### M1 definition of done
 
 - A seeded demo identity and a dynamic customer can complete the same application-command path.
