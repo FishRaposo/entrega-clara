@@ -1,7 +1,7 @@
 """Customer rate + cancel commands: happy paths, ownership, invariants."""
 
-from fastapi.testclient import TestClient
 from delivery_platform.api.main import create_app
+from fastapi.testclient import TestClient
 
 H = {"x-demo-identity": "demo-customer"}
 H2 = {"x-demo-identity": "demo-customer-2"}

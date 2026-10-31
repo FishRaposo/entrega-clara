@@ -5,7 +5,7 @@ install:
 	cd app/web && npm install
 
 test:
-	PYTHONPATH=app/backend/src python -m pytest tests -q
+	python -m pytest tests -q
 	cd app/web && npm test -- --run
 
 lint:
@@ -19,7 +19,10 @@ typecheck:
 check: seed-validate requirement-coverage app-boundary lint typecheck test
 
 dev:
-	docker compose up --build
+	python scripts/dev.py
+
+dev-docker:
+	docker compose up --build  # future container path, not required locally
 
 demo-reset:
 	python scripts/demo/reset_demo.py

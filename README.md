@@ -9,7 +9,8 @@ Este repositório demonstra, de ponta a ponta e sem dependências externas, o me
 - **Domínio real, não mock**: os mesmos handlers de comando atendem a API, as telas de papel e o cenário guiado (`data/scenarios/lunch-rush.json`).
 - **Invariantes de negócio**: transições de estado válidas, um restaurante por sacola, cupom com validade/mínimo, uma entrega ativa por entregador, posições de GPS monotônicas, autorização por identidade resolvida no servidor.
 - **Arquitetura substituível**: portas de aplicação (UoW, pagamento, roteirização, identidade, eventos) isolam os adapters; PostgreSQL, MapLibre/MapTiler, provedores de pagamento e autenticação real são expansões documentadas, não requisitos.
-- **Qualidade verificável**: ~140 testes de API/domínio, lint Ruff, mypy estrito, suíte E2E Playwright com varreduras de acessibilidade (axe), validação de seeds e cobertura de requisitos.
+- **Laboratório de roteirização**: A* (objetivo tempo/distância), Dijkstra, Held-Karp, vizinho-mais-próximo e 2-opt comparáveis em `docs/benchmarks/` e na página `/lab`.
+- **Qualidade verificável**: 175+ testes de API/domínio (contagem exata em docs/verification.md), lint Ruff, mypy estrito, suíte E2E Playwright com varreduras de acessibilidade (axe), validação de seeds e cobertura de requisitos.
 - **Brasil de verdade**: pt-BR, BRL em centavos, PIX, seed de São Paulo, cópia consciente de LGPD.
 
 Comece pelo [guia de desenvolvimento local](docs/runbooks/local-development.md) e pelo [modo demonstração](docs/runbooks/demo-mode.md).
