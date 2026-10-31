@@ -1,0 +1,376 @@
+{
+  "generated_at": "2026-10-31T06:14:31Z",
+  "tsp": [
+    {
+      "stops": 5,
+      "brute_force": {
+        "solver": "legacy_bruteforce_tsp",
+        "total_cost": 182.0,
+        "routes_evaluated": 24,
+        "solver_time_ns": 33800,
+        "wall_time_ns": 51800,
+        "route": [
+          "s0",
+          "s1",
+          "s4",
+          "s3",
+          "s2",
+          "s0"
+        ]
+      },
+      "held_karp": {
+        "solver": "held-karp",
+        "total_cost": 182.0,
+        "routes_evaluated": 52,
+        "solver_time_ns": 39100,
+        "wall_time_ns": 59300,
+        "route": [
+          "s0",
+          "s2",
+          "s3",
+          "s4",
+          "s1",
+          "s0"
+        ]
+      },
+      "nearest_neighbor": {
+        "solver": "nearest-neighbor",
+        "total_cost": 182.0,
+        "routes_evaluated": 10,
+        "solver_time_ns": 18300,
+        "wall_time_ns": 21500,
+        "route": [
+          "s0",
+          "s2",
+          "s3",
+          "s4",
+          "s1",
+          "s0"
+        ]
+      },
+      "two_opt": {
+        "solver": "two-opt",
+        "total_cost": 182.0,
+        "routes_evaluated": 16,
+        "solver_time_ns": 34200,
+        "wall_time_ns": 37000,
+        "route": [
+          "s0",
+          "s2",
+          "s3",
+          "s4",
+          "s1",
+          "s0"
+        ]
+      }
+    },
+    {
+      "stops": 7,
+      "brute_force": {
+        "solver": "legacy_bruteforce_tsp",
+        "total_cost": 179.0,
+        "routes_evaluated": 720,
+        "solver_time_ns": 627900,
+        "wall_time_ns": 634100,
+        "route": [
+          "s0",
+          "s1",
+          "s4",
+          "s3",
+          "s6",
+          "s2",
+          "s5",
+          "s0"
+        ]
+      },
+      "held_karp": {
+        "solver": "held-karp",
+        "total_cost": 179.0,
+        "routes_evaluated": 486,
+        "solver_time_ns": 188700,
+        "wall_time_ns": 218500,
+        "route": [
+          "s0",
+          "s5",
+          "s2",
+          "s6",
+          "s3",
+          "s4",
+          "s1",
+          "s0"
+        ]
+      },
+      "nearest_neighbor": {
+        "solver": "nearest-neighbor",
+        "total_cost": 242.0,
+        "routes_evaluated": 21,
+        "solver_time_ns": 10100,
+        "wall_time_ns": 12000,
+        "route": [
+          "s0",
+          "s1",
+          "s6",
+          "s3",
+          "s4",
+          "s5",
+          "s2",
+          "s0"
+        ]
+      },
+      "two_opt": {
+        "solver": "two-opt",
+        "total_cost": 209.0,
+        "routes_evaluated": 51,
+        "solver_time_ns": 72000,
+        "wall_time_ns": 75600,
+        "route": [
+          "s0",
+          "s4",
+          "s1",
+          "s6",
+          "s3",
+          "s5",
+          "s2",
+          "s0"
+        ]
+      }
+    },
+    {
+      "stops": 9,
+      "brute_force": {
+        "solver": "legacy_bruteforce_tsp",
+        "total_cost": 245.0,
+        "routes_evaluated": 40320,
+        "solver_time_ns": 45753600,
+        "wall_time_ns": 45777800,
+        "route": [
+          "s0",
+          "s1",
+          "s2",
+          "s4",
+          "s5",
+          "s8",
+          "s3",
+          "s7",
+          "s6",
+          "s0"
+        ]
+      },
+      "held_karp": {
+        "solver": "held-karp",
+        "total_cost": 245.0,
+        "routes_evaluated": 3592,
+        "solver_time_ns": 2004100,
+        "wall_time_ns": 2232800,
+        "route": [
+          "s0",
+          "s6",
+          "s7",
+          "s3",
+          "s8",
+          "s5",
+          "s4",
+          "s2",
+          "s1",
+          "s0"
+        ]
+      },
+      "nearest_neighbor": {
+        "solver": "nearest-neighbor",
+        "total_cost": 277.0,
+        "routes_evaluated": 36,
+        "solver_time_ns": 38900,
+        "wall_time_ns": 44600,
+        "route": [
+          "s0",
+          "s4",
+          "s5",
+          "s8",
+          "s3",
+          "s7",
+          "s6",
+          "s2",
+          "s1",
+          "s0"
+        ]
+      },
+      "two_opt": {
+        "solver": "two-opt",
+        "total_cost": 247.0,
+        "routes_evaluated": 92,
+        "solver_time_ns": 231100,
+        "wall_time_ns": 238700,
+        "route": [
+          "s0",
+          "s6",
+          "s5",
+          "s4",
+          "s8",
+          "s3",
+          "s7",
+          "s2",
+          "s1",
+          "s0"
+        ]
+      }
+    },
+    {
+      "stops": 11,
+      "brute_force": {
+        "solver": "legacy_bruteforce_tsp",
+        "skipped": true
+      },
+      "held_karp": {
+        "solver": "held-karp",
+        "total_cost": 255.0,
+        "routes_evaluated": 23050,
+        "solver_time_ns": 7593300,
+        "wall_time_ns": 8440800,
+        "route": [
+          "s0",
+          "s8",
+          "s9",
+          "s7",
+          "s5",
+          "s3",
+          "s6",
+          "s10",
+          "s1",
+          "s4",
+          "s2",
+          "s0"
+        ]
+      },
+      "nearest_neighbor": {
+        "solver": "nearest-neighbor",
+        "total_cost": 342.0,
+        "routes_evaluated": 55,
+        "solver_time_ns": 27800,
+        "wall_time_ns": 32700,
+        "route": [
+          "s0",
+          "s2",
+          "s6",
+          "s3",
+          "s5",
+          "s1",
+          "s4",
+          "s9",
+          "s8",
+          "s10",
+          "s7",
+          "s0"
+        ]
+      },
+      "two_opt": {
+        "solver": "two-opt",
+        "total_cost": 255.0,
+        "routes_evaluated": 190,
+        "solver_time_ns": 529400,
+        "wall_time_ns": 536000,
+        "route": [
+          "s0",
+          "s2",
+          "s4",
+          "s1",
+          "s10",
+          "s6",
+          "s3",
+          "s5",
+          "s7",
+          "s9",
+          "s8",
+          "s0"
+        ]
+      }
+    },
+    {
+      "stops": 13,
+      "brute_force": {
+        "solver": "legacy_bruteforce_tsp",
+        "skipped": true
+      },
+      "held_karp": {
+        "solver": "held-karp",
+        "total_cost": 236.0,
+        "routes_evaluated": 135180,
+        "solver_time_ns": 42873500,
+        "wall_time_ns": 48774600,
+        "route": [
+          "s0",
+          "s6",
+          "s9",
+          "s10",
+          "s3",
+          "s7",
+          "s4",
+          "s12",
+          "s2",
+          "s5",
+          "s8",
+          "s11",
+          "s1",
+          "s0"
+        ]
+      },
+      "nearest_neighbor": {
+        "solver": "nearest-neighbor",
+        "total_cost": 346.0,
+        "routes_evaluated": 78,
+        "solver_time_ns": 33300,
+        "wall_time_ns": 37900,
+        "route": [
+          "s0",
+          "s6",
+          "s12",
+          "s2",
+          "s5",
+          "s8",
+          "s7",
+          "s3",
+          "s10",
+          "s9",
+          "s1",
+          "s11",
+          "s4",
+          "s0"
+        ]
+      },
+      "two_opt": {
+        "solver": "two-opt",
+        "total_cost": 236.0,
+        "routes_evaluated": 276,
+        "solver_time_ns": 514800,
+        "wall_time_ns": 517600,
+        "route": [
+          "s0",
+          "s6",
+          "s9",
+          "s10",
+          "s3",
+          "s7",
+          "s4",
+          "s12",
+          "s2",
+          "s5",
+          "s8",
+          "s11",
+          "s1",
+          "s0"
+        ]
+      }
+    }
+  ],
+  "path": {
+    "astar": {
+      "pairs": 150,
+      "total_nodes_expanded": 2045,
+      "total_solver_time_ns": 9718800
+    },
+    "dijkstra": {
+      "pairs": 150,
+      "total_nodes_expanded": 5911,
+      "total_solver_time_ns": 12443200
+    }
+  }
+}

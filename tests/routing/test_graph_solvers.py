@@ -45,9 +45,10 @@ def _assert_valid_path(graph: StreetGraph, node_path: tuple[str, ...]) -> None:
 
 def test_graph_loads_versioned_lattice(graph: StreetGraph):
     assert graph.graph_id == "sao-paulo-centro"
-    assert graph.version == "1.0.0"
+    assert graph.version == "1.0.1"
     assert len(graph.nodes) == 77
     assert all(graph.neighbors(node) for node in graph.nodes)
+    assert graph.max_speed_mps == pytest.approx(40 * 1000 / 3600)
 
 
 def test_graph_rejects_unknown_edge_nodes(tmp_path: Path):
@@ -66,19 +67,27 @@ def test_graph_rejects_unknown_edge_nodes(tmp_path: Path):
         load_graph(path)
 
 
+@pytest.mark.parametrize("objective", ["time", "distance"])
 def test_astar_matches_dijkstra_oracle(
-    graph: StreetGraph, astar: AStarPathSolver, dijkstra: DijkstraPathSolver
+    graph: StreetGraph, astar: AStarPathSolver, dijkstra: DijkstraPathSolver, objective: str
 ):
     rng = random.Random(20260901)
     nodes = sorted(graph.nodes)
     pairs = rng.sample([(a, b) for a in nodes for b in nodes if a != b], 150)
     for origin, destination in pairs:
-        problem = PathProblem(graph, origin, destination)
+        problem = PathProblem(graph, origin, destination, objective)  # type: ignore[arg-type]
         a_result = astar.solve(problem)
         d_result = dijkstra.solve(problem)
-        assert a_result.distance_meters == pytest.approx(
-            d_result.distance_meters, abs=0.01
-        ), (origin, destination)
+        # Compare on the optimized cost: equally-optimal paths may legitimately
+        # differ on the other metric (e.g. same meters, different speed mix).
+        if objective == "time":
+            assert a_result.estimated_seconds == pytest.approx(
+                d_result.estimated_seconds, abs=0.01
+            ), (origin, destination)
+        else:
+            assert a_result.distance_meters == pytest.approx(
+                d_result.distance_meters, abs=0.01
+            ), (origin, destination)
         _assert_valid_path(graph, a_result.node_path)
         assert a_result.node_path[0] == origin
         assert a_result.node_path[-1] == destination
@@ -126,7 +135,8 @@ def test_delivery_route_solver_orders_stops(graph: StreetGraph):
     assert result.segments[0].to_label == "Restaurante"
     assert result.segments[1].from_label == "Restaurante"
     assert result.graph_id == "sao-paulo-centro"
-    assert result.graph_version == "1.0.0"
+    assert result.graph_version == "1.0.1"
+    assert result.objective == "time"
     assert result.distance_meters > 0
     assert result.geometry["type"] == "LineString"
     assert result.solver_name == "astar-synthetic-graph"
@@ -177,3 +187,90 @@ def test_disconnected_graph_raises_route_unavailable():
             ),
             route_id="rpl-x",
         )
+
+
+# --- P1: objective-aware routing proofs ---
+
+
+def _heuristic(graph: StreetGraph, node: str, goal: str, objective: str) -> float:
+    from delivery_platform.domain.geo import haversine_m
+
+    straight = haversine_m(graph.nodes[node], graph.nodes[goal])
+    return straight / graph.max_speed_mps if objective == "time" else straight
+
+
+@pytest.mark.parametrize("objective", ["time", "distance"])
+def test_heuristic_is_admissible_everywhere(graph: StreetGraph, objective: str):
+    # h(node) must never overestimate the true remaining cost.
+    oracle = DijkstraPathSolver()
+    for node in sorted(graph.nodes):
+        for goal in sorted(graph.nodes):
+            if node == goal:
+                continue
+            result = oracle.solve(
+                PathProblem(graph, node, goal, objective)  # type: ignore[arg-type]
+            )
+            true_cost = (
+                result.estimated_seconds if objective == "time" else result.distance_meters
+            )
+            assert _heuristic(graph, node, goal, objective) <= true_cost + 1e-6
+
+
+@pytest.mark.parametrize("objective", ["time", "distance"])
+def test_heuristic_is_consistent_on_every_edge(graph: StreetGraph, objective: str):
+    for goal in sorted(graph.nodes):
+        h_goal = _heuristic(graph, goal, goal, objective)
+        for node, edges in graph.adjacency.items():
+            for edge in edges:
+                weight = edge.seconds if objective == "time" else edge.distance_meters
+                assert _heuristic(graph, node, goal, objective) <= (
+                    weight + _heuristic(graph, edge.to_node, goal, objective) + 1e-6
+                ) or edge.to_node == goal and h_goal == 0
+
+
+def test_every_edge_at_least_straight_line(graph: StreetGraph):
+    from delivery_platform.domain.geo import haversine_m
+
+    # Reverse map: edges store (from,to); find endpoints' coordinates.
+    for node, edges in graph.adjacency.items():
+        for edge in edges:
+            straight = haversine_m(graph.nodes[node], graph.nodes[edge.to_node])
+            assert edge.distance_meters >= straight - 1e-6, (node, edge.to_node)
+
+
+def test_time_and_distance_objectives_can_diverge(graph: StreetGraph):
+    # Find a pair where the fastest and shortest paths actually differ —
+    # proves the objective changes routing, not just the label.
+    astar = AStarPathSolver()
+    divergent = None
+    nodes = sorted(graph.nodes)
+    for origin in nodes[::6]:
+        for destination in nodes[6::6]:
+            if origin == destination:
+                continue
+            fast = astar.solve(PathProblem(graph, origin, destination, "time"))
+            short = astar.solve(PathProblem(graph, origin, destination, "distance"))
+            if fast.node_path != short.node_path:
+                divergent = (origin, destination, fast, short)
+                break
+        if divergent:
+            break
+    assert divergent is not None, "expected at least one divergent pair"
+    _, _, fast, short = divergent
+    assert fast.estimated_seconds <= short.estimated_seconds + 1e-6
+
+
+def test_graph_planner_uses_time_objective(graph: StreetGraph):
+    planner = GraphRoutePlanner(graph)
+    plan = planner.plan(
+        DeliveryRouteRequest(
+            delivery_id="dlv-t",
+            courier_location=GeoPoint(latitude=-23.553, longitude=-46.645),
+            pickup_point=GeoPoint(latitude=-23.5482, longitude=-46.6371),
+            pickup_label="Seu Manoel",
+            dropoff_point=GeoPoint(latitude=-23.5445, longitude=-46.6295),
+            dropoff_label="Casa",
+        ),
+        route_id="rpl-t",
+    )
+    assert plan.objective == "time"

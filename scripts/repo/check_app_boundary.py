@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-
 APPLICATION_SOURCE_EXTENSIONS = frozenset(
     {
         ".c",

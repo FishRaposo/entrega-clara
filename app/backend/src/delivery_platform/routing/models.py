@@ -20,6 +20,8 @@ class RouteProblem:
     labels: tuple[str, ...]
     costs: tuple[tuple[Real, ...], ...]
     origin_index: int = 0
+    # What the matrix costs measure: "distance" (legacy/lab) or "time" (product).
+    objective: str = "distance"
 
     def __post_init__(self) -> None:
         try:
@@ -37,6 +39,8 @@ class RouteProblem:
             raise ValueError("origin_index must be an integer")  # noqa: TRY004
         if not 0 <= self.origin_index < label_count:
             raise ValueError("origin_index must reference a label")
+        if self.objective not in ("time", "distance"):
+            raise ValueError("objective must be 'time' or 'distance'")
 
         matrix_size = len(self.costs)
         if matrix_size != label_count:

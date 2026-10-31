@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from delivery_platform.domain.entities import GeoPoint
+from delivery_platform.domain.geo import haversine_m
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,7 @@ class StreetGraph:
     version: str
     nodes: dict[str, GeoPoint]
     adjacency: dict[str, tuple[GraphEdge, ...]]
+    max_speed_mps: float = 1.0
 
     def neighbors(self, node: str) -> tuple[GraphEdge, ...]:
         return self.adjacency.get(node, ())
@@ -41,8 +43,6 @@ class StreetGraph:
         """Snap an arbitrary coordinate to the closest graph node."""
         if not self.nodes:
             raise ValueError("Cannot snap to an empty graph")
-        from delivery_platform.adapters.memory.routing import haversine_m
-
         return min(
             self.nodes,
             key=lambda node: haversine_m(point, self.nodes[node]),
@@ -97,9 +97,15 @@ def load_graph(path: str | Path) -> StreetGraph:
             GraphEdge(to_node=to_node, distance_meters=float(distance), speed_kmh=float(speed))
         )
 
+    frozen_adjacency = {node: tuple(edges) for node, edges in adjacency.items()}
+    max_speed_kmh = max(
+        (edge.speed_kmh for edges in frozen_adjacency.values() for edge in edges),
+        default=1.0,
+    )
     return StreetGraph(
         graph_id=graph_id,
         version=version,
         nodes=nodes,
-        adjacency={node: tuple(edges) for node, edges in adjacency.items()},
+        adjacency=frozen_adjacency,
+        max_speed_mps=max_speed_kmh * 1000 / 3600,
     )

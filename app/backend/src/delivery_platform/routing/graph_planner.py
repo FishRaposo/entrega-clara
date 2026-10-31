@@ -35,6 +35,7 @@ class GraphRoutePlanner:
                     pickup_label=request.pickup_label,
                     dropoff_label=request.dropoff_label,
                     delivery_id=request.delivery_id,
+                    objective="time",
                 )
             )
         except ValueError as error:
@@ -54,4 +55,5 @@ class GraphRoutePlanner:
             computation_time_ns=result.computation_time_ns,
             nodes_expanded=result.nodes_expanded,
             warnings=list(result.warnings),
+            objective=result.objective,
         )

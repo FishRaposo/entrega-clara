@@ -6,7 +6,6 @@ import argparse
 import re
 from pathlib import Path
 
-
 REQUIRED_REQUIREMENT_IDS = {
     *(f"RF{i:02d}" for i in range(1, 15)),
     "RNF01",

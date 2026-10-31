@@ -14,6 +14,7 @@ from delivery_platform.api.routes.catalog import router as catalog_router
 from delivery_platform.api.routes.courier import router as courier_router
 from delivery_platform.api.routes.demo import router as demo_router
 from delivery_platform.api.routes.health import router as health_router
+from delivery_platform.api.routes.lab import router as lab_router
 from delivery_platform.api.routes.me import router as me_router
 from delivery_platform.api.routes.operations import router as operations_router
 from delivery_platform.api.routes.orders import router as orders_router
@@ -65,6 +66,7 @@ def create_app() -> FastAPI:
     app.include_router(restaurant_router)
     app.include_router(courier_router)
     app.include_router(operations_router)
+    app.include_router(lab_router, prefix="/api/v1")
 
     @app.get("/")
     def root() -> dict[str, str]:

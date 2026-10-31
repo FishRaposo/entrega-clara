@@ -93,7 +93,8 @@ export function DeliveryMap({ route, lastKnown }: DeliveryMapProps) {
       {route ? (
         <figcaption className="quiet">
           {(route.distance_meters / 1000).toFixed(1)} km · ~
-          {Math.max(1, Math.round(route.estimated_seconds / 60))} min · solver{" "}
+          {Math.max(1, Math.round(route.estimated_seconds / 60))} min ·{" "}
+          {route.objective === "time" ? "rota mais rápida" : "rota mais curta"} · solver{" "}
           {route.solver_name} v{route.solver_version} · mapa determinístico (fallback)
         </figcaption>
       ) : null}

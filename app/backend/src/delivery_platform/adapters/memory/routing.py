@@ -1,29 +1,19 @@
-"""Interim straight-line route planner.
+"""Fallback straight-line route planner.
 
-Phase 3 uses haversine distances so the delivery flow produces a real
-``RoutePlan`` record. Phase 4 replaces this adapter with the versioned
-synthetic-graph A* solver behind the same ``DeliveryRoutePlanner`` port.
+Used when the versioned synthetic graph cannot be loaded — it connects stops
+with great-circle legs so the delivery flow still produces a real
+``RoutePlan`` record behind the same ``DeliveryRoutePlanner`` port.
 """
 
 from __future__ import annotations
 
-import math
 import time
 
 from delivery_platform.application.ports import DeliveryRouteRequest
 from delivery_platform.domain.entities import GeoPoint, RoutePlan, RouteSegment, RouteStop
+from delivery_platform.domain.geo import haversine_m
 
-_EARTH_RADIUS_M = 6_371_000.0
 _AVERAGE_SPEED_KMH = 25.0
-
-
-def haversine_m(a: GeoPoint, b: GeoPoint) -> float:
-    """Great-circle distance in meters between two points."""
-    lat1, lat2 = math.radians(a.latitude), math.radians(b.latitude)
-    dlat = lat2 - lat1
-    dlon = math.radians(b.longitude - a.longitude)
-    h = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
-    return 2 * _EARTH_RADIUS_M * math.asin(math.sqrt(h))
 
 
 class StraightLineRoutePlanner:
@@ -98,4 +88,5 @@ class StraightLineRoutePlanner:
             computation_time_ns=time.perf_counter_ns() - started,
             nodes_expanded=0,
             warnings=["Rota aproximada em linha reta; grafo de ruas ainda não integrado."],
+            objective="distance",
         )

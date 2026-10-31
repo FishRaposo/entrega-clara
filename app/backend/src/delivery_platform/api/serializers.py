@@ -189,6 +189,7 @@ def route_view(route: RoutePlan | None) -> dict[str, Any] | None:
         "computation_time_ns": route.computation_time_ns,
         "nodes_expanded": route.nodes_expanded,
         "warnings": route.warnings,
+        "objective": route.objective,
     }
 
 

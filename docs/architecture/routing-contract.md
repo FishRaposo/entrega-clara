@@ -27,11 +27,14 @@ graph:
 | `DeliveryRouteProblem` | courier origin, restaurant pickup, customer drop-off, graph/version, deterministic seed | two-leg delivery input |
 | `DeliveryRouteResult` | ordered stops, route segments, GeoJSON geometry, distance/ETA, solver/version, metrics, warnings | provider-neutral route consumed by courier/map surfaces |
 
-The live M1 solver is local A* over a versioned synthetic graph. Dijkstra is a bounded
-test oracle. The result must visit the restaurant before the customer, include every
-required stop exactly once, and carry the graph version that produced it. The
-frontend may render the result with MapLibre/MapTiler, but routing code must not import
-map-provider SDKs.
+The live M1 solver is local A* over a versioned synthetic graph, minimizing
+**travel time** (`objective="time"`); `objective="distance"` is supported for
+comparison and tests. The A* heuristic is admissible per objective: straight-line
+meters for distance, straight-line meters divided by the graph's fastest edge
+speed for time. Dijkstra is a bounded test oracle. The result must visit the
+restaurant before the customer, include every required stop exactly once, and
+carry the graph version that produced it. The frontend may render the result with
+MapLibre/MapTiler, but routing code must not import map-provider SDKs.
 
 Future multi-stop optimization extends `DeliveryRouteProblem` with precedence,
 capacity, time windows, and objective constraints. Dispatch assignment is a separate

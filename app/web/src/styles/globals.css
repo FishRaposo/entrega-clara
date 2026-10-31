@@ -57,3 +57,28 @@ button { font: inherit; cursor: pointer; }
 .panel input:focus-visible, .panel select:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 @media (max-width: 42rem) { .site-shell { width: min(100% - 1.25rem, 72rem); } .site-header { align-items: flex-start; } .market-badge { order: 3; } .feature-grid { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+
+.lab-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+  margin: 1rem 0;
+}
+.lab-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+.lab-graph {
+  width: 100%;
+  max-width: 640px;
+  background: #0f1526;
+  border-radius: 8px;
+}
+.lab-results {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}

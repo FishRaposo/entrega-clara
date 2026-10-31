@@ -282,3 +282,71 @@ export function advanceDemoClock(minutes: number): Promise<DemoSnapshot> {
     body: { minutes },
   });
 }
+
+// --- algorithm lab ---
+
+export type LabGraph = {
+  graph_id: string;
+  version: string;
+  max_speed_mps: number;
+  nodes: { id: string; latitude: number; longitude: number }[];
+  edges: { from: string; to: string; speed_kmh: number }[];
+};
+
+export type LabPathResult = {
+  node_path: string[];
+  expanded_order: string[];
+  distance_meters: number;
+  estimated_seconds: number;
+  solver_name: string;
+  nodes_expanded: number;
+  computation_time_ns: number;
+  objective: string;
+  geometry: [number, number][];
+};
+
+export type LabTspResult = {
+  route: string[];
+  total_cost: number;
+  solver_name: string;
+  execution_time_ns: number;
+  routes_evaluated: number;
+  objective: string;
+};
+
+export function getLabGraph(identity: DemoIdentity): Promise<LabGraph> {
+  return request<LabGraph>("/api/v1/lab/graph", { identity });
+}
+
+export function runLabPath(
+  identity: DemoIdentity,
+  body: {
+    origin: string;
+    destination: string;
+    solver: "astar" | "dijkstra";
+    objective: "time" | "distance";
+    trace: boolean;
+  },
+): Promise<LabPathResult> {
+  return request<LabPathResult>("/api/v1/lab/path", {
+    method: "POST",
+    identity,
+    body,
+  });
+}
+
+export function runLabTsp(
+  identity: DemoIdentity,
+  body: {
+    nodes: string[];
+    solver: "held-karp" | "nearest-neighbor" | "two-opt";
+    objective: "time" | "distance";
+    origin_index: number;
+  },
+): Promise<LabTspResult> {
+  return request<LabTspResult>("/api/v1/lab/tsp", {
+    method: "POST",
+    identity,
+    body,
+  });
+}

@@ -1,8 +1,14 @@
 """Shortest-path contracts and solvers for the live delivery route.
 
 ``AStarPathSolver`` is the production strategy; ``DijkstraPathSolver`` exists as
-the bounded correctness oracle for tests. Consumers receive ``PathResult`` and
-``DeliveryRouteResult`` — never a concrete solver.
+the bounded correctness oracle for tests. Both honor a routing ``objective`` —
+``"time"`` minimizes estimated travel seconds (the product's ETA claim), while
+``"distance"`` minimizes meters. The A* heuristic is admissible per objective:
+straight-line meters for distance, straight-line meters divided by the graph's
+fastest edge speed for time.
+
+Consumers receive ``PathResult`` and ``DeliveryRouteResult`` — never a concrete
+solver.
 """
 
 from __future__ import annotations
@@ -11,11 +17,13 @@ import heapq
 import itertools
 import time
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
-from delivery_platform.adapters.memory.routing import haversine_m
 from delivery_platform.domain.entities import RouteSegment, RouteStop
-from delivery_platform.routing.graph import StreetGraph
+from delivery_platform.domain.geo import haversine_m
+from delivery_platform.routing.graph import GraphEdge, StreetGraph
+
+Objective = Literal["time", "distance"]
 
 
 @dataclass(frozen=True)
@@ -23,12 +31,15 @@ class PathProblem:
     graph: StreetGraph
     origin: str
     destination: str
+    objective: Objective = "time"
 
     def __post_init__(self) -> None:
         if self.origin not in self.graph.nodes:
             raise ValueError(f"Unknown origin node {self.origin}")
         if self.destination not in self.graph.nodes:
             raise ValueError(f"Unknown destination node {self.destination}")
+        if self.objective not in ("time", "distance"):
+            raise ValueError(f"Unknown objective {self.objective}")
 
 
 @dataclass(frozen=True)
@@ -41,10 +52,16 @@ class PathResult:
     solver_version: str
     computation_time_ns: int
     nodes_expanded: int
+    objective: str = "time"
+    expanded_order: tuple[str, ...] = ()
 
 
 class PathSolver(Protocol):
     def solve(self, problem: PathProblem) -> PathResult: ...
+
+
+def _edge_weight(edge: GraphEdge, objective: str) -> float:
+    return edge.seconds if objective == "time" else edge.distance_meters
 
 
 def _geometry(graph: StreetGraph, node_path: tuple[str, ...]) -> dict[str, Any]:
@@ -78,20 +95,31 @@ class AStarPathSolver:
     """A* over the synthetic graph with an admissible haversine heuristic."""
 
     solver_name = "astar-synthetic-graph"
-    solver_version = "1.0.0"
+    solver_version = "2.0.0"
 
-    def solve(self, problem: PathProblem) -> PathResult:
+    def solve(
+        self, problem: PathProblem, *, trace: bool = False
+    ) -> PathResult:
         started = time.perf_counter_ns()
         graph = problem.graph
         goal = problem.destination
+        max_speed_mps = graph.max_speed_mps or 1.0
 
-        def heuristic(node: str) -> float:
-            return haversine_m(graph.nodes[node], graph.nodes[goal])
+        if problem.objective == "time":
+
+            def heuristic(node: str) -> float:
+                return haversine_m(graph.nodes[node], graph.nodes[goal]) / max_speed_mps
+
+        else:
+
+            def heuristic(node: str) -> float:
+                return haversine_m(graph.nodes[node], graph.nodes[goal])
 
         g_score: dict[str, float] = {problem.origin: 0.0}
         came_from: dict[str, str] = {}
         frontier: list[tuple[float, str]] = [(heuristic(problem.origin), problem.origin)]
         expanded = 0
+        expanded_list: list[str] = []
         closed: set[str] = set()
 
         while frontier:
@@ -108,13 +136,17 @@ class AStarPathSolver:
                     solver_version=self.solver_version,
                     computation_time_ns=time.perf_counter_ns() - started,
                     nodes_expanded=expanded,
+                    objective=problem.objective,
+                    expanded_order=tuple(expanded_list) if trace else (),
                 )
             if current in closed:
                 continue
             closed.add(current)
             expanded += 1
+            if trace:
+                expanded_list.append(current)
             for edge in graph.neighbors(current):
-                tentative = g_score[current] + edge.distance_meters
+                tentative = g_score[current] + _edge_weight(edge, problem.objective)
                 if tentative < g_score.get(edge.to_node, float("inf")):
                     came_from[edge.to_node] = current
                     g_score[edge.to_node] = tentative
@@ -128,15 +160,18 @@ class DijkstraPathSolver:
     """Bounded oracle: uniform-cost search used to verify A* in tests."""
 
     solver_name = "dijkstra-oracle"
-    solver_version = "1.0.0"
+    solver_version = "2.0.0"
 
-    def solve(self, problem: PathProblem) -> PathResult:
+    def solve(
+        self, problem: PathProblem, *, trace: bool = False
+    ) -> PathResult:
         started = time.perf_counter_ns()
         graph = problem.graph
         dist: dict[str, float] = {problem.origin: 0.0}
         came_from: dict[str, str] = {}
         frontier: list[tuple[float, str]] = [(0.0, problem.origin)]
         expanded = 0
+        expanded_list: list[str] = []
         closed: set[str] = set()
 
         while frontier:
@@ -145,6 +180,8 @@ class DijkstraPathSolver:
                 continue
             closed.add(current)
             expanded += 1
+            if trace:
+                expanded_list.append(current)
             if current == problem.destination:
                 node_path = _reconstruct(came_from, current)
                 distance, seconds = _path_totals(graph, node_path)
@@ -157,9 +194,11 @@ class DijkstraPathSolver:
                     solver_version=self.solver_version,
                     computation_time_ns=time.perf_counter_ns() - started,
                     nodes_expanded=expanded,
+                    objective=problem.objective,
+                    expanded_order=tuple(expanded_list) if trace else (),
                 )
             for edge in graph.neighbors(current):
-                tentative = cost + edge.distance_meters
+                tentative = cost + _edge_weight(edge, problem.objective)
                 if tentative < dist.get(edge.to_node, float("inf")):
                     dist[edge.to_node] = tentative
                     came_from[edge.to_node] = current
@@ -179,6 +218,7 @@ class DeliveryRouteProblem:
     dropoff_label: str
     delivery_id: str
     deterministic_seed: int = 0
+    objective: Objective = "time"
 
     def __post_init__(self) -> None:
         for name, node in (
@@ -204,6 +244,7 @@ class DeliveryRouteResult:
     graph_id: str
     graph_version: str
     warnings: list[str] = field(default_factory=list)
+    objective: str = "time"
 
 
 class DeliveryRouteSolver:
@@ -216,10 +257,14 @@ class DeliveryRouteSolver:
         started = time.perf_counter_ns()
         graph = problem.graph
         leg_pickup = self._solver.solve(
-            PathProblem(graph, problem.courier_origin, problem.pickup_node)
+            PathProblem(
+                graph, problem.courier_origin, problem.pickup_node, problem.objective
+            )
         )
         leg_dropoff = self._solver.solve(
-            PathProblem(graph, problem.pickup_node, problem.dropoff_node)
+            PathProblem(
+                graph, problem.pickup_node, problem.dropoff_node, problem.objective
+            )
         )
         stops = [
             RouteStop(
@@ -273,4 +318,5 @@ class DeliveryRouteSolver:
             nodes_expanded=leg_pickup.nodes_expanded + leg_dropoff.nodes_expanded,
             graph_id=graph.graph_id,
             graph_version=graph.version,
+            objective=problem.objective,
         )

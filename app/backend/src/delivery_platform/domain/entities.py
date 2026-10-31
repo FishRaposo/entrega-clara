@@ -208,6 +208,7 @@ class RoutePlan:
     nodes_expanded: int
     warnings: list[str] = field(default_factory=list)
     scenario_id: str | None = None
+    objective: str = "time"
 
 
 @dataclass

@@ -1,6 +1,6 @@
 {
   "graph_id": "sao-paulo-centro",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "nodes": [
     {
       "id": "n-00-00",
@@ -2084,121 +2084,121 @@
     {
       "from": "n-06-00",
       "to": "n-06-01",
-      "distance_meters": 163.1,
+      "distance_meters": 163.2,
       "speed_kmh": 25.0
     },
     {
       "from": "n-06-01",
       "to": "n-06-00",
-      "distance_meters": 163.1,
+      "distance_meters": 163.2,
       "speed_kmh": 25.0
     },
     {
       "from": "n-06-01",
       "to": "n-06-02",
-      "distance_meters": 163.1,
+      "distance_meters": 163.2,
       "speed_kmh": 25.0
     },
     {
       "from": "n-06-02",
       "to": "n-06-01",
-      "distance_meters": 163.1,
+      "distance_meters": 163.2,
       "speed_kmh": 25.0
     },
     {
       "from": "n-06-02",
       "to": "n-06-03",
-      "distance_meters": 163.1,
+      "distance_meters": 163.2,
       "speed_kmh": 25.0
     },
     {
       "from": "n-06-03",
       "to": "n-06-02",
-      "distance_meters": 163.1,
+      "distance_meters": 163.2,
       "speed_kmh": 25.0
     },
     {
       "from": "n-06-03",
       "to": "n-06-04",
-      "distance_meters": 163.1,
+      "distance_meters": 163.2,
       "speed_kmh": 40.0
     },
     {
       "from": "n-06-04",
       "to": "n-06-03",
-      "distance_meters": 163.1,
+      "distance_meters": 163.2,
       "speed_kmh": 40.0
     },
     {
       "from": "n-06-04",
       "to": "n-06-05",
-      "distance_meters": 163.1,
+      "distance_meters": 163.2,
       "speed_kmh": 25.0
     },
     {
       "from": "n-06-05",
       "to": "n-06-04",
-      "distance_meters": 163.1,
+      "distance_meters": 163.2,
       "speed_kmh": 25.0
     },
     {
       "from": "n-06-05",
       "to": "n-06-06",
-      "distance_meters": 163.1,
+      "distance_meters": 163.2,
       "speed_kmh": 25.0
     },
     {
       "from": "n-06-06",
       "to": "n-06-05",
-      "distance_meters": 163.1,
+      "distance_meters": 163.2,
       "speed_kmh": 25.0
     },
     {
       "from": "n-06-06",
       "to": "n-06-07",
-      "distance_meters": 163.1,
+      "distance_meters": 163.2,
       "speed_kmh": 25.0
     },
     {
       "from": "n-06-07",
       "to": "n-06-06",
-      "distance_meters": 163.1,
+      "distance_meters": 163.2,
       "speed_kmh": 25.0
     },
     {
       "from": "n-06-07",
       "to": "n-06-08",
-      "distance_meters": 163.1,
+      "distance_meters": 163.2,
       "speed_kmh": 40.0
     },
     {
       "from": "n-06-08",
       "to": "n-06-07",
-      "distance_meters": 163.1,
+      "distance_meters": 163.2,
       "speed_kmh": 40.0
     },
     {
       "from": "n-06-08",
       "to": "n-06-09",
-      "distance_meters": 163.1,
+      "distance_meters": 163.2,
       "speed_kmh": 25.0
     },
     {
       "from": "n-06-09",
       "to": "n-06-08",
-      "distance_meters": 163.1,
+      "distance_meters": 163.2,
       "speed_kmh": 25.0
     },
     {
       "from": "n-06-09",
       "to": "n-06-10",
-      "distance_meters": 163.1,
+      "distance_meters": 163.2,
       "speed_kmh": 25.0
     },
     {
       "from": "n-06-10",
       "to": "n-06-09",
-      "distance_meters": 163.1,
+      "distance_meters": 163.2,
       "speed_kmh": 25.0
     }
   ]

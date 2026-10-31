@@ -96,6 +96,7 @@ export type RoutePlan = {
   solver_name: string;
   solver_version: string;
   warnings: string[];
+  objective?: string;
 };
 
 export type OrderSummary = {

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="200" font-family="monospace" font-size="12">
+<text x="10" y="20">Solver wall time — 9 stops (ms, log scale)</text>
+<text x="10" y="60">brute_force</text>
+<rect x="150" y="40" width="448.0" height="30" fill="#0e7a3d"/>
+<text x="603.0" y="60">45.78 ms</text>
+<text x="10" y="104">held_karp</text>
+<rect x="150" y="84" width="100.4" height="30" fill="#0e7a3d"/>
+<text x="255.4" y="104">2.23 ms</text>
+<text x="10" y="148">nearest_neighbor</text>
+<rect x="150" y="128" width="-349.9" height="30" fill="#0e7a3d"/>
+<text x="-194.9" y="148">0.04 ms</text>
+<text x="10" y="192">two_opt</text>
+<rect x="150" y="172" width="-156.8" height="30" fill="#0e7a3d"/>
+<text x="-1.8" y="192">0.24 ms</text>
+</svg>
