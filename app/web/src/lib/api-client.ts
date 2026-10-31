@@ -350,3 +350,25 @@ export function runLabTsp(
     body,
   });
 }
+
+export function rateOrder(
+  identity: DemoIdentity,
+  orderId: string,
+  stars: number,
+): Promise<{ order: { id: string; state: string } }> {
+  return request(`/api/v1/me/orders/${orderId}/rate`, {
+    method: "POST",
+    identity,
+    body: { stars },
+  });
+}
+
+export function cancelOrder(
+  identity: DemoIdentity,
+  orderId: string,
+): Promise<{ order: { id: string; state: string } }> {
+  return request(`/api/v1/me/orders/${orderId}/cancel`, {
+    method: "POST",
+    identity,
+  });
+}

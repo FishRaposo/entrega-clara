@@ -130,6 +130,7 @@ class Order:
     total_minor: int
     coupon_code: str | None = None
     payment_attempt_id: str | None = None
+    rating: int | None = None
     version: int = 1
     created_at: datetime | None = None
     updated_at: datetime | None = None

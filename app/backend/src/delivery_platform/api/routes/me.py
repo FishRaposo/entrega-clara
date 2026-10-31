@@ -12,10 +12,12 @@ from delivery_platform.api.schemas import (
     AddCartItemRequest,
     ApplyCouponRequest,
     CheckoutRequest,
+    RateOrderRequest,
     UpdateCartItemRequest,
 )
 from delivery_platform.application.commands.cart import CartCommands
 from delivery_platform.application.commands.checkout import CheckoutCommands
+from delivery_platform.application.commands.customer import CustomerCommands
 from delivery_platform.application.container import AppContainer
 from delivery_platform.application.context import CommandContext
 from delivery_platform.application.queries import CustomerQueries
@@ -101,3 +103,16 @@ def checkout(body: CheckoutRequest, container: Container, ctx: Ctx) -> dict[str,
         "payment": serializers.payment_view(result.payment_attempt),
         "replayed": result.replayed,
     }
+
+
+
+@router.post("/orders/{order_id}/rate")
+def rate_order(order_id: str, body: RateOrderRequest, container: Container, ctx: Ctx) -> dict[str, Any]:
+    order = CustomerCommands(container).rate(ctx, order_id, body.stars)
+    return {"order": serializers.order_summary(order)}
+
+
+@router.post("/orders/{order_id}/cancel")
+def cancel_order(order_id: str, container: Container, ctx: Ctx) -> dict[str, Any]:
+    order = CustomerCommands(container).cancel(ctx, order_id)
+    return {"order": serializers.order_summary(order)}

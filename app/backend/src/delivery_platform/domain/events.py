@@ -21,6 +21,8 @@ class EventType(StrEnum):
     ORDER_CONFIRMED = "order.confirmed"
     ORDER_PREPARING = "order.preparing"
     ORDER_READY = "order.ready"
+    ORDER_RATED = "order.rated"
+    ORDER_CANCELLED = "order.cancelled"
     DELIVERY_ASSIGNED = "delivery.assigned"
     DELIVERY_PICKED_UP = "delivery.picked_up"
     DELIVERY_EN_ROUTE = "delivery.en_route"

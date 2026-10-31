@@ -6,6 +6,7 @@ import {
   addCartItem,
   ApiError,
   applyCoupon,
+  cancelOrder,
   checkout,
   getCart,
   getMenu,
@@ -13,6 +14,7 @@ import {
   listAddresses,
   listMyOrders,
   listRestaurants,
+  rateOrder,
   removeCartItem,
   removeCoupon,
   updateCartItem,
@@ -146,6 +148,44 @@ export function CustomerFlow() {
               </li>
             ))}
           </ol>
+        ) : null}
+        {state === "placed" || state === "confirmed" ? (
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() =>
+              run(async () => {
+                await cancelOrder(ID, orderId);
+                const view = await getTracking(ID, orderId);
+                setTracking(view);
+              })
+            }
+          >
+            Cancelar pedido
+          </button>
+        ) : null}
+        {state === "delivered" ? (
+          <div className="panel" aria-label="Avaliar pedido">
+            <h2>Avaliar pedido</h2>
+            <div className="demo-actions" role="group" aria-label="Estrelas">
+              {[1, 2, 3, 4, 5].map((stars) => (
+                <button
+                  key={stars}
+                  type="button"
+                  className="secondary-button"
+                  onClick={() =>
+                    run(async () => {
+                      await rateOrder(ID, orderId, stars);
+                      const view = await getTracking(ID, orderId);
+                      setTracking(view);
+                    })
+                  }
+                >
+                  {stars}★
+                </button>
+              ))}
+            </div>
+          </div>
         ) : null}
         <div className="demo-actions">
           <button type="button" className="secondary-button" onClick={() => void refreshCart().then(() => setOrderId(null))}>

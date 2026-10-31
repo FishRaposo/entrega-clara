@@ -122,6 +122,7 @@ def order_view(
         "customer_id": order.customer_id,
         "address_label": order.address_label,
         "coupon_code": order.coupon_code,
+        "rating": order.rating,
         "subtotal_minor": order.subtotal_minor,
         "discount_minor": order.discount_minor,
         "delivery_fee_minor": order.delivery_fee_minor,

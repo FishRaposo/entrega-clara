@@ -60,3 +60,7 @@ class ErrorEnvelope(BaseModel):
     detail: str
     field_errors: dict[str, str] = {}
     correlation_id: str
+
+
+class RateOrderRequest(BaseModel):
+    stars: int = Field(ge=1, le=5)
