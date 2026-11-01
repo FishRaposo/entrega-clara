@@ -1,5 +1,15 @@
 # Milestone 1: Core Delivery Loop
 
+> **Amendments (2026-11-01).** This design is the product baseline; later ADRs extend it without
+> changing the core loop. Where it says the event publisher "may remain in-process in M1" and the
+> outbox is future work, [ADR 0012](../../adr/0012-postgres-adapter-outbox-and-metrics.md) now adds a
+> transactional outbox in PostgreSQL mode. [ADR 0008](../../adr/0008-real-street-graph-and-landmarks.md)
+> and [ADR 0009](../../adr/0009-city-scale-graph-and-contraction-hierarchies.md) replace the planned
+> synthetic graph with a real OSM extract and a city-scale artifact; [ADR 0010](../../adr/0010-time-dependent-routing.md)
+> adds time-dependent ETAs; [ADR 0011](../../adr/0011-capacity-windows-and-dynamic-replanning.md) adds
+> capacity, promised windows and dynamic re-insertion to batching. See
+> [the verification record](../../verification.md) for what is actually implemented.
+
 ## Design Specification
 
 **Status:** Draft for user review  

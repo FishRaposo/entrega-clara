@@ -4,6 +4,13 @@
 **Written:** 2026-10-31, from a review of the local working tree after the M1 vertical slice
 **Related:** [platform evolution roadmap](platform-evolution.md), [routing contract](../architecture/routing-contract.md), [external dependencies](../architecture/external-dependencies.md)
 
+> **Historical backlog.** This page records a past review. Items it calls deferred — contraction
+> hierarchies, time windows and capacity, dynamic re-routing, the PostgreSQL adapter and the outbox —
+> were delivered afterwards; see [ADR 0009](../adr/0009-city-scale-graph-and-contraction-hierarchies.md),
+> [ADR 0011](../adr/0011-capacity-windows-and-dynamic-replanning.md),
+> [ADR 0012](../adr/0012-postgres-adapter-outbox-and-metrics.md) and
+> [the verification record](../verification.md).
+
 This page lists what would make Entrega Clara a stronger portfolio piece, and how to build each item. It is a backlog, not a commitment: pick items in the suggested order at the end.
 
 ## Implementation ledger
