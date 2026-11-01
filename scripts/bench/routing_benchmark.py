@@ -33,6 +33,7 @@ import statistics
 import subprocess
 import sys
 import time
+import tracemalloc
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -40,6 +41,7 @@ sys.path.insert(0, str(ROOT / "app" / "backend" / "src"))
 
 from delivery_platform.domain.entities import GeoPoint
 from delivery_platform.routing.ch import ChPathSolver, contraction_hierarchy
+from delivery_platform.routing.contraction import preprocess
 from delivery_platform.routing.graph import StreetGraph, load_graph
 from delivery_platform.routing.informed import (
     AltPathSolver,
@@ -230,10 +232,15 @@ def _path_section(graph: StreetGraph, pairs: list[tuple[str, str]]) -> dict:
         solvers[f"weighted_eps{epsilon:g}"] = WeightedAStarSolver(epsilon=epsilon)
 
     # CH pays for itself only after many queries, so the build is measured on
-    # its own and reported apart from query time. No tracemalloc here: its
-    # overhead distorts the very number being measured.
+    # its own and reported apart from query time. The timed build runs without
+    # tracemalloc; peak memory comes from a second, untimed build, because
+    # tracing slows the code enough to distort the number that matters.
     hierarchy = contraction_hierarchy(graph, objective="time")
     preprocessing_ns = hierarchy.stats.preprocessing_time_ns
+    tracemalloc.start()
+    preprocess(graph, objective="time")
+    _, peak_bytes = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
 
     oracle = DijkstraPathSolver()
     optimums = [
@@ -267,6 +274,7 @@ def _path_section(graph: StreetGraph, pairs: list[tuple[str, str]]) -> dict:
     rows["alt"]["preprocessing_time_ns"] = table.preprocessing_time_ns
 
     rows["ch"]["preprocessing_time_ns"] = preprocessing_ns
+    rows["ch"]["preprocessing_peak_mb"] = round(peak_bytes / 1_048_576, 1)
     rows["ch"]["shortcuts"] = hierarchy.stats.shortcuts
     rows["ch"]["witness_hops"] = hierarchy.stats.witness_hops
     rows["ch"]["settle_limit"] = hierarchy.stats.settle_limit
@@ -615,6 +623,7 @@ def _markdown(results: dict) -> str:
         md += [
             "",
             (f"CH preprocessing: {ch['preprocessing_time_ns'] / 1e9:.1f} s, "
+            f"{ch.get('preprocessing_peak_mb', 0):.0f} MB peak, "
             f"{ch.get('shortcuts', 0):,} shortcuts from "
             f"{ch.get('witness_hops')}-hop witness searches."),
             "",

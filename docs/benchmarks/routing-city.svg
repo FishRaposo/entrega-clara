@@ -2,14 +2,14 @@
 <text x="10" y="20">Solver wall time — 9 stops (ms, log scale)</text>
 <text x="10" y="60">brute_force</text>
 <rect x="150" y="40" width="448.0" height="30" fill="#0e7a3d"/>
-<text x="603.0" y="60">49.07 ms</text>
+<text x="603.0" y="60">37.15 ms</text>
 <text x="10" y="104">held_karp</text>
-<rect x="150" y="84" width="35.9" height="30" fill="#0e7a3d"/>
-<text x="190.9" y="104">1.28 ms</text>
+<rect x="150" y="84" width="25.0" height="30" fill="#0e7a3d"/>
+<text x="180.0" y="104">1.15 ms</text>
 <text x="10" y="148">nearest_neighbor</text>
-<rect x="150" y="128" width="-413.0" height="30" fill="#0e7a3d"/>
-<text x="-258.0" y="148">0.02 ms</text>
+<rect x="150" y="128" width="-476.3" height="30" fill="#0e7a3d"/>
+<text x="-321.3" y="148">0.02 ms</text>
 <text x="10" y="192">two_opt</text>
-<rect x="150" y="172" width="-216.9" height="30" fill="#0e7a3d"/>
-<text x="-61.9" y="192">0.14 ms</text>
+<rect x="150" y="172" width="-250.8" height="30" fill="#0e7a3d"/>
+<text x="-95.8" y="192">0.12 ms</text>
 </svg>

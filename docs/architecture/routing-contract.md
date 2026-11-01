@@ -36,10 +36,10 @@ benchmark harness compare every rung on the same problem and the same graph:
 | --- | --- | --- | --- | --- |
 | Dijkstra | `dijkstra-oracle` | none | exact | centro 1,098 (45.7%); city 53,885 (51.3%) |
 | A* (straight line) | `astar-haversine` | none | exact | centro 671 (27.9%); city 44,759 (42.6%) |
-| ALT (landmarks) | `astar-alt` | ~44 ms centro / ~4.3 s city | exact | centro 378 (15.7%); city 6,186 (5.9%) |
+| ALT (landmarks) | `astar-alt` | ~41 ms centro / ~3.0 s city | exact | centro 378 (15.7%); city 6,186 (5.9%) |
 | Bidirectional + ALT | `bidirectional-alt` | same table | exact | centro 706 (29.4%); city 19,272 (18.4%) |
 | Weighted A* | `weighted-astar-eps*` | none | ≤ ε × optimal | ε=1.5: centro 544 (22.6%), max 0.16% over |
-| Contraction hierarchy | `contraction-hierarchy` | ~2.2 s city / <0.1 s centro | exact | city 85 (0.1%), 2.04 ms/query |
+| Contraction hierarchy | `contraction-hierarchy` | ~1.6 s city (138 MB) / <0.1 s centro | exact | city 85 (0.1%), 1.45 ms/query |
 | Time-dependent Dijkstra | `td-dijkstra` | none (profile is data) | exact under FIFO | oracle for `td-astar`; Bellman-Ford differential |
 | Time-dependent A* | `td-astar` | none | exact under FIFO | used by the planner when a departure time is present |
 

@@ -19,10 +19,10 @@ Held-Karp. Anything larger: 2-opt from nearest neighbor, and report the gap.
 | Situation | Solver | Why | Evidence |
 | --- | --- | --- | --- |
 | One route per process, small or medium graph | A\* (`astar-haversine`) | No preprocessing; admissible straight-line bound | Centro: 671 expansions vs Dijkstra's 1,098 (200 pairs) |
-| Large graph, no time to preprocess | ALT (`astar-alt`) | Landmarks cost seconds and cut expansions by an order of magnitude | City: 5.9% of the graph, 64 ms; preprocessing ≈4.3 s |
-| Many routes on one graph (dispatch, ETAs, batch pricing) | CH (`contraction-hierarchy`) | Two upward searches touch a few dozen nodes | City: 85 expansions (0.1%), 2.04 ms; break-even 13 queries vs A\*, 35 vs ALT |
+| Large graph, no time to preprocess | ALT (`astar-alt`) | Landmarks cost seconds and cut expansions by an order of magnitude | City: 5.9% of the graph, 52 ms; preprocessing ≈3.0 s |
+| Many routes on one graph (dispatch, ETAs, batch pricing) | CH (`contraction-hierarchy`) | Two upward searches touch a few dozen nodes | City: 85 expansions (0.1%), 1.45 ms; break-even 13 queries vs A\*, 33 vs ALT |
 | Latency budget below exact search, quality negotiable | Weighted A\* (`weighted-astar-eps*`) | f = g + ε·h; bounded to ε× the optimum | City ε=5: 13.8% of the graph, max 13% over; ε=1.5: 37.7%, max 0% observed |
-| You need every destination at once (cost matrix, reachability) | One-to-all Dijkstra (`distances_from`) | A\* wins for one target, Dijkstra for all of them | City batch matrix: 7 stops in ≈1.7 s |
+| You need every destination at once (cost matrix, reachability) | One-to-all Dijkstra (`distances_from`) | A\* wins for one target, Dijkstra for all of them | City batch matrix: 7 stops in ≈2.0 s |
 
 Two honest caveats the table encodes:
 
@@ -31,8 +31,8 @@ Two honest caveats the table encodes:
   than Dijkstra yet takes 35% longer in wall time. The heuristic is only worth
   its cost when it prunes aggressively.
 * **Bidirectional search is exact but slow in CPython.** Two heaps and two
-  potential lookups per relaxation made it 3.5× slower than plain Dijkstra on
-  the city graph (435 ms vs 123 ms) despite expanding fewer nodes. It stays in
+  potential lookups per relaxation made it ~3.8× slower than plain Dijkstra on
+  the city graph (336 ms vs 89 ms) despite expanding fewer nodes. It stays in
   the lab as a measured comparison, not as a recommendation.
 
 ## Multi-stop
@@ -53,7 +53,7 @@ roadmap forbids unbounded factorial work inside a request.
 Need a route?
 ├─ one route, no preprocessing budget ........ A*
 ├─ many routes on the same graph
-│   ├─ build time available (seconds) ....... CH   (break-even ~76–209 queries)
+│   ├─ build time available (seconds) ....... CH   (break-even ~13–33 queries)
 │   └─ build time not available ............. ALT
 └─ quality can slip, latency cannot .......... weighted A* (report ε)
 Need an order over stops?

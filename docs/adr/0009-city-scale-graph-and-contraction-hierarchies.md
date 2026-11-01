@@ -61,32 +61,32 @@ Two constraints shaped the decision:
 4. **CH is the lab/benchmark solver of record, not the product default.** The
    product plans one route at a time and cannot amortize preprocessing; the
    selection guide publishes the break-even instead of asserting a winner.
-5. **Measure preprocessing without profiling overhead.** The first benchmark
-   run recorded 12.1 s because `tracemalloc` was active during preprocessing;
-   the honest figure is 2.2 s. The artifact reports the bare build time and the
-   shortcut count, not a memory number distorted by instrumentation.
+5. **Time and memory are measured separately.** The first benchmark run recorded
+   12.1 s because `tracemalloc` was active during preprocessing; the honest time
+   is ~1.6 s. The artifact times one build without tracing and measures peak
+   memory in a second, untimed build, so neither number distorts the other.
 
 ## Measured results (committed artifact, 200 sampled pairs, time objective)
 
 | Solver | Median nodes expanded | Share of graph | Median query time |
 | --- | --- | --- | --- |
-| Dijkstra | 53,885 | 51.3% | 122.8 ms |
-| A* (straight line) | 44,759 | 42.6% | 166.1 ms |
-| ALT (8 landmarks) | 6,186 | 5.9% | 64.1 ms |
-| Bidirectional + ALT | 19,272 | 18.4% | 435.4 ms |
-| **CH** | **85** | **0.1%** | **2.04 ms** |
-| Weighted ε = 5 | 14,470 | 13.8% | 45.4 ms (max 13% over) |
+| Dijkstra | 53,885 | 51.3% | 89.3 ms |
+| A* (straight line) | 44,759 | 42.6% | 125.4 ms |
+| ALT (8 landmarks) | 6,186 | 5.9% | 52.0 ms |
+| Bidirectional + ALT | 19,272 | 18.4% | 335.7 ms |
+| **CH** | **85** | **0.1%** | **1.45 ms** |
+| Weighted ε = 5 | 14,470 | 13.8% | 51.3 ms (max 13% over) |
 
-* CH preprocessing on this graph: **2.2 s**, 164,517 shortcuts (0.93× the edge
-  count), 3-hop witnesses.
-* Break-even: **13 queries against A\*, 35 against ALT**. A dispatcher
+* CH preprocessing on this graph: **1.6 s**, **138 MB peak**, 164,517 shortcuts
+  (0.93× the edge count), 3-hop witnesses.
+* Break-even: **13 queries against A\*, 33 against ALT**. A dispatcher
   answering thousands of routes per minute amortizes the build immediately; a
   single route per process never does.
 * The straight-line heuristic is weak on one-way streets: A* expands 17% fewer
-  nodes than Dijkstra but takes 35% longer in wall time, because the heuristic
+  nodes than Dijkstra but takes 40% longer in wall time, because the heuristic
   costs more than the saved expansions. ALT is the first rung that actually
   moves the needle.
-* Batch planning at city scale costs **~1.7 s** (one-to-all Dijkstra per stop,
+* Batch planning at city scale costs **~2.0 s** (one-to-all Dijkstra per stop,
   seven stops). That is a real bound on the current dispatch design and the
   motivation for pricing matrices with CH or a bounded corridor later.
 

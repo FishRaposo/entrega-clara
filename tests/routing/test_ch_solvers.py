@@ -123,6 +123,25 @@ def test_ch_reports_preprocessing_and_trace(graph: StreetGraph):
     assert result.nodes_expanded > 0
 
 
+def test_hierarchy_is_cached_on_disk_and_reloaded(graph: StreetGraph, tmp_path, monkeypatch):
+    from delivery_platform.routing import ch as ch_module
+
+    monkeypatch.setattr(ch_module, "CACHE_DIR", tmp_path)
+    ch_module._CACHE.clear()
+
+    first = ch_module.contraction_hierarchy(graph, objective="time")
+    assert list(tmp_path.glob("*.json.gz")), "preprocessing must leave a cache entry"
+
+    ch_module._CACHE.clear()
+    second = ch_module.contraction_hierarchy(graph, objective="time")
+
+    assert second.levels == first.levels
+    assert second.up_forward == first.up_forward
+    assert second.stats.shortcuts == first.stats.shortcuts
+    # A cache hit reuses the original build cost instead of pretending it is free.
+    assert second.stats.preprocessing_time_ns == first.stats.preprocessing_time_ns
+
+
 def test_unreachable_pair_raises():
     graph = StreetGraph(
         graph_id="tiny",

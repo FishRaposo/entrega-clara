@@ -20,15 +20,15 @@ One harness, two real graphs — `docs/benchmarks/routing-city.md` (104 991 node
 
 | Point-to-point, city graph (200 sampled pairs, time objective) | Median nodes expanded | Share of graph | Median time |
 | --- | --- | --- | --- |
-| Dijkstra (oracle) | 53 885 | 51.3% | 122.8 ms |
-| A* (straight line) | 44 759 | 42.6% | 166.1 ms |
-| ALT landmarks (8) | 6 186 | 5.9% | 64.1 ms |
-| Bidirectional + ALT | 19 272 | 18.4% | 435.4 ms |
-| **Contraction hierarchy** | **85** | **0.1%** | **2.04 ms** |
-| Weighted A* (ε = 5) | 14 470 | 13.8% | 45.4 ms (max 13% over) |
+| Dijkstra (oracle) | 53 885 | 51.3% | 89.3 ms |
+| A* (straight line) | 44 759 | 42.6% | 125.4 ms |
+| ALT landmarks (8) | 6 186 | 5.9% | 52.0 ms |
+| Bidirectional + ALT | 19 272 | 18.4% | 335.7 ms |
+| **Contraction hierarchy** | **85** | **0.1%** | **1.45 ms** |
+| Weighted A* (ε = 5) | 14 470 | 13.8% | 51.3 ms (max 13% over) |
 
-CH pays a one-time **2.2 s** build (164 517 shortcuts from 3-hop witness searches) and then
-**breaks even after 13 queries against A\* and 35 against ALT**. That break-even is the whole
+CH pays a one-time **1.6 s** build (138 MB peak, 164 517 shortcuts from 3-hop witness searches) and
+then **breaks even after 13 queries against A\* and 33 against ALT**. That break-even is the whole
 selection thesis: a dispatcher answering thousands of routes amortizes it instantly, a single route
 per process never does — see the [solver selection guide](docs/architecture/solver-selection.md).
 
@@ -40,8 +40,8 @@ per process never does — see the [solver selection guide](docs/architecture/so
 | 2-opt | 51 evals | 148 evals | 210 evals |
 
 Two honest readings of the same artifacts: the straight-line A\* expands 17% fewer nodes than
-Dijkstra yet takes 35% longer in wall time (the heuristic costs more than it saves on one-way
-streets), and pricing a 7-stop batch matrix at city scale costs **~1.7 s** (one-to-all Dijkstra per
+Dijkstra yet takes 40% longer in wall time (the heuristic costs more than it saves on one-way
+streets), and pricing a 7-stop batch matrix at city scale costs **~2.0 s** (one-to-all Dijkstra per
 stop) — a real bound on dispatch that the guide names instead of hiding.
 
 The centro graph stays as the product and lab graph: 2 405 nodes, 0.7 MB, sub-millisecond routes and

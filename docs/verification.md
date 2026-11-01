@@ -69,9 +69,10 @@ Measured on the committed tree — rerun with `python scripts/check.py`
   median expansions (51.3% of the graph), A\* 44,759 (42.6%), ALT 6,186 (5.9%),
   bidirectional 19,272 (18.4%), **CH 85 (0.1%)**. Weighted ε=5 expands 13.8%
   with a 13% worst-case overshoot. See `docs/benchmarks/routing-city.md`.
-- **Contraction hierarchy:** 2.2 s preprocessing, 164,517 shortcuts, 2.04 ms per
-  query. Break-even against A\* is 13 queries and against ALT 35 — the measured
-  reason the product still ships plain A\* and a dispatcher would not.
+- **Contraction hierarchy:** 1.6 s preprocessing (138 MB peak), 164,517
+  shortcuts, 85 expansions and 1.45 ms per query. Break-even against A\* is 13
+  queries and against ALT 33 — the measured reason the product still ships plain
+  A\* and a dispatcher would not.
 - **Centro ladder** (the product graph): Dijkstra 1,098 (45.7%), A\* 671
   (27.9%), ALT 378 (15.7%), bidirectional 706 (29.4%), weighted ε=1.5 544
   (22.6% with a 0.16% worst-case overshoot). ALT preprocessing ≈44 ms.
@@ -81,7 +82,7 @@ Measured on the committed tree — rerun with `python scripts/check.py`
 - Multi-stop: Held-Karp matches brute force at ≤9 stops; at 13 stops it stays
   under ~55 ms where brute force is infeasible. On city-derived matrices the
   exact tour beats nearest-neighbor by 24% on a 7-stop batch.
-- Batch planning at city scale costs ~1.7 s (one-to-all Dijkstra per stop); the
+- Batch planning at city scale costs ~2.0 s (one-to-all Dijkstra per stop); the
   centro demo batch costs ~18 ms. The difference is reported, not smoothed over.
 - The replay of one delivery search (`docs/benchmarks/lab-trace.json`, rendered
   to `docs/media/lab-alt-vs-dijkstra.gif`) shows ALT finishing in 70 expansions
