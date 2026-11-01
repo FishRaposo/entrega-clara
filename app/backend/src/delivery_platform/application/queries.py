@@ -13,6 +13,7 @@ from delivery_platform.domain.entities import (
     AuditEvent,
     CourierProfile,
     Delivery,
+    DeliveryBatch,
     MenuItem,
     Notification,
     Order,
@@ -27,6 +28,14 @@ from delivery_platform.domain.order_states import OrderState
 
 if TYPE_CHECKING:
     from delivery_platform.application.container import AppContainer
+
+
+def _resolve_route(uow, delivery) -> RoutePlan | None:
+    """Route for a delivery — single plan or the shared batch tour."""
+    plan = uow.route_plans.find_by_delivery(delivery.id)
+    if plan is None and delivery.batch_id:
+        plan = uow.route_plans.find_by_batch(delivery.batch_id)
+    return plan
 
 
 @dataclass(frozen=True)
@@ -105,7 +114,7 @@ class CustomerQueries:
                 else None
             )
             delivery = uow.deliveries.find_by_order(order_id)
-            route = uow.route_plans.find_by_delivery(delivery.id) if delivery else None
+            route = _resolve_route(uow, delivery) if delivery else None
             tracking = uow.tracking_events.list_by_delivery(delivery.id) if delivery else []
             uow.rollback()
             return OrderView(order, attempt, delivery, route, tracking)
@@ -164,14 +173,18 @@ class CourierQueries:
             uow.rollback()
             return offered
 
-    def active(self, ctx: CommandContext) -> Delivery | None:
+    def active(self, ctx: CommandContext) -> tuple[list[Delivery], DeliveryBatch | None, RoutePlan | None]:
         require_role(ctx.identity, "courier")
         if not ctx.identity.courier_id:
-            return None
+            return [], None, None
         with self._container.uow() as uow:
-            delivery = uow.deliveries.find_active_by_courier(ctx.identity.courier_id)
+            actives = uow.deliveries.list_active_by_courier(ctx.identity.courier_id)
+            batch = uow.batches.find_active_by_courier(ctx.identity.courier_id)
+            route = uow.route_plans.find_by_batch(batch.id) if batch else None
+            if route is None and len(actives) == 1:
+                route = uow.route_plans.find_by_delivery(actives[0].id)
             uow.rollback()
-            return delivery
+            return actives, batch, route
 
 
 class OperationsQueries:
@@ -203,7 +216,7 @@ class OperationsQueries:
                 else None
             )
             delivery = uow.deliveries.find_by_order(order_id)
-            route = uow.route_plans.find_by_delivery(delivery.id) if delivery else None
+            route = _resolve_route(uow, delivery) if delivery else None
             tracking = uow.tracking_events.list_by_delivery(delivery.id) if delivery else []
             uow.rollback()
             return OrderView(order, attempt, delivery, route, tracking)

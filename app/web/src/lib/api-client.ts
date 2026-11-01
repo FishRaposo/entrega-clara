@@ -12,6 +12,7 @@ import type {
   Order,
   OrderSummary,
   RestaurantSummary,
+  RoutePlan,
   TrackingView,
 } from "./api-types";
 import type { DemoIdentity } from "./identities";
@@ -207,8 +208,23 @@ export function listDeliveryOffers(identity: DemoIdentity): Promise<{ deliveries
   return request("/api/v1/courier/deliveries/offers", { identity });
 }
 
-export function getActiveDelivery(identity: DemoIdentity): Promise<{ delivery: Delivery | null }> {
+export function getActiveDelivery(identity: DemoIdentity): Promise<{
+  deliveries: Delivery[];
+  batch: { id: string; status: string; delivery_ids: string[] } | null;
+  route: RoutePlan | null;
+}> {
   return request("/api/v1/courier/deliveries/active", { identity });
+}
+
+export function acceptBatch(
+  identity: DemoIdentity,
+  deliveryIds: string[],
+): Promise<{ batch: { id: string; status: string } }> {
+  return request("/api/v1/courier/batches/accept", {
+    method: "POST",
+    identity,
+    body: { delivery_ids: deliveryIds },
+  });
 }
 
 export function courierCommand(

@@ -21,7 +21,7 @@ from delivery_platform.adapters.memory.unit_of_work import MemoryUnitOfWork
 from delivery_platform.application.context import CommandContext
 from delivery_platform.application.identity import IdentityContext
 from delivery_platform.application.lifecycle import LifecycleRecorder
-from delivery_platform.application.ports import DeliveryRoutePlanner
+from delivery_platform.application.ports import DeliveryRoutePlanner, UnitOfWork
 from delivery_platform.core.config import Settings
 from delivery_platform.domain.entities import DemoIdentity
 from delivery_platform.domain.errors import MissingIdentityError
@@ -51,7 +51,7 @@ class AppContainer:
     def uow(self) -> MemoryUnitOfWork:
         return MemoryUnitOfWork(self.store, self.publisher)
 
-    def recorder(self, uow: MemoryUnitOfWork, ctx: CommandContext) -> LifecycleRecorder:
+    def recorder(self, uow: UnitOfWork, ctx: CommandContext) -> LifecycleRecorder:
         return LifecycleRecorder(uow=uow, ctx=ctx, clock=self.clock, ids=self.ids)
 
     def resolve_identity(self, identity_id: str | None) -> IdentityContext:

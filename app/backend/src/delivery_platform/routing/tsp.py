@@ -54,8 +54,14 @@ class HeldKarpSolver:
     solver_name = "held-karp"
     MAX_STOPS = 18
 
-    def __init__(self, *, precedence: dict[int, int] | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        precedence: dict[int, int] | None = None,
+        closed: bool = True,
+    ) -> None:
         self._precedence = precedence or {}
+        self._closed = closed
 
     def solve(self, problem: RouteProblem) -> RouteResult:
         n = len(problem.labels)
@@ -100,7 +106,11 @@ class HeldKarpSolver:
         for j in range(m):
             if dp[full][j] == float("inf"):
                 continue
-            candidate = dp[full][j] + float(costs[others[j]][origin])
+            # closed tours return to the origin; open tours (delivery batches)
+            # end at the last stop.
+            candidate = dp[full][j]
+            if self._closed:
+                candidate += float(costs[others[j]][origin])
             evaluated += 1
             if candidate < best_cost:
                 best_cost, best_end = candidate, j
@@ -112,8 +122,9 @@ class HeldKarpSolver:
             order.append(others[j])
             mask, j = mask ^ (1 << j), parent[mask][j]
         order.reverse()
+        tour = _closed(tuple(order), origin) if self._closed else (origin, *order)
         return RouteResult(
-            route=_labels(problem, _closed(tuple(order), origin)),
+            route=_labels(problem, tour),
             total_cost=best_cost,
             solver_name=self.solver_name,
             execution_time_ns=perf_counter_ns() - started,
@@ -130,8 +141,14 @@ class NearestNeighborSolver:
 
     solver_name = "nearest-neighbor"
 
-    def __init__(self, *, precedence: dict[int, int] | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        precedence: dict[int, int] | None = None,
+        closed: bool = True,
+    ) -> None:
         self._precedence = precedence or {}
+        self._closed = closed
 
     def solve(self, problem: RouteProblem) -> RouteResult:
         n = len(problem.labels)

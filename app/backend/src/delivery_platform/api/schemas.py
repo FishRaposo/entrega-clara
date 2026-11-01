@@ -64,3 +64,7 @@ class ErrorEnvelope(BaseModel):
 
 class RateOrderRequest(BaseModel):
     stars: int = Field(ge=1, le=5)
+
+
+class BatchAcceptRequest(BaseModel):
+    delivery_ids: Annotated[list[StrictStr], Field(min_length=2, max_length=3)]

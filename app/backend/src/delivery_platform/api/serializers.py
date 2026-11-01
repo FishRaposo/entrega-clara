@@ -9,6 +9,7 @@ from delivery_platform.domain.entities import (
     AuditEvent,
     CourierProfile,
     Delivery,
+    DeliveryBatch,
     MenuItem,
     Notification,
     Order,
@@ -151,6 +152,7 @@ def delivery_view(delivery: Delivery | None) -> dict[str, Any] | None:
         "courier_id": delivery.courier_id,
         "status": delivery.status,
         "version": delivery.version,
+        "batch_id": delivery.batch_id,
     }
 
 
@@ -187,6 +189,7 @@ def route_view(route: RoutePlan | None) -> dict[str, Any] | None:
         "estimated_seconds": route.estimated_seconds,
         "solver_name": route.solver_name,
         "solver_version": route.solver_version,
+        "batch_id": route.batch_id,
         "computation_time_ns": route.computation_time_ns,
         "nodes_expanded": route.nodes_expanded,
         "warnings": route.warnings,
@@ -259,3 +262,15 @@ def courier_view(courier: CourierProfile) -> dict[str, Any]:
 
 def _ts(value: Any) -> str | None:
     return value.isoformat() if value is not None else None
+
+
+def batch_view(batch: DeliveryBatch | None) -> dict[str, Any] | None:
+    if batch is None:
+        return None
+    return {
+        "id": batch.id,
+        "courier_id": batch.courier_id,
+        "delivery_ids": list(batch.delivery_ids),
+        "status": batch.status,
+        "created_at": _ts(batch.created_at),
+    }

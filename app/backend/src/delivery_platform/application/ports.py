@@ -17,6 +17,7 @@ from delivery_platform.domain.entities import (
     Coupon,
     CourierProfile,
     Delivery,
+    DeliveryBatch,
     DemoIdentity,
     GeoPoint,
     IdempotencyRecord,
@@ -102,13 +103,23 @@ class DeliveryRepository(Protocol):
     def update(self, delivery: Delivery) -> None: ...
     def find_by_order(self, order_id: str) -> Delivery | None: ...
     def find_active_by_courier(self, courier_id: str) -> Delivery | None: ...
+    def list_active_by_courier(self, courier_id: str) -> list[Delivery]: ...
     def list_offered(self) -> list[Delivery]: ...
+    def list_by_batch(self, batch_id: str) -> list[Delivery]: ...
+
+
+class DeliveryBatchRepository(Protocol):
+    def get(self, batch_id: str) -> DeliveryBatch: ...
+    def add(self, batch: DeliveryBatch) -> None: ...
+    def update(self, batch: DeliveryBatch) -> None: ...
+    def find_active_by_courier(self, courier_id: str) -> DeliveryBatch | None: ...
 
 
 class RoutePlanRepository(Protocol):
     def get(self, plan_id: str) -> RoutePlan: ...
     def add(self, plan: RoutePlan) -> None: ...
     def find_by_delivery(self, delivery_id: str) -> RoutePlan | None: ...
+    def find_by_batch(self, batch_id: str) -> RoutePlan | None: ...
 
 
 class TrackingEventRepository(Protocol):
@@ -163,6 +174,7 @@ class UnitOfWork(Protocol):
     payment_attempts: PaymentAttemptRepository
     couriers: CourierRepository
     deliveries: DeliveryRepository
+    batches: DeliveryBatchRepository
     route_plans: RoutePlanRepository
     tracking_events: TrackingEventRepository
     notifications: NotificationRepository
@@ -212,10 +224,32 @@ class DeliveryRouteRequest:
     dropoff_label: str
 
 
+@dataclass(frozen=True)
+class BatchStopRequest:
+    """One delivery inside a batch: its pickup and drop-off points."""
+
+    delivery_id: str
+    pickup_point: GeoPoint
+    pickup_label: str
+    dropoff_point: GeoPoint
+    dropoff_label: str
+
+
+@dataclass(frozen=True)
+class BatchRouteRequest:
+    """Solver-neutral inputs for a multi-stop courier tour (ADR 0007)."""
+
+    batch_id: str
+    courier_location: GeoPoint
+    deliveries: tuple[BatchStopRequest, ...]
+
+
 class DeliveryRoutePlanner(Protocol):
     """Computes a provider-neutral route plan for a delivery."""
 
     def plan(self, request: DeliveryRouteRequest, *, route_id: str) -> RoutePlan: ...
+
+    def plan_batch(self, request: BatchRouteRequest, *, route_id: str) -> RoutePlan: ...
 
 
 class Clock(Protocol):

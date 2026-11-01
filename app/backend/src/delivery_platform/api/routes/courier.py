@@ -8,7 +8,11 @@ from fastapi import APIRouter, Depends
 
 from delivery_platform.api import serializers
 from delivery_platform.api.deps import command_context, get_container
-from delivery_platform.api.schemas import SetAvailabilityRequest, UpdateLocationRequest
+from delivery_platform.api.schemas import (
+    BatchAcceptRequest,
+    SetAvailabilityRequest,
+    UpdateLocationRequest,
+)
 from delivery_platform.application.commands.courier import CourierCommands
 from delivery_platform.application.container import AppContainer
 from delivery_platform.application.context import CommandContext
@@ -40,8 +44,19 @@ def list_offers(container: Container, ctx: Ctx) -> dict[str, Any]:
 
 @router.get("/deliveries/active")
 def get_active(container: Container, ctx: Ctx) -> dict[str, Any]:
-    delivery = CourierQueries(container).active(ctx)
-    return {"delivery": serializers.delivery_view(delivery)}
+    deliveries, batch, route = CourierQueries(container).active(ctx)
+    return {
+        "deliveries": [serializers.delivery_view(d) for d in deliveries],
+        "delivery": serializers.delivery_view(deliveries[0] if deliveries else None),
+        "batch": serializers.batch_view(batch),
+        "route": serializers.route_view(route),
+    }
+
+
+@router.post("/batches/accept")
+def accept_batch(body: BatchAcceptRequest, container: Container, ctx: Ctx) -> dict[str, Any]:
+    batch = CourierCommands(container).batch_accept(ctx, list(body.delivery_ids))
+    return {"batch": serializers.batch_view(batch)}
 
 
 @router.post("/deliveries/{delivery_id}/accept")

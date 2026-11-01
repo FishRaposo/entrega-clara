@@ -162,15 +162,32 @@ class CourierProfile:
     version: int = 1
 
 
+BatchStatus = Literal["assigned", "en_route", "delivered"]
+
+
 @dataclass
 class Delivery:
-    """One-to-one link between an order and at most one courier in M1."""
+    """Links an order to at most one courier; batch_id groups a shared tour."""
 
     id: str
     order_id: str
     courier_id: str | None
     status: DeliveryStatus
     version: int = 1
+    batch_id: str | None = None
+    scenario_id: str | None = None
+
+
+@dataclass
+class DeliveryBatch:
+    """A courier's multi-stop tour covering 2-3 deliveries (ADR 0007)."""
+
+    id: str
+    courier_id: str
+    delivery_ids: list[str]
+    status: BatchStatus
+    version: int = 1
+    created_at: datetime | None = None
     scenario_id: str | None = None
 
 
@@ -210,6 +227,7 @@ class RoutePlan:
     warnings: list[str] = field(default_factory=list)
     scenario_id: str | None = None
     objective: str = "time"
+    batch_id: str | None = None
 
 
 @dataclass

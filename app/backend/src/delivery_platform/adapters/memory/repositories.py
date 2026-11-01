@@ -11,6 +11,7 @@ from delivery_platform.domain.entities import (
     Coupon,
     CourierProfile,
     Delivery,
+    DeliveryBatch,
     DemoIdentity,
     IdempotencyRecord,
     MenuItem,
@@ -178,8 +179,35 @@ class MemoryDeliveries(MemoryVersionedRepository[Delivery]):
             None,
         )
 
+    def list_active_by_courier(self, courier_id: str) -> list[Delivery]:
+        return [
+            d
+            for d in self._data.values()
+            if d.courier_id == courier_id and d.status in _ACTIVE_DELIVERY_STATUSES
+        ]
+
     def list_offered(self) -> list[Delivery]:
         return [d for d in self._data.values() if d.status == "offered"]
+
+    def list_by_batch(self, batch_id: str) -> list[Delivery]:
+        return [d for d in self._data.values() if d.batch_id == batch_id]
+
+
+_ACTIVE_BATCH_STATUSES = {"assigned", "en_route"}
+
+
+class MemoryDeliveryBatches(MemoryVersionedRepository[DeliveryBatch]):
+    resource_name = "lote de entrega"
+
+    def find_active_by_courier(self, courier_id: str) -> DeliveryBatch | None:
+        return next(
+            (
+                b
+                for b in self._data.values()
+                if b.courier_id == courier_id and b.status in _ACTIVE_BATCH_STATUSES
+            ),
+            None,
+        )
 
 
 class MemoryRoutePlans(MemoryRepository[RoutePlan]):
@@ -187,6 +215,9 @@ class MemoryRoutePlans(MemoryRepository[RoutePlan]):
 
     def find_by_delivery(self, delivery_id: str) -> RoutePlan | None:
         return next((p for p in self._data.values() if p.delivery_id == delivery_id), None)
+
+    def find_by_batch(self, batch_id: str) -> RoutePlan | None:
+        return next((p for p in self._data.values() if p.batch_id == batch_id), None)
 
 
 class MemoryTrackingEvents:

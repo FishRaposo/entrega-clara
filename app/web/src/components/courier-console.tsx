@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import {
+  acceptBatch,
   ApiError,
   courierCommand,
   getActiveDelivery,
@@ -27,7 +28,10 @@ const NEXT_STEP: Record<string, { action: "pickup" | "start" | "complete"; label
 export function CourierConsole() {
   const [available, setAvailable] = useState<boolean | null>(null);
   const [offers, setOffers] = useState<Delivery[]>([]);
-  const [active, setActive] = useState<Delivery | null>(null);
+  const [actives, setActives] = useState<Delivery[]>([]);
+  const [activeRoute, setActiveRoute] = useState<TrackingView["route"] | null>(null);
+  const [batchId, setBatchId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [tracking, setTracking] = useState<TrackingView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -39,9 +43,12 @@ export function CourierConsole() {
         getActiveDelivery(ID),
       ]);
       setOffers(offerList.deliveries.filter((d): d is Delivery => d !== null));
-      setActive(activeResult.delivery);
-      if (activeResult.delivery) {
-        setTracking(await getTracking(ID, activeResult.delivery.order_id));
+      setActives(activeResult.deliveries);
+      setBatchId(activeResult.batch?.id ?? null);
+      setActiveRoute(activeResult.route);
+      const first = activeResult.deliveries[0];
+      if (first) {
+        setTracking(await getTracking(ID, first.order_id));
       } else {
         setTracking(null);
       }
@@ -76,13 +83,13 @@ export function CourierConsole() {
 
   const nextSequence = (tracking?.positions.length ?? 0) + 1;
 
-  const sendLocation = () =>
+  const sendLocation = (delivery: Delivery) =>
     run(async () => {
-      if (!active || !tracking?.route?.geometry) return;
+      if (!tracking?.route?.geometry) return;
       const coords = tracking.route.geometry.coordinates;
       const index = Math.min(nextSequence - 1, coords.length - 1);
       const [longitude, latitude] = coords[index];
-      await postCourierLocation(ID, active.id, nextSequence, latitude, longitude);
+      await postCourierLocation(ID, delivery.id, nextSequence, latitude, longitude);
     });
 
   return (
@@ -101,30 +108,49 @@ export function CourierConsole() {
         </button>
       </div>
 
-      {active ? (
+      {actives.length > 0 ? (
         <div className="panel">
-          <h2>Entrega ativa {active.id}</h2>
-          <p>
-            Pedido {active.order_id} · status{" "}
-            <strong>{deliveryStatusLabel(active.status)}</strong>
-          </p>
-          <DeliveryMap route={tracking?.route ?? null} lastKnown={tracking?.last_known_location} />
-          <div className="demo-actions">
-            {active.status === "en_route" ? (
-              <button type="button" disabled={pending} onClick={() => void sendLocation()}>
-                Enviar ponto GPS (#{nextSequence})
-              </button>
-            ) : null}
-            {NEXT_STEP[active.status] ? (
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => void run(() => courierCommand(ID, active.id, NEXT_STEP[active.status].action))}
-              >
-                {NEXT_STEP[active.status].label}
-              </button>
-            ) : null}
-          </div>
+          <h2>
+            {batchId ? `Lote ativo ${batchId}` : `Entrega ativa ${actives[0].id}`}
+          </h2>
+          {activeRoute?.stops ? (
+            <ol className="stacked-list" aria-label="Sequência do percurso">
+              {activeRoute.stops.map((stop) => {
+                const delivery = actives.find((d) => d.id === stop.ref_id);
+                return (
+                  <li key={`${stop.sequence}-${stop.ref_id}`}>
+                    <strong>#{stop.sequence}</strong>{" "}
+                    {stop.kind === "pickup" ? "Retirada" : "Entrega"} ·{" "}
+                    {stop.label}
+                    {delivery ? ` (${deliveryStatusLabel(delivery.status)})` : ""}
+                  </li>
+                );
+              })}
+            </ol>
+          ) : null}
+          <DeliveryMap route={tracking?.route ?? activeRoute} lastKnown={tracking?.last_known_location} />
+          {actives.map((delivery) => (
+            <div key={delivery.id} className="demo-actions">
+              <span>
+                Pedido {delivery.order_id} ·{" "}
+                <strong>{deliveryStatusLabel(delivery.status)}</strong>
+              </span>
+              {delivery.status === "en_route" ? (
+                <button type="button" disabled={pending} onClick={() => void sendLocation(delivery)}>
+                  Enviar ponto GPS
+                </button>
+              ) : null}
+              {NEXT_STEP[delivery.status] ? (
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => void run(() => courierCommand(ID, delivery.id, NEXT_STEP[delivery.status].action))}
+                >
+                  {NEXT_STEP[delivery.status].label} — {delivery.id}
+                </button>
+              ) : null}
+            </div>
+          ))}
         </div>
       ) : null}
 
@@ -134,11 +160,29 @@ export function CourierConsole() {
         <ul className="stacked-list">
           {offers.map((delivery) => (
             <li key={delivery.id}>
-              Entrega {delivery.id} · pedido {delivery.order_id}
+              <label>
+                <input
+                  type="checkbox"
+                  checked={selected.has(delivery.id)}
+                  disabled={actives.length > 0}
+                  onChange={() => {
+                    setSelected((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(delivery.id)) {
+                        next.delete(delivery.id);
+                      } else if (next.size < 3) {
+                        next.add(delivery.id);
+                      }
+                      return next;
+                    });
+                  }}
+                />{" "}
+                Entrega {delivery.id} · pedido {delivery.order_id}
+              </label>
               <div className="demo-actions">
                 <button
                   type="button"
-                  disabled={pending || active !== null}
+                  disabled={pending || actives.length > 0}
                   onClick={() => void run(() => courierCommand(ID, delivery.id, "accept"))}
                 >
                   Aceitar entrega
@@ -147,6 +191,20 @@ export function CourierConsole() {
             </li>
           ))}
         </ul>
+        {offers.length >= 2 ? (
+          <button
+            type="button"
+            disabled={pending || actives.length > 0 || selected.size < 2}
+            onClick={() =>
+              run(async () => {
+                await acceptBatch(ID, Array.from(selected));
+                setSelected(new Set());
+              })
+            }
+          >
+            Aceitar lote ({selected.size} selecionadas)
+          </button>
+        ) : null}
       </div>
       <button type="button" className="secondary-button" onClick={() => void refresh()}>
         Atualizar

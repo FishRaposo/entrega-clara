@@ -9,7 +9,10 @@ from __future__ import annotations
 
 import time
 
-from delivery_platform.application.ports import DeliveryRouteRequest
+from delivery_platform.application.ports import (
+    BatchRouteRequest,
+    DeliveryRouteRequest,
+)
 from delivery_platform.domain.entities import GeoPoint, RoutePlan, RouteSegment, RouteStop
 from delivery_platform.domain.geo import haversine_m
 
@@ -88,5 +91,71 @@ class StraightLineRoutePlanner:
             computation_time_ns=time.perf_counter_ns() - started,
             nodes_expanded=0,
             warnings=["Rota aproximada em linha reta; grafo de ruas ainda não integrado."],
+            objective="distance",
+        )
+
+    def plan_batch(self, request: BatchRouteRequest, *, route_id: str) -> RoutePlan:
+        """Straight-line batch fallback: keeps declared order, pickup legs first."""
+        started = time.perf_counter_ns()
+        meters_per_second = _AVERAGE_SPEED_KMH * 1000 / 3600
+
+        stops: list[RouteStop] = []
+        segments: list[RouteSegment] = []
+        coords: list[list[float]] = [
+            [request.courier_location.longitude, request.courier_location.latitude]
+        ]
+        current = request.courier_location
+        total_m = total_s = 0.0
+        sequence = 0
+        ordered_stops: list[tuple[str, str, str, GeoPoint]] = []
+        for delivery in request.deliveries:
+            ordered_stops.append(
+                ("pickup", delivery.delivery_id, delivery.pickup_label, delivery.pickup_point)
+            )
+        for delivery in request.deliveries:
+            ordered_stops.append(
+                ("dropoff", delivery.delivery_id, delivery.dropoff_label, delivery.dropoff_point)
+            )
+        for sequence, (kind, ref_id, label, point) in enumerate(ordered_stops, start=1):
+            leg_m = haversine_m(current, point)
+            leg_s = leg_m / meters_per_second
+            total_m += leg_m
+            total_s += leg_s
+            segments.append(
+                RouteSegment(
+                    from_label="entregador" if sequence == 1 else stops[-1].label,
+                    to_label=label,
+                    node_path=(),
+                    distance_meters=leg_m,
+                    estimated_seconds=leg_s,
+                )
+            )
+            stops.append(
+                RouteStop(
+                    kind=kind,  # type: ignore[arg-type]
+                    ref_id=ref_id,
+                    label=label,
+                    location=point,
+                    sequence=sequence,
+                )
+            )
+            coords.append([point.longitude, point.latitude])
+            current = point
+        return RoutePlan(
+            id=route_id,
+            delivery_id=request.deliveries[0].delivery_id,
+            batch_id=request.batch_id,
+            graph_id="none",
+            graph_version="0",
+            stops=stops,
+            segments=segments,
+            geometry={"type": "LineString", "coordinates": coords},
+            distance_meters=total_m,
+            estimated_seconds=total_s,
+            solver_name=self.solver_name,
+            solver_version=self.solver_version,
+            computation_time_ns=time.perf_counter_ns() - started,
+            nodes_expanded=0,
+            warnings=["Rota em lote aproximada; ordem das paradas não otimizada."],
             objective="distance",
         )

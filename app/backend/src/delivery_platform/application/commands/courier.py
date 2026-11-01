@@ -6,16 +6,23 @@ from typing import TYPE_CHECKING
 
 from delivery_platform.application.authorization import require_role
 from delivery_platform.application.context import CommandContext
-from delivery_platform.application.ports import DeliveryRouteRequest, UnitOfWork
+from delivery_platform.application.ports import (
+    BatchRouteRequest,
+    BatchStopRequest,
+    DeliveryRouteRequest,
+    UnitOfWork,
+)
 from delivery_platform.domain.entities import (
     CourierProfile,
     Delivery,
+    DeliveryBatch,
     DeliveryStatus,
     GeoPoint,
     TrackingEvent,
 )
 from delivery_platform.domain.errors import (
     CourierUnavailableError,
+    DomainError,
     InvalidOrderTransition,
     NotFoundError,
     OwnershipForbiddenError,
@@ -35,7 +42,7 @@ class CourierCommands:
         courier_id = self._courier_id(ctx)
         with self._container.uow() as uow:
             courier = uow.couriers.get(courier_id)
-            if not available and uow.deliveries.find_active_by_courier(courier_id) is not None:
+            if not available and uow.deliveries.list_active_by_courier(courier_id):
                 raise CourierUnavailableError()
             courier.status = "available" if available else "offline"
             uow.couriers.update(courier)
@@ -56,7 +63,7 @@ class CourierCommands:
                 raise CourierUnavailableError()
             delivery = uow.deliveries.get(delivery_id)
             self._require_delivery_status(delivery, "offered")
-            if uow.deliveries.find_active_by_courier(courier_id) is not None:
+            if uow.deliveries.list_active_by_courier(courier_id):
                 raise CourierUnavailableError()
             order = uow.orders.get(delivery.order_id)
             delivery.courier_id = courier_id
@@ -92,7 +99,100 @@ class CourierCommands:
             uow.commit()
             return delivery
 
+    def batch_accept(self, ctx: CommandContext, delivery_ids: list[str]) -> DeliveryBatch:
+        """Accept 2-3 offered deliveries as one optimized tour (ADR 0007).
+
+        The tour is computed at accept time: cost matrix over every stop pair,
+        Held-Karp with pickup-before-dropoff precedence.
+        """
+        courier_id = self._courier_id(ctx)
+        unique_ids = list(dict.fromkeys(delivery_ids))
+        if not 2 <= len(unique_ids) <= 3 or len(unique_ids) != len(delivery_ids):
+            raise DomainError("Um lote aceita de 2 a 3 entregas distintas.")
+        with self._container.uow() as uow:
+            courier = uow.couriers.get(courier_id)
+            if courier.status != "available":
+                raise CourierUnavailableError()
+            if uow.deliveries.list_active_by_courier(courier_id):
+                raise CourierUnavailableError()
+            deliveries = [uow.deliveries.get(delivery_id) for delivery_id in unique_ids]
+            for delivery in deliveries:
+                self._require_delivery_status(delivery, "offered")
+
+            batch = DeliveryBatch(
+                id=self._container.ids.new_id("bat"),
+                courier_id=courier_id,
+                delivery_ids=unique_ids,
+                status="assigned",
+                created_at=self._container.clock.now(),
+                scenario_id=deliveries[0].scenario_id,
+            )
+            uow.batches.add(batch)
+
+            orders = [uow.orders.get(d.order_id) for d in deliveries]
+            restaurants = {
+                order.restaurant_id: uow.restaurants.get(order.restaurant_id)
+                for order in orders
+            }
+            route = self._container.route_planner.plan_batch(
+                BatchRouteRequest(
+                    batch_id=batch.id,
+                    courier_location=courier.location,
+                    deliveries=tuple(
+                        BatchStopRequest(
+                            delivery_id=delivery.id,
+                            pickup_point=restaurants[order.restaurant_id].location,
+                            pickup_label=restaurants[order.restaurant_id].name,
+                            dropoff_point=uow.addresses.get(order.address_id).location,
+                            dropoff_label=order.address_label,
+                        )
+                        for delivery, order in zip(deliveries, orders, strict=True)
+                    ),
+                ),
+                route_id=self._container.ids.new_id("rpl"),
+            )
+            route.scenario_id = batch.scenario_id
+            uow.route_plans.add(route)
+
+            courier.status = "assigned"
+            uow.couriers.update(courier)
+            recorder = self._container.recorder(uow, ctx)
+            for delivery, order in zip(deliveries, orders, strict=True):
+                delivery.courier_id = courier_id
+                delivery.status = "assigned"
+                delivery.batch_id = batch.id
+                order.state = transition_order(order.state, OrderState.COURIER_ASSIGNED)
+                order.updated_at = self._container.clock.now()
+                uow.deliveries.update(delivery)
+                uow.orders.update(order)
+                recorder.event(
+                    EventType.DELIVERY_ASSIGNED,
+                    aggregate_type="delivery",
+                    aggregate_id=delivery.id,
+                    payload={
+                        "order_id": order.id,
+                        "courier_id": courier_id,
+                        "batch_id": batch.id,
+                        "order_status": order.state.value,
+                    },
+                )
+                recorder.notify(
+                    order.customer_id,
+                    "Um entregador aceitou sua entrega (em lote).",
+                    order_id=order.id,
+                )
+            recorder.audit(
+                "delivery.batch_accepted",
+                target_type="batch",
+                target_id=batch.id,
+                detail=f"{len(unique_ids)} entregas, rota {route.id}",
+            )
+            uow.commit()
+            return batch
+
     def pickup(self, ctx: CommandContext, delivery_id: str) -> Delivery:
+        # When a batch tour is already en_route, a later pickup stop moves the
+        # order straight to en_route (picked_up is still recorded).
         return self._delivery_transition(
             ctx,
             delivery_id,
@@ -101,13 +201,16 @@ class CourierCommands:
             order_target=OrderState.PICKED_UP,
             event_type=EventType.DELIVERY_PICKED_UP,
             customer_message="O entregador retirou seu pedido.",
+            continue_en_route_if_batch_started=True,
         )
 
     def start_route(self, ctx: CommandContext, delivery_id: str) -> Delivery:
         courier_id = self._courier_id(ctx)
         with self._container.uow() as uow:
-            courier = uow.couriers.get(courier_id)
             delivery = self._own_delivery(ctx, uow, courier_id, delivery_id)
+            if delivery.batch_id:
+                return self._start_batch_route(ctx, uow, courier_id, delivery)
+            courier = uow.couriers.get(courier_id)
             self._require_delivery_status(delivery, "picked_up")
             order = uow.orders.get(delivery.order_id)
             restaurant = uow.restaurants.get(order.restaurant_id)
@@ -213,7 +316,17 @@ class CourierCommands:
             order = uow.orders.get(delivery.order_id)
             courier = uow.couriers.get(courier_id)
             delivery.status = "delivered"
-            courier.status = "available"
+            if delivery.batch_id:
+                siblings = uow.deliveries.list_by_batch(delivery.batch_id)
+                if all(s.status == "delivered" or s.id == delivery.id for s in siblings):
+                    batch = uow.batches.get(delivery.batch_id)
+                    batch.status = "delivered"
+                    uow.batches.update(batch)
+                    courier.status = "available"
+                else:
+                    courier.status = "delivering"
+            else:
+                courier.status = "available"
             order.state = transition_order(order.state, OrderState.DELIVERED)
             order.updated_at = self._container.clock.now()
             uow.deliveries.update(delivery)
@@ -250,6 +363,7 @@ class CourierCommands:
         order_target: OrderState,
         event_type: EventType,
         customer_message: str,
+        continue_en_route_if_batch_started: bool = False,
     ) -> Delivery:
         courier_id = self._courier_id(ctx)
         with self._container.uow() as uow:
@@ -261,6 +375,14 @@ class CourierCommands:
             if target == "picked_up":
                 courier.status = "delivering"
             order.state = transition_order(order.state, order_target)
+            batch_moving = (
+                continue_en_route_if_batch_started
+                and delivery.batch_id is not None
+                and uow.batches.get(delivery.batch_id).status == "en_route"
+            )
+            if batch_moving:
+                delivery.status = "en_route"
+                order.state = transition_order(order.state, OrderState.EN_ROUTE)
             order.updated_at = self._container.clock.now()
             uow.deliveries.update(delivery)
             uow.couriers.update(courier)
@@ -272,6 +394,13 @@ class CourierCommands:
                 aggregate_id=delivery.id,
                 payload={"order_id": order.id, "order_status": order.state.value},
             )
+            if batch_moving:
+                recorder.event(
+                    EventType.DELIVERY_EN_ROUTE,
+                    aggregate_type="delivery",
+                    aggregate_id=delivery.id,
+                    payload={"order_id": order.id, "order_status": order.state.value},
+                )
             recorder.audit(
                 f"delivery.{target}",
                 target_type="delivery",
@@ -306,3 +435,59 @@ class CourierCommands:
             raise InvalidOrderTransition(
                 "Esta entrega não pode avançar a partir do estado atual."
             )
+
+    def _start_batch_route(
+        self,
+        ctx: CommandContext,
+        uow: UnitOfWork,
+        courier_id: str,
+        delivery: Delivery,
+    ) -> Delivery:
+        """Start a pre-planned batch tour once at least one pickup happened."""
+        batch = uow.batches.get(delivery.batch_id or "")
+        if batch.status != "assigned":
+            raise InvalidOrderTransition(
+                "Este lote não pode iniciar a partir do estado atual."
+            )
+        siblings = uow.deliveries.list_by_batch(batch.id)
+        picked_up = [s for s in siblings if s.status == "picked_up"]
+        if not picked_up:
+            raise InvalidOrderTransition(
+                "Retire ao menos um pedido antes de iniciar a rota do lote."
+            )
+        courier = uow.couriers.get(courier_id)
+        batch.status = "en_route"
+        courier.status = "delivering"
+        uow.batches.update(batch)
+        uow.couriers.update(courier)
+        recorder = self._container.recorder(uow, ctx)
+        for sibling in picked_up:
+            sibling.status = "en_route"
+            uow.deliveries.update(sibling)
+            order = uow.orders.get(sibling.order_id)
+            order.state = transition_order(order.state, OrderState.EN_ROUTE)
+            order.updated_at = self._container.clock.now()
+            uow.orders.update(order)
+            recorder.event(
+                EventType.DELIVERY_EN_ROUTE,
+                aggregate_type="delivery",
+                aggregate_id=sibling.id,
+                payload={
+                    "order_id": order.id,
+                    "batch_id": batch.id,
+                    "order_status": order.state.value,
+                },
+            )
+            recorder.notify(
+                order.customer_id,
+                "Seu pedido saiu para entrega.",
+                order_id=order.id,
+            )
+        recorder.audit(
+            "delivery.batch_started",
+            target_type="batch",
+            target_id=batch.id,
+            detail=f"{len(picked_up)} de {len(siblings)} retiradas",
+        )
+        uow.commit()
+        return delivery

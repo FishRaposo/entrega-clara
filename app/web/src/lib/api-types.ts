@@ -68,6 +68,15 @@ export type Delivery = {
   courier_id: string | null;
   status: string;
   version: number;
+  batch_id?: string | null;
+};
+
+export type DeliveryBatch = {
+  id: string;
+  courier_id: string;
+  delivery_ids: string[];
+  status: string;
+  created_at: string | null;
 };
 
 export type RouteStop = {
@@ -97,6 +106,7 @@ export type RoutePlan = {
   solver_version: string;
   warnings: string[];
   objective?: string;
+  batch_id?: string | null;
 };
 
 export type OrderSummary = {

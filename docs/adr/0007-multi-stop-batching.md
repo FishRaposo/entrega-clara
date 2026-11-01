@@ -1,8 +1,8 @@
 # ADR 0007 — Multi-stop batching (one courier, several orders)
 
-Status: accepted. The solver layer (cost-matrix builder, precedence-aware
-Held-Karp/2-opt) is implemented and benchmarked; courier batch dispatch
-integration is the remaining work.
+Status: implemented. Solver layer (cost-matrix builder, precedence-aware
+open-tour Held-Karp) plus courier batch dispatch (batch_accept, batch-aware
+pickup/start/complete, stop-sequence UI).
 
 ## Context
 
@@ -21,10 +21,10 @@ orders going the same way — the exact problem our TSP solvers (Held-Karp,
 - Precedence is expressed as `{dropoff_index: pickup_index}` maps passed to
   the solver, so a courier can never be routed to a customer before the
   restaurant that produced the order.
-- Eligibility: orders in `ready_for_pickup` at the same restaurant may be
-  batched into one delivery leg set; capacity is enforced at the dispatch
-  boundary (batch size ≤ 3), not inside the TSP — a vehicle-capacity
-  constraint is a dispatch concern.
+- Eligibility: any 2–3 `offered` deliveries may be batched (the user
+  chose the broader scope over same-restaurant-only); precedence guarantees
+  each drop-off follows its own pickup. Capacity is enforced at the
+  dispatch boundary (batch size ≤ 3).
 
 ## Consequences
 

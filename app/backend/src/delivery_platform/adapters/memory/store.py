@@ -11,6 +11,7 @@ from delivery_platform.domain.entities import (
     Coupon,
     CourierProfile,
     Delivery,
+    DeliveryBatch,
     DemoIdentity,
     IdempotencyRecord,
     MenuItem,
@@ -42,6 +43,7 @@ class MemoryStore:
     payment_attempts: dict[str, PaymentAttempt] = field(default_factory=dict)
     couriers: dict[str, CourierProfile] = field(default_factory=dict)
     deliveries: dict[str, Delivery] = field(default_factory=dict)
+    batches: dict[str, DeliveryBatch] = field(default_factory=dict)
     route_plans: dict[str, RoutePlan] = field(default_factory=dict)
     tracking_events: list[TrackingEvent] = field(default_factory=list)
     notifications: dict[str, Notification] = field(default_factory=dict)

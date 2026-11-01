@@ -274,6 +274,14 @@
       "formatted": "Escritório de demonstração — República, São Paulo/SP",
       "latitude": -23.546,
       "longitude": -46.641
+    },
+    {
+      "id": "addr-ana",
+      "customer_id": "demo-customer-2",
+      "label": "Casa da Ana",
+      "formatted": "Casa de demonstração — Liberdade, São Paulo/SP",
+      "latitude": -23.558,
+      "longitude": -46.634
     }
   ],
   "coupons": [

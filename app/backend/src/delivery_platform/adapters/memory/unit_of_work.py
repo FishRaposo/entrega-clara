@@ -18,6 +18,7 @@ from delivery_platform.adapters.memory.repositories import (
     MemoryCoupons,
     MemoryCouriers,
     MemoryDeliveries,
+    MemoryDeliveryBatches,
     MemoryEventLog,
     MemoryIdempotency,
     MemoryIdentities,
@@ -37,6 +38,7 @@ from delivery_platform.application.ports import (
     CartRepository,
     CouponRepository,
     CourierRepository,
+    DeliveryBatchRepository,
     DeliveryRepository,
     EventLogRepository,
     IdempotencyRepository,
@@ -72,6 +74,7 @@ class MemoryUnitOfWork(UnitOfWork):
         self.payment_attempts: PaymentAttemptRepository
         self.couriers: CourierRepository
         self.deliveries: DeliveryRepository
+        self.batches: DeliveryBatchRepository
         self.route_plans: RoutePlanRepository
         self.tracking_events: TrackingEventRepository
         self.notifications: NotificationRepository
@@ -109,6 +112,7 @@ class MemoryUnitOfWork(UnitOfWork):
         self._store.payment_attempts = self._working.payment_attempts
         self._store.couriers = self._working.couriers
         self._store.deliveries = self._working.deliveries
+        self._store.batches = self._working.batches
         self._store.route_plans = self._working.route_plans
         self._store.tracking_events = self._working.tracking_events
         self._store.notifications = self._working.notifications
@@ -136,6 +140,7 @@ class MemoryUnitOfWork(UnitOfWork):
         self.payment_attempts = MemoryPaymentAttempts(store.payment_attempts)
         self.couriers = MemoryCouriers(store.couriers)
         self.deliveries = MemoryDeliveries(store.deliveries)
+        self.batches = MemoryDeliveryBatches(store.batches)
         self.route_plans = MemoryRoutePlans(store.route_plans)
         self.tracking_events = MemoryTrackingEvents(store.tracking_events)
         self.notifications = MemoryNotifications(store.notifications)
