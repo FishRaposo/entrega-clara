@@ -9,7 +9,7 @@ import {
   getActiveDelivery,
   getTracking,
   listDeliveryOffers,
-  postCourierLocation,
+  advanceRouteLocation,
   setCourierAvailability,
 } from "../lib/api-client";
 import type { Delivery, TrackingView } from "../lib/api-types";
@@ -81,15 +81,9 @@ export function CourierConsole() {
       setAvailable(result.status === "available");
     });
 
-  const nextSequence = (tracking?.positions.length ?? 0) + 1;
-
   const sendLocation = (delivery: Delivery) =>
     run(async () => {
-      if (!tracking?.route?.geometry) return;
-      const coords = tracking.route.geometry.coordinates;
-      const index = Math.min(nextSequence - 1, coords.length - 1);
-      const [longitude, latitude] = coords[index];
-      await postCourierLocation(ID, delivery.id, nextSequence, latitude, longitude);
+      await advanceRouteLocation(ID, delivery.id);
     });
 
   return (

@@ -77,6 +77,22 @@ def start_delivery(delivery_id: str, container: Container, ctx: Ctx) -> dict[str
     return {"delivery": serializers.delivery_view(delivery)}
 
 
+@router.post("/deliveries/{delivery_id}/route-advance")
+def advance_route(delivery_id: str, container: Container, ctx: Ctx) -> dict[str, Any]:
+    events = CourierCommands(container).advance_route_location(ctx, delivery_id)
+    return {
+        "events": [
+            {
+                "delivery_id": e.delivery_id,
+                "sequence": e.sequence,
+                "latitude": e.location.latitude,
+                "longitude": e.location.longitude,
+            }
+            for e in events
+        ]
+    }
+
+
 @router.post("/deliveries/{delivery_id}/location")
 def update_location(
     delivery_id: str, body: UpdateLocationRequest, container: Container, ctx: Ctx

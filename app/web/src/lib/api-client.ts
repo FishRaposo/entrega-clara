@@ -238,6 +238,16 @@ export function courierCommand(
   });
 }
 
+export function advanceRouteLocation(
+  identity: DemoIdentity,
+  deliveryId: string,
+): Promise<{ events: { delivery_id: string; sequence: number; latitude: number; longitude: number }[] }> {
+  return request(`/api/v1/courier/deliveries/${deliveryId}/route-advance`, {
+    method: "POST",
+    identity,
+  });
+}
+
 export function postCourierLocation(
   identity: DemoIdentity,
   deliveryId: string,

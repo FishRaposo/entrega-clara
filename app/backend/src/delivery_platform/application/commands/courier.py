@@ -26,9 +26,11 @@ from delivery_platform.domain.errors import (
     InvalidOrderTransition,
     NotFoundError,
     OwnershipForbiddenError,
+    RouteUnavailableError,
     StaleLocationError,
 )
 from delivery_platform.domain.events import EventType
+from delivery_platform.domain.geo import point_along_polyline
 from delivery_platform.domain.order_states import OrderState, transition_order
 
 if TYPE_CHECKING:
@@ -491,3 +493,81 @@ class CourierCommands:
         )
         uow.commit()
         return delivery
+
+    def advance_route_location(
+        self, ctx: CommandContext, delivery_id: str
+    ) -> list[TrackingEvent]:
+        """Simulated device GPS: next point along the planned route.
+
+        Position is interpolated along the route polyline at the fraction of
+        elapsed deterministic time over the route's estimated seconds — every
+        emitted point lies on a route segment. For a batch, the courier's
+        position is reported on every in-flight sibling delivery.
+        """
+        courier_id = self._courier_id(ctx)
+        with self._container.uow() as uow:
+            anchor = self._own_delivery(ctx, uow, courier_id, delivery_id)
+            if anchor.batch_id:
+                deliveries = [
+                    d
+                    for d in uow.deliveries.list_by_batch(anchor.batch_id)
+                    if d.status == "en_route"
+                ]
+                route = uow.route_plans.find_by_batch(anchor.batch_id)
+            else:
+                deliveries = [anchor] if anchor.status == "en_route" else []
+                route = uow.route_plans.find_by_delivery(anchor.id)
+            if not deliveries:
+                raise InvalidOrderTransition(
+                    "Posições só avançam durante a entrega."
+                )
+            if route is None or not route.geometry.get("coordinates"):
+                raise RouteUnavailableError()
+
+            started = next(
+                (
+                    e.occurred_at
+                    for e in uow.event_log.list_for_aggregate(anchor.id)
+                    if e.type == EventType.DELIVERY_EN_ROUTE
+                ),
+                None,
+            )
+            now = self._container.clock.now()
+            elapsed = (
+                max(0.0, (now - started).total_seconds()) if started else 0.0
+            )
+            fraction = elapsed / route.estimated_seconds if route.estimated_seconds > 0 else 1.0
+            point = point_along_polyline(route.geometry["coordinates"], fraction)
+
+            courier = uow.couriers.get(courier_id)
+            courier.location = point
+            uow.couriers.update(courier)
+            recorder = self._container.recorder(uow, ctx)
+            events: list[TrackingEvent] = []
+            for delivery in deliveries:
+                sequence = uow.tracking_events.next_sequence(delivery.id)
+                event = TrackingEvent(
+                    id=self._container.ids.new_id("trk"),
+                    delivery_id=delivery.id,
+                    courier_id=courier_id,
+                    sequence=sequence,
+                    location=point,
+                    occurred_at=now,
+                    scenario_id=delivery.scenario_id,
+                )
+                uow.tracking_events.add(event)
+                recorder.event(
+                    EventType.COURIER_LOCATION_UPDATED,
+                    aggregate_type="delivery",
+                    aggregate_id=delivery.id,
+                    payload={
+                        "order_id": delivery.order_id,
+                        "sequence": sequence,
+                        "latitude": point.latitude,
+                        "longitude": point.longitude,
+                        "simulated": True,
+                    },
+                )
+                events.append(event)
+            uow.commit()
+            return events
