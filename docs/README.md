@@ -17,6 +17,7 @@ The seed design and the user-approved M1 design under `docs/superpowers/specs/` 
 - [M1 API and event contract](architecture/api-and-events.md)
 - [Persistence and seeding guide](architecture/persistence-and-seeding.md)
 - [Routing contract](architecture/routing-contract.md)
+- [Solver selection guide](architecture/solver-selection.md) — which rung to use, with the measured evidence
 - [Repository layout](architecture/repository-layout.md)
 - [External dependencies](architecture/external-dependencies.md)
 
@@ -30,11 +31,13 @@ The seed design and the user-approved M1 design under `docs/superpowers/specs/` 
 - [ADR 0006: defer real providers behind ports](adr/0006-defer-real-providers-behind-ports.md)
 - [ADR 0007: multi-stop batching](adr/0007-multi-stop-batching.md)
 - [ADR 0008: real street graph and landmark-based acceleration](adr/0008-real-street-graph-and-landmarks.md)
+- [ADR 0009: city-scale graph and contraction hierarchies](adr/0009-city-scale-graph-and-contraction-hierarchies.md)
 
 ## Evidence
 
 - [Verification record](verification.md) — exact gate results, routing evidence highlights, and the honest scope notes.
 - [Routing benchmark](benchmarks/routing.md) — the solver ladder measured on the committed OSM extract (JSON and two SVG charts alongside).
+- [City-scale benchmark](benchmarks/routing-city.md) — the same ladder on 105k nodes, with CH preprocessing and break-even.
 - [Benchmarks directory](benchmarks/) — machine-readable results and the replayable search trace (`lab-trace.json`).
 - [Media](media/) — role screenshots and the ALT-vs-Dijkstra replay GIF.
 - [ADR 0008](adr/0008-real-street-graph-and-landmarks.md) — why a real graph and landmark acceleration, and why contraction hierarchies were rejected at this scale.

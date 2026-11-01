@@ -14,30 +14,40 @@ nothing but the Python standard library — no image or charting dependency anyw
 
 ## The measured ladder
 
-Two families, one harness, one graph — `docs/benchmarks/routing.md` regenerates all of this with
-`python scripts/bench/routing_benchmark.py`:
+One harness, two real graphs — `docs/benchmarks/routing-city.md` (104 991 nodes) and
+`docs/benchmarks/routing.md` (2 405 nodes) regenerate everything with
+`python scripts/bench/routing_benchmark.py --graph city|centro`:
 
-| Point-to-point (200 sampled pairs, time objective) | Median nodes expanded | Share of graph | Guarantee |
+| Point-to-point, city graph (200 sampled pairs, time objective) | Median nodes expanded | Share of graph | Median time |
 | --- | --- | --- | --- |
-| Dijkstra (oracle) | 1 350 | 56.1% | exact |
-| A* (straight line) | 815 | 33.9% | exact |
-| **A* + ALT landmarks** | **352** | **14.6%** | exact (~37 ms preprocessing) |
-| Bidirectional + ALT | 594 | 24.7% | exact |
-| Weighted A* (ε = 1.5) | 662 | 27.6% | ≤ ε × optimal (max 0.26% over) |
+| Dijkstra (oracle) | 53 885 | 51.3% | 122.8 ms |
+| A* (straight line) | 44 759 | 42.6% | 166.1 ms |
+| ALT landmarks (8) | 6 186 | 5.9% | 64.1 ms |
+| Bidirectional + ALT | 19 272 | 18.4% | 435.4 ms |
+| **Contraction hierarchy** | **85** | **0.1%** | **2.04 ms** |
+| Weighted A* (ε = 5) | 14 470 | 13.8% | 45.4 ms (max 13% over) |
 
-| Multi-stop tour on the same street costs | 7 stops | 9 stops | 13 stops |
+CH pays a one-time **2.2 s** build (164 517 shortcuts from 3-hop witness searches) and then
+**breaks even after 13 queries against A\* and 35 against ALT**. That break-even is the whole
+selection thesis: a dispatcher answering thousands of routes amortizes it instantly, a single route
+per process never does — see the [solver selection guide](docs/architecture/solver-selection.md).
+
+| Multi-stop tour on city street costs | 7 stops | 9 stops | 13 stops |
 | --- | --- | --- | --- |
 | Brute force (baseline) | 720 evals | 40 320 evals | infeasible |
-| **Held-Karp (exact, precedence-aware)** | **486 evals · 1 368 s** | **3 592 evals · 1 900 s** | **135 180 evals · 2 014 s** |
-| Nearest neighbor (fast guess) | 21 evals · +28% cost | 36 evals · +8% | 78 evals · +8% |
-| 2-opt | 36 evals | 92 evals | 144 evals |
+| **Held-Karp (exact, precedence-aware)** | **486 evals · 11 336 s** | **3 592 evals · 14 554 s** | **135 180 evals · 18 096 s** |
+| Nearest neighbor (fast guess) | 21 evals · +24% cost | 36 evals · +22% | 78 evals · +16% |
+| 2-opt | 51 evals | 148 evals | 210 evals |
 
-A 7-stop courier batch costs **~18 ms end to end** on the committed extract (matrix 17.4 ms + exact
-tour 0.2 ms, median of three runs — wall times vary with the machine, and the artifact records its
-own context), and the exact tour saves 18% of the driving time against nearest-neighbor on the same
-matrix — that is the number the courier console shows.
+Two honest readings of the same artifacts: the straight-line A\* expands 17% fewer nodes than
+Dijkstra yet takes 35% longer in wall time (the heuristic costs more than it saves on one-way
+streets), and pricing a 7-stop batch matrix at city scale costs **~1.7 s** (one-to-all Dijkstra per
+stop) — a real bound on dispatch that the guide names instead of hiding.
 
-![Trabalho versus qualidade](docs/benchmarks/routing-tradeoff.svg)
+The centro graph stays as the product and lab graph: 2 405 nodes, 0.7 MB, sub-millisecond routes and
+browser-renderable. Its numbers are in `docs/benchmarks/routing.md`.
+
+![Trabalho versus qualidade](docs/benchmarks/routing-city-tradeoff.svg)
 
 Why landmarks rather than a bigger straight line: central São Paulo is one-way-dominant (76% of the
 ways in the extract), so the straight-line bound is weak and the KPI that matters is whether the
@@ -62,7 +72,7 @@ operações.
 - **Arquitetura substituível**: portas de aplicação (UoW, pagamento, roteirização, identidade,
   eventos) isolam os adapters; PostgreSQL, MapLibre/MapTiler, provedores de pagamento e autenticação
   real são expansões documentadas, não requisitos.
-- **Qualidade verificável**: 216 testes de backend, 19 de frontend e 4 jornadas Playwright com
+- **Qualidade verificável**: 244 testes de backend, 19 de frontend e 4 jornadas Playwright com
   varreduras de acessibilidade — contagens exatas em [docs/verification.md](docs/verification.md).
 - **Brasil de verdade**: pt-BR, BRL em centavos, PIX, seed de São Paulo, cópia consciente de LGPD.
 

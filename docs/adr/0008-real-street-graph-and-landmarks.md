@@ -3,7 +3,9 @@
 Status: accepted. Implemented by `scripts/data/fetch_osm_graph.py`,
 `routing/landmarks.py`, `routing/informed.py` and the extended benchmark
 harness; the sweep in `docs/benchmarks/routing.{json,md}` is the measured
-evidence.
+evidence. The figures quoted below are the ones the decision was made on; the
+current numbers live in the benchmark artifacts, and the solver ladder grew a
+contraction hierarchy later ([ADR 0009](0009-city-scale-graph-and-contraction-hierarchies.md)).
 
 ## Context
 

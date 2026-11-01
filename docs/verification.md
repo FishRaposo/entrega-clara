@@ -5,7 +5,7 @@ Measured on the committed tree — rerun with `python scripts/check.py`
 
 | Gate | Command | Last result |
 | --- | --- | --- |
-| Backend tests | `python -m pytest tests -q` | 216 passed |
+| Backend tests | `python -m pytest tests -q` | 244 passed |
 | Ruff | `ruff check app/backend/src tests scripts` | clean |
 | Mypy (strict-ish) | `mypy app/backend/src` | clean, 68 files |
 | Web vitest | `npm test -- --run` (app/web) | 19 passed |
@@ -20,23 +20,29 @@ Measured on the committed tree — rerun with `python scripts/check.py`
 
 ## Routing evidence highlights (committed, reproducible)
 
-- The shipped graph is a **real OpenStreetMap extract** of central São Paulo
-  (2,405 nodes, 3,431 directed edges, © OpenStreetMap contributors, ODbL 1.0),
-  filtered to its largest strongly connected component — proved by forward and
-  backward BFS over every node in the test suite.
-- Point-to-point ladder, 200 sampled pairs, time objective: Dijkstra 1,350
-  median expansions (56.1% of the graph), A* 815 (33.9%), **ALT 352 (14.6%)**,
-  bidirectional 594 (24.7%), weighted ε=1.5 662 (27.6% with a 0.26% worst-case
-  overshoot). ALT preprocessing costs about 37 ms once per graph and objective
-  and is reported separately from query time. See `docs/benchmarks/routing.md`.
+- Two real OpenStreetMap artifacts share the same build rules: **centro**
+  (2,405 nodes / 3,431 edges, 0.7 MB) for the product and lab, and **city**
+  (104,991 nodes / 177,114 edges, 2.1 MB gzipped, compact-v1) for benchmarks and
+  dispatch scale. Both are filtered to the largest strongly connected component,
+  proved by forward and backward BFS over every node in the test suite.
+- **City-scale ladder, 200 sampled pairs, time objective:** Dijkstra 53,885
+  median expansions (51.3% of the graph), A\* 44,759 (42.6%), ALT 6,186 (5.9%),
+  bidirectional 19,272 (18.4%), **CH 85 (0.1%)**. Weighted ε=5 expands 13.8%
+  with a 13% worst-case overshoot. See `docs/benchmarks/routing-city.md`.
+- **Contraction hierarchy:** 2.2 s preprocessing, 164,517 shortcuts, 2.04 ms per
+  query. Break-even against A\* is 13 queries and against ALT 35 — the measured
+  reason the product still ships plain A\* and a dispatcher would not.
+- **Centro ladder** (the product graph): Dijkstra 1,098 (45.7%), A\* 671
+  (27.9%), ALT 378 (15.7%), bidirectional 706 (29.4%), weighted ε=1.5 544
+  (22.6% with a 0.16% worst-case overshoot). ALT preprocessing ≈44 ms.
 - Every exact solver agrees with the Dijkstra oracle on cost — asserted on 150
-  sampled pairs of the synthetic fixture and 40 pairs of the real streets, for
-  both objectives.
+  sampled pairs of the synthetic fixture, 40 pairs of the centro extract and 30
+  pairs of the city graph, for both objectives where the graph allows.
 - Multi-stop: Held-Karp matches brute force at ≤9 stops; at 13 stops it stays
-  under ~40 ms where brute force is infeasible. On graph-derived matrices the
-  exact tour beats nearest-neighbor by 18% on a 7-stop batch, which costs about
-  17.6 ms end to end (matrix 17.4 ms + exact tour 0.2 ms, median of three runs;
-  wall times vary by machine, and `routing.md` records the machine context).
+  under ~55 ms where brute force is infeasible. On city-derived matrices the
+  exact tour beats nearest-neighbor by 24% on a 7-stop batch.
+- Batch planning at city scale costs ~1.7 s (one-to-all Dijkstra per stop); the
+  centro demo batch costs ~18 ms. The difference is reported, not smoothed over.
 - The replay of one delivery search (`docs/benchmarks/lab-trace.json`, rendered
   to `docs/media/lab-alt-vs-dijkstra.gif`) shows ALT finishing in 70 expansions
   where Dijkstra needs 167.
