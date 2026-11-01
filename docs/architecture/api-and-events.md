@@ -190,8 +190,9 @@ solver metadata.
 | Method | Path | Effect |
 | --- | --- | --- |
 | `GET` | `/lab/graph?graph=default\|osm\|synthetic` | Compact graph document: `ids`, `nodes` (`[lat, lon]` per node), `edges` (`[fromIndex, toIndex, speed_kmh]`), graph metadata and the ODbL attribution. Gzip-encoded |
-| `POST` | `/lab/path` | `{origin, destination, solver, objective, trace, graph, epsilon?, landmarks?}`; solvers `astar`, `dijkstra`, `alt`, `bidirectional`, `weighted-astar` |
+| `POST` | `/lab/path` | `{origin, destination, solver, objective, trace, graph, epsilon?, landmarks?, departure_hour?}`; solvers `astar`, `dijkstra`, `alt`, `bidirectional`, `ch`, `td-astar`, `td-dijkstra`, `weighted-astar`. The `td-*` solvers require `departure_hour` (local hour, 0–23.99) and the committed traffic profile |
 | `POST` | `/lab/tsp` | 3–10 stops, solvers `held-karp`, `nearest-neighbor`, `two-opt`, an objective and an origin index |
+| `GET` | `/lab/traffic?origin&destination&graph` | The same trip priced at every local hour under the traffic profile, plus the free-flow cost, peak and quietest hour |
 | `GET` | `/lab/benchmarks` | The committed `docs/benchmarks/routing.json` artifact |
 
 `trace=true` adds `expanded_order` plus the parallel `frontier_sizes` (priority-queue size after each
@@ -200,9 +201,21 @@ the search frame by frame. Results carry `nodes_expanded`, `computation_time_ns`
 landmark-based solvers, `preprocessing_time_ns` — paid once per graph and objective and reported
 separately from query time.
 
-Exact solvers (`dijkstra`, `astar`, `alt`, `bidirectional`) must agree on optimal cost; the client
-labels `weighted-astar` as inexact because it may return up to ε × the optimum. No factorial solver is
-exposed over HTTP: the lab bounds stops at 10 and the batch dispatch stays ≤ 3 deliveries.
+Exact solvers (`dijkstra`, `astar`, `alt`, `bidirectional`, `ch`, the `td-*` pair under the profile)
+must agree on optimal cost; the client labels `weighted-astar` as inexact because it may return up to
+ε × the optimum. No factorial solver is exposed over HTTP: the lab bounds stops at 10 and the batch
+dispatch stays ≤ 3 deliveries (4 after a dynamic insertion).
+
+## Process metrics
+
+| Method | Path | Authorization | Payload |
+| --- | --- | --- | --- |
+| `GET` | `/metrics` | none (scrape endpoint) | Prometheus text exposition: HTTP requests/latency by route template, routing queries/latency by kind and solver, routing nodes expanded, events published with lag, active SSE gauge |
+| `GET` | `/api/v1/operations/metrics` | operations identity | The same series as JSON plus the product counters (orders by state, deliveries by status, payments, routes) that the operations panel renders |
+
+Counters are process-local and reset on restart; there is no aggregation across workers. The
+registry is `core/metrics.py` and instruments the HTTP middleware, the route planner, the lab, the
+event hub and the SSE stream.
 
 ## Response conventions
 

@@ -15,8 +15,28 @@ The earlier seed document described a smaller “Milestone 1 — Customer orderi
 > ε-A\* on a **real OpenStreetMap extract**, a multi-stop courier batch in the product, an animated
 > algorithm lab, and committed benchmark charts. The M1.5 row's "versioned synthetic graph" is now
 > the deterministic test fixture and offline fallback; the product and lab read the OSM extract
-> ([ADR 0008](../adr/0008-real-street-graph-and-landmarks.md)). Still deferred inside M3: capacity,
-> time windows, dynamic re-routing, and provider parity. M2, M4, M5 and M6 remain ahead.
+> ([ADR 0008](../adr/0008-real-street-graph-and-landmarks.md)). At that point capacity, time windows,
+> dynamic re-routing and provider parity were still deferred; the update below delivers the first
+> three. M2, M4, M5 and M6 remain ahead.
+
+> **Status update (2026-11-01, later the same day).** Four more items moved from "planned" to
+> delivered, all with committed evidence:
+>
+> - **Scale (M3):** a stdlib OSM PBF reader builds a 105k-node city graph and contraction
+>   hierarchies answer in 85 expansions / 1.45 ms with a published break-even against A\* and ALT
+>   ([ADR 0009](../adr/0009-city-scale-graph-and-contraction-hierarchies.md)).
+> - **Problem depth (M3):** time-dependent routing from a FIFO-validated profile (ETAs and routes
+>   change by hour, [ADR 0010](../adr/0010-time-dependent-routing.md)) and a capacitated VRP with
+>   promised windows and dynamic re-insertion ([ADR 0011](../adr/0011-capacity-windows-and-dynamic-replanning.md)).
+> - **Durable operations (M5, partial):** the PostgreSQL adapter, transactional outbox, outbox
+>   worker, `/metrics` and the operations panel are implemented and verified against a real
+>   PostgreSQL 16.9 ([ADR 0012](../adr/0012-postgres-adapter-outbox-and-metrics.md)).
+> - **Portfolio release (M6, partial):** a self-contained static lab, a recorded tour, deploy
+>   artifacts and a solver-selection guide; the actual deployment remains an operator action.
+>
+> Still open from the original plan: real identity and payments (M2/M4), a normalized relational
+> schema and multi-writer persistence, and production operations (backups, readiness probe,
+> multi-process metrics).
 
 ## North-star product loop
 
@@ -69,9 +89,15 @@ Reviews and ratings are intentionally not part of M1. They begin in M2.
 | M1.6 Events and tracking | Event envelope, audit/notification projections, SSE snapshot/stream, deterministic simulator | Reconnect restores snapshot; timeline remains useful without provider/network |
 | M1.7 Operations and hardening | Read-only operations view, errors, accessibility, E2E, docs, seed safety, CI | Full happy path plus negative cases passes in both persistence modes |
 
-### PostgreSQL re-entry (deferred adapter)
+### PostgreSQL adapter (delivered, snapshot shape)
 
-M1 shipped memory-only: the copy-on-write `UnitOfWork` and repository ports are the persistence contract, and `PERSISTENCE_MODE=postgres` fails fast with an explicit message until a real adapter lands. Re-entry prerequisites: Docker or local PostgreSQL, `sqlalchemy` + `alembic` + `psycopg`, initial migrations for the entity model, optimistic-version enforcement, and the same repository contract tests running against both adapters. Until then, the two definition-of-done lines below referencing "both persistence modes" are honestly reported as deferred rather than met.
+The adapter exists: `PERSISTENCE_MODE=postgres` + `DATABASE_URL` + the optional
+`app/backend[postgres]` extra loads a durable snapshot, commits with an optimistic version guard and
+writes a transactional outbox in the same transaction. It reuses the memory repositories, so the
+contract tests are shared rather than duplicated. What it does **not** do is a normalized schema,
+Alembic migrations, per-aggregate constraints or concurrent writers — that is the recorded next step
+in [ADR 0012](../adr/0012-postgres-adapter-outbox-and-metrics.md), and the definition-of-done line
+below is now met for the adapter contract but not for a relational schema.
 
 ### M1 definition of done
 

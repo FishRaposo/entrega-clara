@@ -43,10 +43,12 @@ The seed design and the user-approved M1 design under `docs/superpowers/specs/` 
 
 - [Verification record](verification.md) — exact gate results, routing evidence highlights, and the honest scope notes.
 - [Routing benchmark](benchmarks/routing.md) — the solver ladder measured on the committed OSM extract (JSON and two SVG charts alongside).
-- [City-scale benchmark](benchmarks/routing-city.md) — the same ladder on 105k nodes, with CH preprocessing and break-even.
+- [City-scale benchmark](benchmarks/routing-city.md) — the same ladder on 105k nodes, with CH preprocessing, peak memory and break-even.
+- [Static lab](../site/index.html) — self-contained replay of the committed traces (open it directly; no server or network).
+- [Recorded tour](../docs/media/demo-tour.webm) — 35-second walkthrough of the demo, console, tracking and lab.
 - [Benchmarks directory](benchmarks/) — machine-readable results and the replayable search trace (`lab-trace.json`).
-- [Media](media/) — role screenshots and the ALT-vs-Dijkstra replay GIF.
-- [ADR 0008](adr/0008-real-street-graph-and-landmarks.md) — why a real graph and landmark acceleration, and why contraction hierarchies were rejected at this scale.
+- [Media](media/) — role screenshots, the ALT-vs-Dijkstra replay GIF and the static-lab poster.
+- [ADR 0008](adr/0008-real-street-graph-and-landmarks.md) — why a real graph and landmark acceleration; ADR 0009 later added contraction hierarchies at city scale.
 
 ## Source materials
 

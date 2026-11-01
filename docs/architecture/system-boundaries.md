@@ -9,12 +9,12 @@ Entrega Clara is a modular monolith with explicit interfaces. Application source
 | Domain | Order state transitions, business rules, errors, and provider-neutral contracts | FastAPI, browser components, or vendor SDKs |
 | Demo and simulation | Seed loading, deterministic clock/event progression, reset, replay, and simulated updates | Wall-clock-dependent outcomes, live GPS, or external services |
 | Routing | Graph inputs, solver contracts, route results, and benchmark inputs | Map-rendering providers or UI concerns |
-| Data | PostgreSQL-oriented persistence boundary and versioned seed/scenario data | Raw card data, secrets, or production customer records |
+| Data | Two persistence adapters behind the same ports: in-memory (default) and an optional PostgreSQL snapshot + outbox, plus versioned seed/scenario data | Raw card data, secrets, or production customer records |
 | Provider adapters | Future payment, map, notification, realtime, and storage integrations | Domain-level dependency on a specific vendor SDK |
 
 ## Runtime boundary
 
-Docker Compose provides three local services: `db`, `api`, and `web`. `api` runs the FastAPI package from the root Python image and reads the versioned `data/` scenario files. `web` runs the Node 22 package in `app/web`. The Postgres service exists as the local persistence boundary; current demo routes are deterministic and do not require a live provider integration.
+Docker Compose provides four local services: `db`, `api`, `worker`, and `web`. `api` runs the FastAPI package from the root Python image and reads the versioned `data/` files; `worker` drains the PostgreSQL outbox; `web` runs the Node 22 package in `app/web`. The database service is optional infrastructure: the default memory mode does not connect to it, and `PERSISTENCE_MODE=postgres` selects the adapter described in the [persistence guide](persistence-and-seeding.md).
 
 Configuration values are supplied at runtime, not baked into images. The root Python image copies only `app/backend` and `data`, so it excludes `.env` files and other secrets. The fixed Compose database credentials are local demo values, not deployable credentials.
 

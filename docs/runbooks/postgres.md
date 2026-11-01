@@ -49,9 +49,9 @@ python scripts/worker.py --once          # drain once (useful in tests/CI)
 python scripts/worker.py --interval 5    # keep draining
 ```
 
-It publishes pending rows, marks them delivered and logs the event ids. The API
-already publishes in-process after commit; the worker is the recovery path for
-the commit → publish window.
+It drains pending rows: logs each event id, calls the optional publisher, and marks the row
+delivered. The API already publishes in-process after commit; the worker is the recovery path for
+the commit → publish window, and `drain_once(..., publish=...)` is where a real subscriber attaches.
 
 ## Metrics
 

@@ -1,200 +1,168 @@
 # Persistence and seeding guide
 
-**Status:** Planned M1 implementation guide
+**Status:** Implemented — memory is the default, PostgreSQL is an optional adapter
 **Product:** Entrega Clara
-**Decision:** [ADR 0003: hybrid persistence](../adr/0003-hybrid-persistence.md)
+**Decisions:** [ADR 0003: hybrid persistence](../adr/0003-hybrid-persistence.md),
+[ADR 0012: PostgreSQL adapter, outbox and metrics](../adr/0012-postgres-adapter-outbox-and-metrics.md)
+**Runbook:** [PostgreSQL, outbox and metrics](../runbooks/postgres.md)
 **Related:** [provider boundaries](provider-and-integration-boundaries.md), [M1 runbook](../runbooks/milestone-1-development.md)
 
-This guide defines how the application should persist dynamic product state while preserving the safe deterministic demo. It is deliberately separate from the domain specification: the domain says what the records mean; this guide says how the memory and PostgreSQL adapters should behave.
+This guide describes how the application persists dynamic product state today. The domain says what
+the records mean; this page says how the two adapters behave, what is verified, and what is
+deliberately not built yet.
 
 ## Persistence modes
 
 | Mode | Startup setting | Guarantees | Does not guarantee |
 | --- | --- | --- | --- |
-| Memory | `PERSISTENCE_MODE=memory` | Fast isolated commands, reset/replay, deterministic tests | Data survives process restart |
-| PostgreSQL | `PERSISTENCE_MODE=postgres` | Durable rows, relational constraints, restart persistence | Production backup/uptime unless separately operated |
+| Memory | `PERSISTENCE_MODE=memory` (default) | Fast isolated commands, copy-on-write rollback, reset/replay, deterministic tests | Data survives a process restart |
+| PostgreSQL | `PERSISTENCE_MODE=postgres` + `DATABASE_URL` | Durable snapshot, optimistic version check, transactional outbox, restart persistence | Production backup/uptime; multiple writers |
 
-There is one active adapter per process. No dual writes, replication job, or silent fallback from PostgreSQL to memory is allowed. If PostgreSQL mode is selected and unavailable, the API fails clearly rather than presenting a different data store.
+There is one active adapter per process. No dual writes or silent fallback: with
+`PERSISTENCE_MODE=postgres` and an unusable driver, URL or server, the application fails with a
+precise message instead of quietly using memory.
 
-## Repository and unit-of-work contract
+## What a unit of work does
 
-The application depends on focused repository ports and a unit-of-work port for:
+Every state-changing command goes through the same port (`application/ports.py`):
 
-- identities and market configuration;
-- restaurants, menu categories, and menu items;
-- addresses;
-- carts and cart lines;
-- coupons;
-- orders and immutable order-item snapshots;
-- payment attempts;
-- couriers and deliveries;
-- route plans and stops;
-- tracking events;
-- notifications;
-- audit events;
-- committed domain/event log records;
-- scenario ownership/reset metadata.
+1. loads the aggregates it needs;
+2. validates authorization, version and domain state;
+3. mutates the working copy;
+4. appends audit/notification/tracking records and event-log entries;
+5. commits atomically;
+6. publishes events only after the commit returns.
 
-Each state-changing command:
+The application layer does not know which adapter is active.
 
-1. loads required aggregates;
-2. validates authorization, current version, and domain state;
-3. applies changes in memory;
-4. appends audit/notification/event records;
-5. commits all changes atomically;
-6. publishes events only after commit.
+**Memory adapter.** Entering a unit of work deep-copies the store; commits swap the copy back;
+raising (or `rollback`) discards it. Events are queued and published post-commit to the in-process
+hub.
 
-The application layer must not know whether the unit of work wraps a copy-on-write memory snapshot or a SQLAlchemy session.
+**PostgreSQL adapter.** Entering loads the stored snapshot into the same `MemoryStore` collections
+and binds the *same* repository implementations (so both adapters share one implementation of every
+repository contract). Commit writes the snapshot back in one transaction:
 
-## Relational responsibilities
+```text
+UPDATE store_snapshots
+   SET version = :loaded + 1, payload = :snapshot
+ WHERE id = 'primary' AND version = :loaded
+   -- row count 0 → VersionConflictError, nothing written
+ + INSERT INTO outbox (event_id, …, published_at = NULL) for every committed event
+COMMIT
+```
 
-The first migration set should cover these table families. Names are implementation details; responsibilities are not.
+Then the in-process publisher runs and the outbox rows are marked delivered. A crash in that window
+leaves rows unpublished; `scripts/worker.py` drains them by logging and marking them (or forwarding
+them through the publish hook). Memory mode has no cross-request locking: concurrent writers can
+overwrite each other, which is acceptable for the single-process demo and is why PostgreSQL mode adds
+the version guard.
 
-| Family | Records |
+## Storage shape (PostgreSQL)
+
+| Table | Purpose |
 | --- | --- |
-| Identity/market | demo identities, roles/scopes, market configs, addresses |
-| Catalog | restaurants, operating status, categories, menu items, availability |
-| Cart/promotion | carts, cart lines, coupons, applied coupons |
-| Order/payment | orders, order items, payment attempts |
-| Delivery | couriers, availability, deliveries, route plans, route stops |
-| Tracking | tracking events, current location projection |
-| Communication | notifications, read state |
-| Governance | audit events, domain events/event log |
-| Demo | scenario instance and scenario-owned record metadata |
+| `store_snapshots` | one row (`id = 'primary'`) with the whole store as JSONB plus its `version` |
+| `outbox` | one row per committed event, nullable `published_at` |
 
-### Structural rules
+The schema is created by idempotent DDL in `adapters/postgres/store.py` on startup. There is no
+Alembic migration tree yet: the snapshot document is addressed by `version`, so a schema change means
+a new adapter version, not a column migration.
 
-- IDs are opaque and stable; fixtures may use deterministic IDs.
-- Money is integer minor units plus explicit currency.
-- Timestamps are UTC.
-- Quantities, amounts, and sequence numbers have nonnegative checks.
-- Foreign keys are explicit; deletion behavior is reviewed per table.
-- Audit/payment records are not casually cascade-deleted.
-- Order items snapshot name, unit price, observation/modifier data, and quantity at checkout.
-- A delivery belongs to one order; M1 assigns at most one courier.
-- A courier has at most one active M1 delivery, enforced by domain logic and a database constraint/index where practical.
-- Order event lookup, customer history, restaurant queue, courier active delivery, and tracking sequence have indexes.
-- Mutable aggregates have a version for optimistic conflict detection.
+**Why a snapshot instead of tables per aggregate.** The repository ports are aggregate-shaped and
+the memory adapter already implements all of them; persisting the snapshot keeps one implementation
+of the contract, which is what makes "both adapters pass the same tests" meaningful. The cost is
+visible and recorded: there are no per-aggregate foreign keys or indexes, and concurrent writers get
+a `version_conflict` rather than row-level contention. Row-per-aggregate tables plus Alembic are the
+next step once more than one process writes (ADR 0012).
 
-SQLAlchemy sessions/transactions and PostgreSQL constraints/indexes should be implemented from the official [SQLAlchemy session](https://docs.sqlalchemy.org/en/latest/orm/session_basics.html), [SQLAlchemy transaction](https://docs.sqlalchemy.org/en/latest/orm/session_transaction.html), [PostgreSQL constraint](https://www.postgresql.org/docs/current/ddl-constraints.html), and [PostgreSQL index](https://www.postgresql.org/docs/current/sql-createindex.html) guidance.
+## Seeding and boot
 
-## Migration workflow
-
-1. Change the domain/storage model intentionally.
-2. Create one reviewed Alembic revision.
-3. Test a fresh database upgrade.
-4. Test an upgrade from the previous migration head.
-5. Inspect autogenerated SQL; do not assume it is complete.
-6. Add/adjust repository contract tests.
-7. Load safe seed data separately.
-8. Document rollback or forward-fix behavior for destructive changes.
-
-Alembic revisions are source-controlled application artifacts. Seed loading is not a migration and must not be hidden inside an irreversible schema revision. See [Alembic](https://alembic.sqlalchemy.org/) and [autogenerate guidance](https://alembic.sqlalchemy.org/en/latest/autogenerate.html).
-
-## Seed layers
-
-### Reference seed
-
-Idempotent, versioned baseline data:
-
-- Brazil-first market configuration;
-- fictional restaurants and menus;
-- seeded demo identities and scopes;
-- synthetic addresses/generalized coordinates;
-- valid/invalid coupon cases;
-- available/unavailable menu items;
-- courier profiles;
-- graph and route fixtures.
-
-### Scenario seed
-
-The `lunch-rush` scenario owns its order, delivery, route, tracking, notification, audit, and clock state. It must contain an explicit scenario ID and ownership marker so reset can target it without truncating dynamic data.
-
-### Dynamic records
-
-Orders created through customer checkout are not scenario records by default. They persist for the process lifetime in memory and survive a scenario reset in PostgreSQL. A test can opt into an isolated scenario namespace if it needs cleanup.
+- Reference data comes from `data/seed/brazil.json`, loaded idempotently by
+  `adapters/seed/loader.py`.
+- Memory mode seeds the process store and serves.
+- PostgreSQL mode loads the persisted snapshot, seeds reference data on top of it, and persists the
+  result once at boot (`create_app`); dynamic orders already in the database are preserved.
+- The `lunch-rush` scenario owns its order, delivery, route, tracking, notification, audit and clock
+  state, identified by `scenario_id`, so reset never truncates unrelated dynamic orders.
+- Orders created through customer checkout are dynamic records, not scenario records.
 
 ## Reset and replay contract
 
 `ResetScenario("lunch-rush")` must:
 
 - restore the exact initial scenario snapshot;
-- restore deterministic clock and event sequence;
+- restore the deterministic clock and event sequence;
 - remove/recreate only scenario-owned dynamic records;
 - preserve unrelated customer orders and catalog data;
 - publish a reset event only after the transaction commits;
 - produce the same subsequent state for the same sequence of commands.
 
-Replay tests compare meaningful state, not database-generated timestamps or implementation-specific row order. Any non-deterministic ID must be excluded from the equality projection or replaced with a fixture generator.
+Replay tests compare meaningful state, not generated timestamps or row order.
 
 ## Memory adapter semantics
 
-The memory adapter must support:
-
-- isolated test instances;
-- copy-on-write snapshot or equivalent rollback on command failure;
-- stable fixture IDs;
-- deterministic clock and ID generator injection;
+- isolated instances per test;
+- copy-on-write snapshot with rollback on failure;
+- stable fixture IDs, deterministic clock and ID generator injection;
 - scenario-scoped reset;
-- post-commit in-process event publication;
-- explicit process-restart data loss in documentation.
-
-It must not silently skip constraints that PostgreSQL enforces. If an invariant is domain-owned, both implementations must invoke the same rule.
+- post-commit in-process publication;
+- process-restart data loss is documented, not hidden.
 
 ## PostgreSQL runtime semantics
 
-Before serving requests in Postgres mode:
+Before serving requests in PostgreSQL mode:
 
-- database connectivity is validated;
-- schema is at the expected migration head;
-- seed loading is explicit and idempotent;
-- health and readiness report database state separately from process liveness;
-- the Compose database is ready through a healthcheck, not just process startup order.
+- connectivity is validated and the DDL applied;
+- the snapshot is loaded and reference data seeded;
+- the outbox backlog is visible (`scripts/check_postgres.py` prints pending rows);
+- health is **process liveness only** (`GET /api/v1/health`); a database readiness probe is not
+  implemented yet and is listed below.
 
-Docker Compose documents that `depends_on` alone does not wait for a database to be ready; use a healthcheck and a healthy dependency condition. See [Compose startup order](https://docs.docker.com/compose/how-tos/startup-order/).
+## Outbox
 
-## Outbox (implemented for PostgreSQL mode)
-
-Memory mode still publishes through the in-process hub after commit. PostgreSQL mode writes the
-snapshot and one `outbox` row per event in the same transaction, publishes after commit, and marks
-rows delivered only after the publisher accepted them; `scripts/worker.py` drains anything left
-behind by a crash, at-least-once. See [ADR 0012](../adr/0012-postgres-adapter-outbox-and-metrics.md).
+Memory mode publishes through the in-process hub after commit. PostgreSQL mode writes the snapshot
+and one outbox row per event in the same transaction, publishes after commit, and marks rows
+delivered only after the publisher accepted them; the worker drains anything left by a crash.
 
 ```text
-aggregate + audit + notification intent + outbox row → commit
+aggregate change + audit/notification + outbox row → commit
 post-commit publish → mark delivered; worker drains unmarked rows
 ```
 
-Outbox consumers must be idempotent. The outbox needs event ID, type, aggregate, payload version, attempt count, next-attempt time, and failure metadata. Redis Streams or Celery are candidate later tools, not M1 requirements.
+Consumers must be idempotent. The current row carries event id, type, aggregate, payload and
+timestamp; retry counters, attempt scheduling and dead-lettering are not built.
 
-## Backup and recovery path
+## Persistence test matrix (what the suite actually runs)
 
-M1 documentation provides seed reset/replay, not a production backup claim. Before a hosted persistent environment:
+`tests/repo/test_persistence_contract.py` runs each case against memory **and** PostgreSQL:
 
-- choose managed/database backup policy;
+| Case | Verified |
+| --- | --- |
+| Committed write visible to a later unit of work | yes, both adapters |
+| Rollback discards everything | yes, both adapters |
+| Events published only after commit | yes (memory hub) |
+| Event log survives a restart | yes, both adapters |
+| Optimistic version conflict | PostgreSQL only (memory is single-process copy-on-write) |
+| Outbox recovers a commit whose publish never ran | PostgreSQL only |
+| Fresh schema creation | PostgreSQL only (idempotent DDL) |
+
+Not covered yet: per-aggregate relational constraints, Alembic upgrade paths, scenario-reset
+isolation at the SQL level, and multi-process writers. Where `DATABASE_URL` is absent the PostgreSQL
+cases skip with an explicit message and `docs/verification.md` records them as unverified in that
+environment rather than passed.
+
+## Backup and recovery
+
+Not implemented. The demo documents seed reset/replay and snapshot export/import; before running a
+persistent hosted environment:
+
+- choose a managed/database backup policy;
 - define retention and encryption;
 - test a restore into an isolated environment;
-- verify migrations against the restored version;
-- document data-loss expectations and rollback;
-- restrict backup access and audit it;
+- verify the adapter against the restored version;
+- document data-loss expectations;
 - never place backup exports in the public repository.
-
-## Persistence test matrix
-
-| Test | Memory | PostgreSQL |
-| --- | --- | --- |
-| Cart/order totals | Required | Required |
-| Coupon rules | Required | Required |
-| Checkout idempotency | Required | Required |
-| Transaction rollback | Required | Required |
-| Order/item snapshot | Required | Required |
-| Ownership filtering | Required | Required |
-| Optimistic version conflict | Required | Required |
-| Audit/notification/event consistency | Required | Required |
-| Scenario reset isolation | Required | Required |
-| Process restart persistence | Not applicable/expected loss | Required |
-| Fresh migration | Not applicable | Required |
-| Upgrade migration | Not applicable | Required |
 
 ## Public-safety rules
 

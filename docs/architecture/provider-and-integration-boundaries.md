@@ -25,16 +25,16 @@ The domain depends on ports and stable internal data types. Adapters depend on p
 | Port | M1 implementation | Future implementations | Source of truth |
 | --- | --- | --- | --- |
 | `IdentityResolver` | Seeded demo identity | OIDC session, service account, support impersonation with audit | Auth/session boundary |
-| `Repository` / `UnitOfWork` | In-memory | SQLAlchemy/PostgreSQL, read model, archival store | Application transaction |
+| `Repository` / `UnitOfWork` | In-memory (default) and PostgreSQL snapshot adapter | Row-per-aggregate schema, read model, archival store | Application transaction |
 | `PaymentGateway` | Deterministic simulator | Mercado Pago, Stripe, other regional providers | Verified server/provider status |
-| `RouteSolver` | Local A* over versioned graph | Dijkstra, exact/heuristic solvers, road-router adapter | Solver result + graph version |
+| `RouteSolver` | A\* over the committed graph, plus ALT/CH/time-dependent rungs in the lab and benchmark | Road-router adapter (OSRM) | Solver result + graph version |
 | `MapRenderer` | Fake/static fallback in tests | MapLibre GL + MapTiler or another tile provider | Frontend visualization only |
-| `EventPublisher` | In-process post-commit hub | Transactional outbox, Redis Streams, managed broker | Committed domain event |
+| `EventPublisher` | In-process post-commit hub; PostgreSQL mode also writes a transactional outbox | Redis Streams, managed broker | Committed domain event |
 | `NotificationSender` | In-app notification record | Email, push, SMS, chat provider | Notification intent + delivery status |
 | `Clock` | Seeded deterministic clock | System clock, test clock, scenario clock | Command/application context |
 | `IdGenerator` | Stable fixture or local generator | UUID/ULID service, database IDs | Aggregate/event identity policy |
 | `Geocoder` | Seeded addresses only | Provider adapter or self-hosted service | User-confirmed address record |
-| `Metrics/Tracing` | Correlation IDs and counters | OpenTelemetry exporter/collector | Observability pipeline |
+| `Metrics/Tracing` | Correlation IDs and the in-process `/metrics` registry | OpenTelemetry exporter/collector | Observability pipeline |
 
 ## Application boundary
 

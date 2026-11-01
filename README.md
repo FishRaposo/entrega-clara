@@ -71,10 +71,11 @@ operações.
   validade/mínimo, uma entrega (ou lote) ativa por entregador, GPS monotônico, autorização por
   identidade resolvida no servidor.
 - **Arquitetura substituível**: portas de aplicação (UoW, pagamento, roteirização, identidade,
-  eventos) isolam os adapters; PostgreSQL, MapLibre/MapTiler, provedores de pagamento e autenticação
-  real são expansões documentadas, não requisitos.
-- **Qualidade verificável**: 244 testes de backend, 19 de frontend e 4 jornadas Playwright com
-  varreduras de acessibilidade — contagens exatas em [docs/verification.md](docs/verification.md).
+  eventos) isolam os adapters; PostgreSQL é opcional e implementado, e MapLibre/MapTiler, provedores
+  de pagamento e autenticação real seguem como expansões documentadas — nunca requisitos.
+- **Qualidade verificável**: 290 testes de backend (295 com o contrato PostgreSQL ativo), 19 de
+  frontend e 5 jornadas Playwright com varreduras de acessibilidade — contagens exatas em
+  [docs/verification.md](docs/verification.md).
 - **Brasil de verdade**: pt-BR, BRL em centavos, PIX, seed de São Paulo, cópia consciente de LGPD.
 
 ## Origem / Origin
@@ -140,13 +141,14 @@ the active market time zone.
 
 | Path | Purpose |
 | --- | --- |
-| `app/backend/` | FastAPI surface, domain entities/state machine, application commands, memory adapters, routing solvers |
+| `app/backend/` | FastAPI surface, domain entities/state machine, application commands, memory and optional PostgreSQL adapters, routing solvers |
 | `app/web/` | pt-BR role surfaces (cliente, restaurante, entregador, operações), canvas algorithm lab, SSE client, deterministic map |
 | `data/seed/` | Deterministic Brazil reference seed (synthetic, no real personal data) |
-| `data/graph/` | Street graphs: `sao-paulo-centro-osm.json` (real OSM extract, product and lab) and `sao-paulo-centro.json` (synthetic fixture and offline fallback) |
+| `data/graph/` | Street graphs (`sao-paulo-centro-osm.json` for the product and lab, `sao-paulo-city.json.gz` at city scale, `sao-paulo-centro.json` as the synthetic fixture) and the committed traffic profile |
 | `data/scenarios/` | Command-script demo scenarios replayed through real handlers |
 | `docs/` | Architecture, ADRs, requirements traceability, runbooks, benchmarks, and media |
-| `scripts/` | Development, demo, validation, benchmark, media, and quality automation |
+| `site/` | Generated self-contained static lab (GitHub Pages artifact, rebuilt by `scripts/media/export_static_lab.py`) |
+| `scripts/` | Development, demo, validation, benchmark, media, worker, and quality automation |
 | `tests/` | Backend, frontend, repository, and e2e test suites |
 
 All application source belongs under `app/`.
@@ -160,7 +162,8 @@ guided scenario at `/demo`. Each surface sends a fixed `X-Demo-Identity` header 
 
 ## Local setup
 
-Requires only Python 3.11+ and Node 22+ — no Docker, database, `make`, or provider accounts.
+Requires only Python 3.11+ and Node 22+ for the default memory mode — no Docker, database, `make`,
+or provider accounts.
 
 1. Copy `.env.example` to `.env` (optional; safe defaults, no credentials needed).
 2. Install dependencies:
@@ -232,6 +235,10 @@ remains a non-production demo platform: follow the
 [public demo release runbook](docs/runbooks/public-demo-release.md) to reproduce local validation,
 and record any Docker-unavailable check as unverified rather than passed.
 
+Deploy artifacts are committed but nothing is deployed by CI: `Dockerfile` + `fly.toml` (API),
+`app/web/vercel.json`, and `.github/workflows/pages.yml` for the static lab. See
+[deploying the demo](docs/runbooks/deploy.md).
+
 Clone it with:
 
 ```bash
@@ -245,10 +252,16 @@ runtime uses seeded or simulated payment references, roles, GPS updates, notific
 operational data. It must not process real funds, customer card data, production credentials, real
 courier identity verification, or live support operations.
 
-The street graph is an OpenStreetMap snapshot of one central São Paulo district, filtered to its
-largest strongly connected component: distances and ETAs are plausible, not navigational, and change
-whenever the extract is regenerated. ETA accuracy claims are about the simulated demo clock, not
-about real traffic.
+The street graph is an OpenStreetMap snapshot of one central São Paulo district (plus a
+city-scale extract for benchmarks), filtered to its largest strongly connected component: distances
+and ETAs are plausible, not navigational, and change whenever the extract is regenerated. The traffic
+profile is synthetic and deterministic, and ETA accuracy claims are about the simulated demo clock,
+not about real traffic.
+
+Persistence: memory is the default and loses state on restart; the optional PostgreSQL adapter stores
+a transactional snapshot with an outbox and is single-writer (ADR 0012). It is not a production
+database claim — row-per-aggregate tables, migrations, backups and multi-writer support are not
+built.
 
 The governing product specification is
 [the seed design](docs/superpowers/specs/2026-08-29-food-delivery-platform-seed-design.md).

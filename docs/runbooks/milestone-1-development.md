@@ -1,6 +1,12 @@
 # Milestone 1 development runbook
 
-**Status:** Implementation guide; commands marked “planned” are not yet available in the scaffold
+> **Historical plan — superseded.** This runbook records how M1 was planned. Everything it marks
+> "planned" now exists: M1 route commands, the PostgreSQL adapter (`PERSISTENCE_MODE=postgres`),
+> migrations-by-DDL, worker, metrics, Playwright and the quality gate. For current commands use
+> [local development](local-development.md) and [PostgreSQL](postgres.md); for the current state use
+> [the verification record](../verification.md).
+
+**Status:** Historical implementation guide (see the note above)
 **Product:** Entrega Clara
 **Design:** [M1 core delivery loop](../superpowers/specs/2026-09-01-milestone-1-core-delivery-loop-design.md)
 **Research:** [platform build research](../research/2026-09-01-platform-build-research.md)

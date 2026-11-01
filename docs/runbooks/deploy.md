@@ -29,7 +29,8 @@ Notes:
 * `fly.toml` defaults to `PERSISTENCE_MODE=memory`, so the first deploy needs no
   database. The image installs the `[postgres]` extra, so switching only needs
   the two settings above.
-* The image runs migrations on boot (`PostgresStore.migrate`, idempotent DDL).
+* The image applies the schema on boot (`PostgresStore.migrate`, idempotent DDL) and seeds reference
+  data once.
 * Health: `GET /api/v1/health`; metrics: `GET /metrics`.
 * The demo seeds reference data at boot. Do not point it at a database you care
   about (ADR 0012).

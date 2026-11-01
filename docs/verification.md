@@ -5,17 +5,18 @@ Measured on the committed tree — rerun with `python scripts/check.py`
 
 | Gate | Command | Last result |
 | --- | --- | --- |
-| Backend tests | `python -m pytest tests -q` | 289 passed, 5 skipped (PostgreSQL cases without `DATABASE_URL`) |
-| Backend tests, persistent mode | same, with `DATABASE_URL` set | 294 passed |
-| Persistence contract | `python -m pytest tests/repo -q` | memory + PostgreSQL (9 tests each environment) |
+| Backend tests | `python -m pytest tests -q` | 290 passed, 5 skipped (PostgreSQL cases without `DATABASE_URL`) |
+| Backend tests, persistent mode | same, with `DATABASE_URL` set | 295 passed |
+| Persistence contract | `python -m pytest tests/repo -q` | 9 cases on memory + PostgreSQL; PostgreSQL-only cases skip without `DATABASE_URL` |
 | Ruff | `ruff check app/backend/src tests scripts` | clean |
-| Mypy (strict-ish) | `mypy app/backend/src` | clean, 68 files |
+| Mypy (strict-ish) | `mypy app/backend/src` | clean, 77 files |
 | Web vitest | `npm test -- --run` (app/web) | 19 passed |
 | Web lint / typecheck / build | `npm run lint` / `typecheck` / `build` | clean |
-| Playwright + axe | `npx playwright test` (app/web) | 4/4 pass, 0 violations on 7 pages |
+| Playwright + axe | `npx playwright test` (app/web) | 5 passed, 1 skipped (tour is opt-in), 0 violations on 7 pages |
 | Seed validation | `python scripts/data/validate_seed.py data/scenarios/lunch-rush.json` | pass |
 | Requirement coverage | `scripts/quality/check_requirement_coverage.py` | pass |
 | App boundary | `python scripts/repo/check_app_boundary.py` | pass |
+| Static lab up to date | `python scripts/media/check_static_lab.py` | regenerates `site/index.html`; fails when it drifts |
 | Routing benchmark | `scripts/bench/routing_benchmark.py` | artifacts in `docs/benchmarks/` |
 | Benchmark smoke | `routing_benchmark.py --smoke` | solvers agree on a 6-stop matrix and on the street graph |
 | Scenario replay | 40-step `lunch-rush` via `validate_seed.py` | batch + GPS + cancel + rate all pass |
@@ -34,6 +35,10 @@ Measured on the committed tree — rerun with `python scripts/check.py`
 - **Outbox worker:** `scripts/worker.py --once` drained a pending event written
   by a commit whose publisher never ran, marked it delivered, and left the
   pending queue empty.
+- **Snapshots are the storage shape:** one JSONB row per version plus an
+  `outbox` table; row-per-aggregate tables and Alembic are not built yet
+  (ADR 0012). `scripts/check_postgres.py` prints the snapshot version,
+  collection counts and pending outbox rows.
 - **Metrics:** `/metrics` renders Prometheus text (HTTP requests and latency by
   route template, routing queries/latency by kind and solver, events and lag,
   SSE gauge) and `/operations/metrics` returns the same series plus the product
@@ -75,7 +80,7 @@ Measured on the committed tree — rerun with `python scripts/check.py`
   A\* and a dispatcher would not.
 - **Centro ladder** (the product graph): Dijkstra 1,098 (45.7%), A\* 671
   (27.9%), ALT 378 (15.7%), bidirectional 706 (29.4%), weighted ε=1.5 544
-  (22.6% with a 0.16% worst-case overshoot). ALT preprocessing ≈44 ms.
+  (22.6% with a 0.16% worst-case overshoot). ALT preprocessing ≈41 ms.
 - Every exact solver agrees with the Dijkstra oracle on cost — asserted on 150
   sampled pairs of the synthetic fixture, 40 pairs of the centro extract and 30
   pairs of the city graph, for both objectives where the graph allows.

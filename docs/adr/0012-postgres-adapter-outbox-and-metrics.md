@@ -43,9 +43,11 @@ not have a database.
    commit; rows are marked `published_at` only after the publisher returned
    successfully. A crash between commit and publish therefore leaves unpublished
    rows, and `scripts/worker.py` drains them — at-least-once, never lost.
-6. **The worker is boring on purpose.** It publishes to the in-process hub (a
-   no-op in a separate process today), marks rows delivered, and logs. When a
-   real subscriber exists, only the `publish` callable changes.
+6. **The worker is boring on purpose.** By default it logs each pending row and
+   marks it delivered; `drain_once` also accepts a publish callable, which is
+   exactly where a real subscriber (broker, notification provider) attaches.
+   The API already publishes in-process after commit, so the worker exists for
+   the rows a crash left behind, not to re-deliver everything.
 
 ### Metrics
 
