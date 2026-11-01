@@ -82,3 +82,20 @@ button { font: inherit; cursor: pointer; }
   gap: 1rem;
   margin-top: 1rem;
 }
+
+.ops-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+.ops-table th,
+.ops-table td {
+  text-align: left;
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid #2a3550;
+  vertical-align: top;
+}
+.timeline-panel {
+  grid-column: 1 / -1;
+  overflow-x: auto;
+}

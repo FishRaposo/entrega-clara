@@ -288,3 +288,92 @@ class OperationsQueries:
             "route_distance_meters_total": int(total_distance),
             "route_estimated_seconds_total": int(total_seconds),
         }
+
+    def order_timeline(self, ctx: CommandContext) -> list[dict[str, object]]:
+        """Per-order stage durations derived from committed domain events,
+        plus route ETA vs. actual delivery time (ETA accuracy)."""
+        require_role(ctx.identity, "operations")
+        with self._container.uow() as uow:
+            orders = [
+                order
+                for state in OrderState
+                for order in uow.orders.list_by_state(state)
+            ]
+            events = uow.event_log.list_all()
+            deliveries = {
+                d.id: d
+                for order in orders
+                if (d := uow.deliveries.find_by_order(order.id))
+            }
+            routes = {
+                d.order_id: r
+                for d in deliveries.values()
+                if (r := _resolve_route(uow, d))
+            }
+            uow.rollback()
+
+        stage_of = {
+            "order.placed": "placed",
+            "order.confirmed": "confirmed",
+            "order.ready": "ready",
+            "delivery.picked_up": "picked_up",
+            "delivery.en_route": "en_route",
+            "delivery.delivered": "delivered",
+            "order.rated": "rated",
+            "order.cancelled": "cancelled",
+        }
+        timeline: list[dict[str, object]] = []
+        for order in sorted(orders, key=lambda o: o.id):
+            stages: list[dict[str, object]] = []
+            previous_at = None
+            for event in sorted(events, key=lambda e: e.sequence):
+                stage = stage_of.get(str(event.type))
+                if stage is None:
+                    continue
+                if stage in ("picked_up", "en_route", "delivered"):
+                    if event.payload.get("order_id") != order.id:
+                        continue
+                elif event.aggregate_id != order.id:
+                    continue
+                duration = (
+                    (event.occurred_at - previous_at).total_seconds()
+                    if previous_at is not None
+                    else 0.0
+                )
+                stages.append(
+                    {
+                        "stage": stage,
+                        "occurred_at": event.occurred_at.isoformat(),
+                        "duration_seconds": round(duration, 3),
+                    }
+                )
+                previous_at = event.occurred_at
+            route = routes.get(order.id)
+            en_route_at = next(
+                (s for s in stages if s["stage"] == "en_route"), None
+            )
+            delivered_at = next(
+                (s for s in stages if s["stage"] == "delivered"), None
+            )
+            eta_actual: float | None = None
+            if en_route_at and delivered_at:
+                raw = delivered_at["duration_seconds"]
+                if isinstance(raw, (int, float)):
+                    eta_actual = round(float(raw), 3)
+            eta_est = round(route.estimated_seconds, 3) if route else None
+            eta_error = (
+                round(abs(eta_actual - eta_est), 3)
+                if eta_actual is not None and eta_est is not None
+                else None
+            )
+            timeline.append(
+                {
+                    "order_id": order.id,
+                    "state": order.state.value,
+                    "stages": stages,
+                    "eta_estimated_seconds": eta_est,
+                    "eta_actual_seconds": eta_actual,
+                    "eta_error_seconds": eta_error,
+                }
+            )
+        return timeline

@@ -7,6 +7,8 @@ import {
   listOperationsCouriers,
   listOperationsEvents,
   listOperationsOrders,
+  listOperationsTimeline,
+  type OrderTimeline,
 } from "../lib/api-client";
 import type { CourierProfile, DomainEvent, Metrics, OrderSummary } from "../lib/api-types";
 import { deliveryStatusLabel, formatBRL, orderStateLabel } from "../lib/format";
@@ -19,20 +21,24 @@ export function OperationsPanel() {
   const [events, setEvents] = useState<DomainEvent[]>([]);
   const [couriers, setCouriers] = useState<CourierProfile[]>([]);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [timeline, setTimeline] = useState<OrderTimeline[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      const [orderList, eventList, courierList, metricsView] = await Promise.all([
-        listOperationsOrders(ID),
-        listOperationsEvents(ID),
-        listOperationsCouriers(ID),
-        getOperationsMetrics(ID),
-      ]);
+      const [orderList, eventList, courierList, metricsView, timelineView] =
+        await Promise.all([
+          listOperationsOrders(ID),
+          listOperationsEvents(ID),
+          listOperationsCouriers(ID),
+          getOperationsMetrics(ID),
+          listOperationsTimeline(ID),
+        ]);
       setOrders(orderList.orders);
       setEvents(eventList.events.slice(-15).reverse());
       setCouriers(courierList.couriers);
       setMetrics(metricsView);
+      setTimeline(timelineView.orders);
     } catch {
       setError("Não foi possível carregar a visão operacional. A API local está ativa?");
     }
@@ -89,6 +95,36 @@ export function OperationsPanel() {
               </li>
             ))}
           </ul>
+        </div>
+
+        <div className="panel timeline-panel">
+          <h2>Cronologia por pedido</h2>
+          <table className="ops-table">
+            <thead>
+              <tr>
+                <th>Pedido</th>
+                <th>Estágios</th>
+                <th>ETA (s)</th>
+                <th>Real (s)</th>
+                <th>Erro (s)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {timeline.map((row) => (
+                <tr key={row.order_id}>
+                  <td>{row.order_id}</td>
+                  <td>
+                    {row.stages
+                      .map((stage) => `${stage.stage} ${Math.round(stage.duration_seconds)}s`)
+                      .join(" → ")}
+                  </td>
+                  <td>{row.eta_estimated_seconds ?? "—"}</td>
+                  <td>{row.eta_actual_seconds ?? "—"}</td>
+                  <td>{row.eta_error_seconds ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         <div className="panel">

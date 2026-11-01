@@ -53,3 +53,9 @@ def list_couriers(container: Container, ctx: Ctx) -> dict[str, Any]:
 @router.get("/metrics")
 def get_metrics(container: Container, ctx: Ctx) -> dict[str, Any]:
     return OperationsQueries(container).metrics(ctx)
+
+
+@router.get("/timeline")
+def order_timeline(container: Container, ctx: Ctx) -> dict[str, Any]:
+    timeline = OperationsQueries(container).order_timeline(ctx)
+    return {"orders": timeline}

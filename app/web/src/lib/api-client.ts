@@ -398,3 +398,18 @@ export function cancelOrder(
     identity,
   });
 }
+
+export type OrderTimeline = {
+  order_id: string;
+  state: string;
+  stages: { stage: string; occurred_at: string; duration_seconds: number }[];
+  eta_estimated_seconds: number | null;
+  eta_actual_seconds: number | null;
+  eta_error_seconds: number | null;
+};
+
+export function listOperationsTimeline(
+  identity: DemoIdentity,
+): Promise<{ orders: OrderTimeline[] }> {
+  return request("/api/v1/operations/timeline", { identity });
+}
