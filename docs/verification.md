@@ -1,7 +1,9 @@
 # Verification record
 
-Measured on the committed tree — rerun with `python scripts/check.py`
-(plus `scripts/bench/routing_benchmark.py` for the benchmark artifacts).
+Regenerated 2026-11-01 from the committed tree — the city benchmark at `25168b8`, the centro
+benchmark at `08ec4cf`. Rerun with `python scripts/check.py` (plus
+`scripts/bench/routing_benchmark.py` for the artifacts). Expansions and costs are stable; wall-clock
+times vary by machine.
 
 | Gate | Command | Last result |
 | --- | --- | --- |
@@ -58,9 +60,10 @@ Measured on the committed tree — rerun with `python scripts/check.py`
 - **Recorded tour** `docs/media/demo-tour.webm` (35 s, 2.3 MB) recorded by
   Playwright from the live app (`make tour`, opt-in because it writes a tracked
   file).
-- **Deploy artifacts** (no deployment performed by CI, none in this record):
-  `Dockerfile` (runtime image, `[postgres]` extra, no dev deps), `fly.toml`,
-  `app/web/vercel.json`, `.github/workflows/pages.yml`, and
+- **Deployment:** the static lab is published by `.github/workflows/pages.yml` to
+  <https://fishraposo.github.io/entrega-clara/> (run 41349418943). The API and web
+  shell are not deployed by CI; their artifacts are `Dockerfile` (runtime image,
+  `[postgres]` extra, no dev deps), `fly.toml`, `app/web/vercel.json`, and
   `docs/runbooks/deploy.md`.
 
 ## Routing evidence highlights (committed, reproducible)
@@ -74,21 +77,22 @@ Measured on the committed tree — rerun with `python scripts/check.py`
   median expansions (51.3% of the graph), A\* 44,759 (42.6%), ALT 6,186 (5.9%),
   bidirectional 19,272 (18.4%), **CH 85 (0.1%)**. Weighted ε=5 expands 13.8%
   with a 13% worst-case overshoot. See `docs/benchmarks/routing-city.md`.
-- **Contraction hierarchy:** 1.6 s preprocessing (138 MB peak), 164,517
-  shortcuts, 85 expansions and 1.45 ms per query. Break-even against A\* is 13
-  queries and against ALT 33 — the measured reason the product still ships plain
+- **Contraction hierarchy:** 2.7 s preprocessing (138 MB peak), 164,517
+  shortcuts, 85 expansions and 2.82 ms per query. Break-even against A\* is 12
+  queries and against ALT 29 — the measured reason the product still ships plain
   A\* and a dispatcher would not.
 - **Centro ladder** (the product graph): Dijkstra 1,098 (45.7%), A\* 671
   (27.9%), ALT 378 (15.7%), bidirectional 706 (29.4%), weighted ε=1.5 544
-  (22.6% with a 0.16% worst-case overshoot). ALT preprocessing ≈41 ms.
+  (22.6% with a 0.16% worst-case overshoot). ALT preprocessing ≈53 ms.
 - Every exact solver agrees with the Dijkstra oracle on cost — asserted on 150
   sampled pairs of the synthetic fixture, 40 pairs of the centro extract and 30
   pairs of the city graph, for both objectives where the graph allows.
 - Multi-stop: Held-Karp matches brute force at ≤9 stops; at 13 stops it stays
-  under ~55 ms where brute force is infeasible. On city-derived matrices the
-  exact tour beats nearest-neighbor by 24% on a 7-stop batch.
-- Batch planning at city scale costs ~2.0 s (one-to-all Dijkstra per stop); the
-  centro demo batch costs ~18 ms. The difference is reported, not smoothed over.
+  under ~60 ms where brute force is infeasible. On the city 7-stop TSP matrix the
+  exact tour is 27% cheaper than nearest-neighbor; the end-to-end 7-stop batch
+  saves 6,584 s of driving time (38%).
+- Batch planning at city scale costs ~2.7 s (one-to-all Dijkstra per stop); the
+  centro 7-stop batch costs ~33 ms. The difference is reported, not smoothed over.
 - The replay of one delivery search (`docs/benchmarks/lab-trace.json`, rendered
   to `docs/media/lab-alt-vs-dijkstra.gif`) shows ALT finishing in 70 expansions
   where Dijkstra needs 167.

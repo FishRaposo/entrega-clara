@@ -372,7 +372,7 @@ None of these are needed for anything above. Each would unlock something specifi
 | OSRM | real road routing service | needs Docker or a server; conflicts with the toolchain rule |
 | `sqlalchemy` + `alembic` + `psycopg` + PostgreSQL | the deferred persistence adapter (ADR 0003) | needs Docker or a local Postgres install |
 | `ffmpeg` | turning the Playwright `.webm` into a GIF | system tool |
-| Hosting (Render or Fly for the API, Vercel for the web) | a public live demo | accounts; the static lab could go on GitHub Pages first |
+| Hosting (Render or Fly for the API, Vercel for the web) | the API/web live demo | accounts; the static lab is already on GitHub Pages |
 
 ## Suggested order
 

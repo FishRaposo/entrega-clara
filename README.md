@@ -1,5 +1,7 @@
 # Entrega Clara
 
+[![CI](https://github.com/FishRaposo/entrega-clara/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/FishRaposo/entrega-clara/actions/workflows/ci.yml)
+
 **Pathfinding under real constraints, framed as a São Paulo food-delivery platform.** It began as two
 undergraduate assignments — a food-delivery requirements document and a brute-force route optimizer —
 that turned out to describe one system. The optimizer still dies at about ten stops; this repository
@@ -18,46 +20,49 @@ nothing but the Python standard library — no image or charting dependency anyw
 | | |
 | --- | --- |
 | **What it is** | A São Paulo food-delivery platform where the courier drives the computed route. Built from two undergraduate assignments — a requirements document and a brute-force route optimizer — merged into one product. |
-| **What it proves** | A measured solver ladder on real streets: **CH answers in 85 expansions / 1.45 ms** where Dijkstra needs 53,885 / 89 ms, inside a product with batching, capacity, promised windows, time-dependent ETAs and a PostgreSQL option. |
+| **What it proves** | A measured solver ladder on real streets: **CH answers in 85 expansions (0.1% of the graph) / 2.8 ms** where Dijkstra needs 53,885 (51.3%) / 172 ms, inside a product with batching, capacity, promised windows, time-dependent ETAs and a PostgreSQL option. |
 | **Engineering** | Python/FastAPI + Next.js/TypeScript; 290 backend tests (295 with the database contract), 19 frontend, 5 browser journeys with axe; 12 ADRs; 11 quality gates. |
-| **See it without running it** | [Static lab](site/index.html) (offline replay, no server) · [35-second tour](docs/media/demo-tour.webm) · [screenshots](#see-it-without-running-it) |
+| **See it without running it** | [Live lab](https://fishraposo.github.io/entrega-clara/) · [Static lab](site/index.html) (offline replay, no server) · [35-second tour](docs/media/demo-tour.webm) · [screenshots](#see-it-without-running-it) |
 | **Review it** | [Reviewing this repository](docs/for-reviewers.md) — five-minute path, role-specific paths, what is real vs simulated, and where each claim is proven. |
 
 No Docker, database, `make` or provider accounts are required for the default run.
 
 ## The measured ladder
 
-One harness, two real graphs — `docs/benchmarks/routing-city.md` (104 991 nodes) and
-`docs/benchmarks/routing.md` (2 405 nodes) regenerate everything with
+One harness, two real graphs — `docs/benchmarks/routing-city.md` (104,991 nodes) and
+`docs/benchmarks/routing.md` (2,405 nodes) regenerate everything with
 `python scripts/bench/routing_benchmark.py --graph city|centro`:
 
 | Point-to-point, city graph (200 sampled pairs, time objective) | Median nodes expanded | Share of graph | Median time |
 | --- | --- | --- | --- |
-| Dijkstra (oracle) | 53 885 | 51.3% | 89.3 ms |
-| A* (straight line) | 44 759 | 42.6% | 125.4 ms |
-| ALT landmarks (8) | 6 186 | 5.9% | 52.0 ms |
-| Bidirectional + ALT | 19 272 | 18.4% | 335.7 ms |
-| **Contraction hierarchy** | **85** | **0.1%** | **1.45 ms** |
-| Weighted A* (ε = 5) | 14 470 | 13.8% | 51.3 ms (max 13% over) |
+| Dijkstra (oracle) | 53,885 | 51.3% | 172.1 ms |
+| A* (straight line) | 44,759 | 42.6% | 225.5 ms |
+| ALT landmarks (8) | 6,186 | 5.9% | 95.4 ms |
+| Bidirectional + ALT | 19,272 | 18.4% | 593.9 ms |
+| **Contraction hierarchy** | **85** | **0.1%** | **2.82 ms** |
+| Weighted A* (ε = 5) | 14,470 | 13.8% | 86.3 ms (max 13% over) |
 
-CH pays a one-time **1.6 s** build (138 MB peak, 164 517 shortcuts from 3-hop witness searches) and
-then **breaks even after 13 queries against A\* and 33 against ALT**. That break-even is the whole
+Expansions and shares are stable across runs; times are medians from the committed 2026-11-01 run
+and vary with the machine. The artifact is the source of truth.
+
+CH pays a one-time **2.7 s** build (138 MB peak, 164,517 shortcuts from 3-hop witness searches) and
+then **breaks even after 12 queries against A\* and 29 against ALT**. That break-even is the whole
 selection thesis: a dispatcher answering thousands of routes amortizes it instantly, a single route
 per process never does — see the [solver selection guide](docs/architecture/solver-selection.md).
 
 | Multi-stop tour on city street costs | 7 stops | 9 stops | 13 stops |
 | --- | --- | --- | --- |
-| Brute force (baseline) | 720 evals | 40 320 evals | infeasible |
-| **Held-Karp (exact, precedence-aware)** | **486 evals · 11 336 s** | **3 592 evals · 14 554 s** | **135 180 evals · 18 096 s** |
-| Nearest neighbor (fast guess) | 21 evals · +24% cost | 36 evals · +22% | 78 evals · +16% |
-| 2-opt | 51 evals | 148 evals | 210 evals |
+| Brute force (baseline) | 720 evals | 40,320 evals | infeasible |
+| **Held-Karp (exact, precedence-aware)** | **486 evals · 8,547 s** | **3,592 evals · 16,776 s** | **135,180 evals · 19,545 s** |
+| Nearest neighbor (fast guess, % over exact) | 21 evals · +37% cost | 36 evals · +8% | 78 evals · +22% |
+| 2-opt | 51 evals | 148 evals | 276 evals |
 
 Two honest readings of the same artifacts: the straight-line A\* expands 17% fewer nodes than
-Dijkstra yet takes 40% longer in wall time (the heuristic costs more than it saves on one-way
-streets), and pricing a 7-stop batch matrix at city scale costs **~2.0 s** (one-to-all Dijkstra per
+Dijkstra yet takes 31% longer in wall time (the heuristic costs more than it saves on one-way
+streets), and pricing a 7-stop batch matrix at city scale costs **~2.7 s** (one-to-all Dijkstra per
 stop) — a real bound on dispatch that the guide names instead of hiding.
 
-The centro graph stays as the product and lab graph: 2 405 nodes, 0.7 MB, sub-millisecond routes and
+The centro graph stays as the product and lab graph: 2,405 nodes, 0.7 MB, millisecond-scale routes and
 browser-renderable. Its numbers are in `docs/benchmarks/routing.md`.
 
 ![Trabalho versus qualidade](docs/benchmarks/routing-city-tradeoff.svg)
@@ -80,7 +85,7 @@ operacional que um app de delivery resolve em produção: cardápio → sacola �
 fila do restaurante → oferta, coleta, rota e entrega do entregador → rastreamento por SSE → visão de
 operações.
 
-- **Roteirização de verdade**: grafo real do OpenStreetMap do centro de SP (2 405 nós, filtrado para
+- **Roteirização de verdade**: grafo real do OpenStreetMap do centro de SP (2,405 nós, filtrado para
   o maior componente fortemente conexo, porque ruas de mão única dominam), com A\*, ALT, bidirecional
   e Held-Karp comparáveis na página `/lab` e em `docs/benchmarks/`.
 - **Domínio real, não mock**: os mesmos handlers de comando atendem a API, as telas de papel e o
@@ -116,6 +121,11 @@ algorithms, trade-offs) that complements applied-AI work, and a default run that
 or database (PostgreSQL is optional). [The full story is in docs/origin.md](docs/origin.md),
 including why iFood came afterwards.
 
+**How it was built** — AI-assisted development with Command Code; every change is reviewed, tested
+and gated by `scripts/check.py`, commits carry co-author trailers, and the benchmark artifacts are
+generated by the committed harness rather than written by hand.
+[The full policy is in docs/origin.md](docs/origin.md#8-how-it-was-built).
+
 ## Built vs. deferred
 
 | Built | Deferred (documented, not required to run) |
@@ -123,7 +133,7 @@ including why iFood came afterwards.
 | Solver ladder: Dijkstra → A\* → ALT → bidirectional → weighted ε-A\*, plus **contraction hierarchies** on a 105k-node city graph with a published break-even | Real traffic feeds and provider routing (OSRM); class-accurate traffic profiles (the graph stores speed, not highway class) |
 | **Time-dependent routing** from a committed, FIFO-validated speed profile: ETAs and routes change by hour, and plans record departure/arrival | Real payments, real identity, push/SMS/email |
 | **Capacitated VRP with promised windows** and **dynamic re-insertion** of a new order into an active batch, with typed rejection and a recorded ETA delta | Multi-process writes: the PostgreSQL adapter is single-writer (row-per-aggregate is the next step) |
-| Real OSM street graphs (centro + city scale), ODbL, filtered to a strongly connected component | Hosting performed: deploy artifacts exist, nothing is deployed by CI |
+| Real OSM street graphs (centro + city scale), ODbL, filtered to a strongly connected component | API/web hosting: the static lab is live on Pages; the API and web shell have deploy artifacts but are not deployed by CI |
 | Batch dispatch: cost matrix, exact tour, stop-sequence console, offered-order baseline, capacity/waiting on screen | Same-restaurant-only batching (deliberately broader — [ADR 0007](docs/adr/0007-multi-stop-batching.md)) |
 | Customer → restaurant → courier → operations loop over real commands, SSE tracking, GPS that follows the route | |
 | **PostgreSQL adapter + transactional outbox worker** (`PERSISTENCE_MODE=postgres`, optional extra) and `/metrics` Prometheus text + operations panel | |
@@ -136,10 +146,12 @@ including why iFood came afterwards.
 
 ## See it without running it
 
-- **Static lab**: [`site/index.html`](site/index.html) is one self-contained page — open it in a
-  browser, no server and no network. It replays committed traces (Dijkstra 167 expansions vs
-  A\*+ALT 70), draws the day-long ETA curve from the committed traffic profile and prints the
-  published TSP table. `.github/workflows/pages.yml` publishes it; enabling Pages is one click.
+- **Live lab**: [fishraposo.github.io/entrega-clara](https://fishraposo.github.io/entrega-clara/) is
+  the same self-contained page served by GitHub Pages and published by `.github/workflows/pages.yml`.
+  It replays committed traces (Dijkstra 167 expansions vs A\*+ALT 70), draws the day-long ETA curve
+  from the committed traffic profile and prints the published TSP table.
+- **Offline copy**: [`site/index.html`](site/index.html) — open it in a browser, no server and no
+  network.
 - **Recorded tour** (35 s, 2.3 MB): [`docs/media/demo-tour.webm`](docs/media/demo-tour.webm) — demo
   scenario, courier console with planned stops and capacity, customer tracking, lab race.
 - [`docs/media/static-lab.png`](docs/media/static-lab.png) is the page's poster frame.
@@ -251,7 +263,7 @@ The street graph is derived from OpenStreetMap data:
 **© OpenStreetMap contributors, [ODbL 1.0](https://www.openstreetmap.org/copyright)**. It is fetched
 offline by `scripts/data/fetch_osm_graph.py`, committed as a dated snapshot
 (`version: osm-<date>`), and never queried at run time. The synthetic graph carries no external
-data.
+data. The code is [MIT licensed](LICENSE); the street data is ODbL.
 
 ## Release and publication status
 
@@ -260,9 +272,10 @@ remains a non-production demo platform: follow the
 [public demo release runbook](docs/runbooks/public-demo-release.md) to reproduce local validation,
 and record any Docker-unavailable check as unverified rather than passed.
 
-Deploy artifacts are committed but nothing is deployed by CI: `Dockerfile` + `fly.toml` (API),
-`app/web/vercel.json`, and `.github/workflows/pages.yml` for the static lab. See
-[deploying the demo](docs/runbooks/deploy.md).
+The static lab is published by the `static lab` workflow to
+[GitHub Pages](https://fishraposo.github.io/entrega-clara/). The API and web shell are not deployed
+by CI; their artifacts are committed: `Dockerfile` + `fly.toml` (API) and `app/web/vercel.json`.
+See [deploying the demo](docs/runbooks/deploy.md).
 
 Clone it with:
 

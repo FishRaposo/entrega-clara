@@ -23,7 +23,7 @@ The earlier seed document described a smaller “Milestone 1 — Customer orderi
 > delivered, all with committed evidence:
 >
 > - **Scale (M3):** a stdlib OSM PBF reader builds a 105k-node city graph and contraction
->   hierarchies answer in 85 expansions / 1.45 ms with a published break-even against A\* and ALT
+>   hierarchies answer in 85 expansions (0.1% of the graph) with a published break-even against A\* and ALT
 >   ([ADR 0009](../adr/0009-city-scale-graph-and-contraction-hierarchies.md)).
 > - **Problem depth (M3):** time-dependent routing from a FIFO-validated profile (ETAs and routes
 >   change by hour, [ADR 0010](../adr/0010-time-dependent-routing.md)) and a capacitated VRP with

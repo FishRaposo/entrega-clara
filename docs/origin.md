@@ -106,6 +106,18 @@ answer, and they are documented as engineering decisions with measured evidence.
 They do not change the origin. The repository is still the answer to "what if the two assignments
 were the same system?"
 
+## 8. How it was built
+
+Development is AI-assisted. The author uses Command Code as a pairing tool, and the commits say so:
+they carry a `Co-authored-by: CommandCodeBot` trailer rather than hiding the assistance. The model
+drafts code, tests and documentation; the author reviews and owns every change.
+
+The gates are the contract: `scripts/check.py` runs the eleven checks (tests, lint, types, seed
+validation, requirement coverage, app boundary, static-lab freshness and benchmark smoke), and the
+measured artifacts are produced by the committed harness, not written by hand. Where a model-generated
+change was wrong, the failure stays in the history and is fixed in a later commit. The numbers in this
+repository are regenerated from code, not narrated.
+
 ## The causal chain
 
 1. **Two assignments:** a food-delivery requirements document and a brute-force route-optimizer
@@ -147,3 +159,6 @@ transações, algoritmos e trade-offs.
 "Reduzir o escopo" significou remover infraestrutura (Docker e WSL não são pré-requisitos para rodar
 ou demonstrar), não funcionalidade. E o iFood veio depois: o projeto não foi feito para o processo
 seletivo; a afinidade de domínio foi uma coincidência que o tornou especialmente relevante.
+
+O desenvolvimento é assistido por IA (Command Code), com revisão humana, commits com trailer de
+coautoria e todos os números gerados pelo harness — não escritos à mão.

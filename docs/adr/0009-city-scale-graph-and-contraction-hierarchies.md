@@ -68,6 +68,11 @@ Two constraints shaped the decision:
 
 ## Measured results (committed artifact, 200 sampled pairs, time objective)
 
+> **Historical measurement.** The figures below, including the 1.6 s in point 5, are from the
+> 2026-11-01 decision run. Wall-clock times vary by machine and have been regenerated since; the
+> committed artifacts (`docs/benchmarks/routing-city.md` and `.json`) are authoritative, and
+> expansions are the stable comparison.
+
 | Solver | Median nodes expanded | Share of graph | Median query time |
 | --- | --- | --- | --- |
 | Dijkstra | 53,885 | 51.3% | 89.3 ms |

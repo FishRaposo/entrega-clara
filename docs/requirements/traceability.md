@@ -51,10 +51,10 @@ The table below is the full product requirement set, not a claim that every requ
 Routing is the deepest evidence in the repository. The product and the algorithm lab run on a real
 OpenStreetMap extract of central São Paulo (2,405 nodes / 3,431 directed edges, filtered to its
 largest strongly connected component, ODbL 1.0 — [ADR 0008](../adr/0008-real-street-graph-and-landmarks.md)).
-`docs/benchmarks/routing.md` and `docs/verification.md` record exact, reproducible numbers: ALT
-landmarks expand 14.6% of the graph where Dijkstra expands 56.1% with the same optimal cost; the
-exact multi-stop solver matches brute force at ≤9 stops and beats nearest-neighbor by 18% on a
-7-stop batch.
+`docs/benchmarks/routing.md` and `docs/verification.md` record exact, reproducible numbers: on the
+centro graph ALT landmarks expand 15.7% of it where Dijkstra expands 45.7%, with the same optimal
+cost; the exact multi-stop solver matches brute force at ≤9 stops and is 18% cheaper than
+nearest-neighbor on the centro 7-stop batch.
 
 The remaining rows map to implemented surfaces with focused tests — customer, restaurant, courier,
 operations, SSE tracking, snapshots, rate/cancel, and the demo replay. Payments, location movement,

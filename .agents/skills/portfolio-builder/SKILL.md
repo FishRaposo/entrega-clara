@@ -77,7 +77,7 @@ Measure → commit the artifact → cite it from the narrative. Never the revers
 - Prefer **stable work metrics** (nodes expanded, operations, cache hits) over wall-clock, which is
   machine-noisy. Report both, and record the machine.
 - State the **denominator** (200 sampled pairs, seven stops, 105k nodes) and the **baseline**.
-- Prefer a **break-even or trade-off** over a single best number ("13 queries against A\*").
+- Prefer a **break-even or trade-off** over a single best number ("12 queries against A\*").
 - Any preprocessing cost is reported separately from query cost.
 - Regenerate artifacts in the same change that alters behavior. Never hand-edit generated output.
 - Differential tests against a simple oracle turn "it works" into "it agrees with the reference".
@@ -157,7 +157,7 @@ without artifacts.
 ## Writing rules
 
 - **Numbers**: median + denominator + machine; baseline and trade-off; no precision theatre.
-- **Voice**: active, concrete, short sentences. "The batch matrix costs 2.0 s at city scale" beats
+- **Voice**: active, concrete, short sentences. "The batch matrix costs 2.7 s at city scale" beats
   "highly performant".
 - **Claims**: each one names its evidence. "All exact solvers agree with the Dijkstra oracle
   (`tests/routing/`)".

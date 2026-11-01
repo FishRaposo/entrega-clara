@@ -19,30 +19,30 @@ Held-Karp. Anything larger: 2-opt from nearest neighbor, and report the gap.
 | Situation | Solver | Why | Evidence |
 | --- | --- | --- | --- |
 | One route per process, small or medium graph | A\* (`astar-haversine`) | No preprocessing; admissible straight-line bound | Centro: 671 expansions vs Dijkstra's 1,098 (200 pairs) |
-| Large graph, no time to preprocess | ALT (`astar-alt`) | Landmarks cost seconds and cut expansions by an order of magnitude | City: 5.9% of the graph, 52 ms; preprocessing ≈3.0 s |
-| Many routes on one graph (dispatch, ETAs, batch pricing) | CH (`contraction-hierarchy`) | Two upward searches touch a few dozen nodes | City: 85 expansions (0.1%), 1.45 ms; break-even 13 queries vs A\*, 33 vs ALT |
+| Large graph, no time to preprocess | ALT (`astar-alt`) | Landmarks cost seconds and cut expansions by an order of magnitude | City: 5.9% of the graph, 95 ms; preprocessing ≈6.0 s |
+| Many routes on one graph (dispatch, ETAs, batch pricing) | CH (`contraction-hierarchy`) | Two upward searches touch a few dozen nodes | City: 85 expansions (0.1%), 2.8 ms; break-even 12 queries vs A\*, 29 vs ALT |
 | Latency budget below exact search, quality negotiable | Weighted A\* (`weighted-astar-eps*`) | f = g + ε·h; bounded to ε× the optimum | City ε=5: 13.8% of the graph, max 13% over; ε=1.5: 37.7%, max 0% observed |
-| You need every destination at once (cost matrix, reachability) | One-to-all Dijkstra (`distances_from`) | A\* wins for one target, Dijkstra for all of them | City batch matrix: 7 stops in ≈2.0 s |
+| You need every destination at once (cost matrix, reachability) | One-to-all Dijkstra (`distances_from`) | A\* wins for one target, Dijkstra for all of them | City batch matrix: 7 stops in ≈2.7 s |
 
 Two honest caveats the table encodes:
 
 * **A\* is not automatically faster than Dijkstra.** On one-way streets the
   straight-line bound is weak, and on the city graph A\* expands 17% fewer nodes
-  than Dijkstra yet takes 35% longer in wall time. The heuristic is only worth
+  than Dijkstra yet takes 31% longer in wall time. The heuristic is only worth
   its cost when it prunes aggressively.
 * **Bidirectional search is exact but slow in CPython.** Two heaps and two
-  potential lookups per relaxation made it ~3.8× slower than plain Dijkstra on
-  the city graph (336 ms vs 89 ms) despite expanding fewer nodes. It stays in
+  potential lookups per relaxation made it ~3.5× slower than plain Dijkstra on
+  the city graph (594 ms vs 172 ms) despite expanding fewer nodes. It stays in
   the lab as a measured comparison, not as a recommendation.
 
 ## Multi-stop
 
 | Situation | Solver | Why | Evidence |
 | --- | --- | --- | --- |
-| 2–3 orders, ≤ 7 stops, pickup-before-dropoff | Held-Karp with precedence | Exact, bounded, microseconds | 7 stops: 486 evaluations, 0.2 ms; 18% shorter tour than nearest neighbor |
-| Up to 13 stops | Held-Karp | Still exact, still fast | 13 stops: 135,180 evaluations, ≈40 ms |
+| 2–3 orders, ≤ 7 stops, pickup-before-dropoff | Held-Karp with precedence | Exact, bounded, microseconds | 7 stops (centro street matrix): 486 evaluations, 0.3 ms; 22% shorter tour than nearest neighbor |
+| Up to 13 stops | Held-Karp | Still exact, still fast | 13 stops: 135,180 evaluations, ≈57 ms (city) |
 | Beyond the exact bound (14+ stops) | 2-opt from nearest neighbor | Fast, no guarantee; report the gap | 13 stops on graph costs: 2-opt reaches the optimum here, but that is luck, not a guarantee |
-| Monotone, cheap first guess | Nearest neighbor | O(n²) and easy to explain | 7 stops: 21 evaluations, 21% longer than exact |
+| Monotone, cheap first guess | Nearest neighbor | O(n²) and easy to explain | 7 stops: 21 evaluations, 28% longer than exact on the same matrix |
 
 The exact cap exists for a reason: 14 stops is 87 billion permutations, and the
 roadmap forbids unbounded factorial work inside a request.
@@ -53,7 +53,7 @@ roadmap forbids unbounded factorial work inside a request.
 Need a route?
 ├─ one route, no preprocessing budget ........ A*
 ├─ many routes on the same graph
-│   ├─ build time available (seconds) ....... CH   (break-even ~13–33 queries)
+│   ├─ build time available (seconds) ....... CH   (break-even ~12–29 queries)
 │   └─ build time not available ............. ALT
 └─ quality can slip, latency cannot .......... weighted A* (report ε)
 Need an order over stops?

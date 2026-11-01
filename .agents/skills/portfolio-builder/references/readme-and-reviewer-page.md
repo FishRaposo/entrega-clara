@@ -32,7 +32,7 @@ Keep the first screen under ~40 lines. Long READMEs are fine after that; readers
 | | |
 | --- | --- |
 | **What it is** | A São Paulo food-delivery platform where the courier drives the computed route. |
-| **What it proves** | CH answers in 85 expansions / 1.45 ms where Dijkstra needs 53,885 / 89 ms. |
+| **What it proves** | CH answers in 85 expansions / 2.8 ms where Dijkstra needs 53,885 / 172 ms. |
 | **Engineering** | Python/FastAPI + Next.js; 290 tests, 5 browser journeys, 12 ADRs, 11 gates. |
 | **See it now** | [Static lab](site/index.html) · [35-second tour](docs/media/demo-tour.webm) |
 | **Review it** | [Reviewer guide](docs/for-reviewers.md) — five-minute path, real vs simulated. |
@@ -65,7 +65,7 @@ minutes and no patience for marketing.
 
 - One screen, one idea. If a section has two theses, split it.
 - Active voice, short sentences, concrete nouns.
-- No adjective without a number: "fast" → "1.45 ms median"; "scalable" → "105k nodes".
+- No adjective without a number: "fast" → "2.8 ms median"; "scalable" → "105k nodes".
 - Every claim links to its artifact, in the same sentence or the next one.
 - Say what is simulated next to the thing that is simulated, not in a footnote.
 - Never imply production use: state the non-production boundary once, plainly.

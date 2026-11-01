@@ -44,7 +44,19 @@ CI_FILES = (
 )
 MEDIA_DIRS = ("docs/media", "media", "screenshots", "assets")
 MEDIA_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".mp4", ".webm"}
-DEMO_HINTS = ("demo", "live", "app.", "lab", "site", "pages", "vercel", "netlify", "render", "fly.dev")
+DEMO_HINTS = (
+    "demo",
+    "live",
+    "app.",
+    "lab",
+    "site",
+    "pages",
+    "github.io",
+    "vercel",
+    "netlify",
+    "render",
+    "fly.dev",
+)
 BADGE_HOSTS = ("shields.io", "badge", "img.shields")
 
 
@@ -137,12 +149,15 @@ def check_demo(root: Path, readme: Path) -> Result:
     first_screen = "\n".join(
         readme.read_text(encoding="utf-8", errors="replace").splitlines()[:FIRST_SCREEN_LINES]
     )
-    for url in re.findall(r"https?://[^\s)\"']+", first_screen):
-        lowered = url.lower()
+    for line in first_screen.splitlines():
+        lowered = line.lower()
         if any(host in lowered for host in BADGE_HOSTS):
             continue
+        urls = re.findall(r"https?://[^\s)\"']+", line)
+        if not urls:
+            continue
         if any(hint in lowered for hint in DEMO_HINTS):
-            return Result(PASS, "demo", f"hosted link in the first screen: {url}")
+            return Result(PASS, "demo", f"hosted link in the first screen: {urls[0]}")
     for target in re.findall(r"\]\(\s*([^)\s]+\.html)", first_screen):
         candidate = readme.parent / unquote(target.split("#", 1)[0])
         if candidate.exists():

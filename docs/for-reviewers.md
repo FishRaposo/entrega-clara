@@ -28,13 +28,14 @@ merged into one product, then became a portfolio piece for employers and freelan
 | Minute | Open | What it shows |
 | --- | --- | --- |
 | 1 | The **measured ladder** table in the [README](../README.md#the-measured-ladder) | Six solvers on the same 105k-node graph, with the CH break-even |
-| 2 | [`site/index.html`](../site/index.html) (open the file; no server, no network) | The algorithms replaying frame by frame, plus the day-long ETA curve |
+| 2 | [Live lab](https://fishraposo.github.io/entrega-clara/) (or [`site/index.html`](../site/index.html) offline; no server, no network) | The algorithms replaying frame by frame, plus the day-long ETA curve |
 | 3 | [City benchmark artifact](benchmarks/routing-city.md) | The raw measurements behind the table: preprocessing cost, peak memory, break-even, batch matrix cost |
 | 4 | [Verification record](verification.md) | Exact gate results and counts, and the honest scope notes |
 | 5 | [ADR 0009](adr/0009-city-scale-graph-and-contraction-hierarchies.md) | Why contraction hierarchies, what they cost, and where they stop paying |
 
-If you only read one number: **CH answers a city route in 85 expansions and 1.45 ms, against
-53,885 expansions and 89 ms for Dijkstra, after a 1.6 s build that breaks even at 13 queries.**
+If you only read one number: **CH answers a city route in 85 expansions and 2.8 ms, against
+53,885 expansions and 172 ms for Dijkstra, after a 2.7 s build that breaks even at 12 queries.** The
+expansion counts are stable; the times are from the committed run and vary with the machine.
 
 ## What is real, what is simulated
 
@@ -43,10 +44,10 @@ If you only read one number: **CH answers a city route in 85 expansions and 1.45
 | OpenStreetMap streets: 2,405-node centro extract in the product and lab, 104,991-node city artifact for benchmarks (ODbL attribution committed) | Payments, identity, GPS, notifications, support |
 | The algorithms: Dijkstra, A\*, ALT, bidirectional, contraction hierarchies, time-dependent Dijkstra/A\*, Held-Karp, 2-opt, capacitated VRP with windows and precedence | The traffic profile: deterministic hourly multipliers, explicitly not measured traffic |
 | The product loop: menus, carts, idempotent checkout, restaurant queue, courier lifecycle, batching, tracking, operations — one command layer for API, UI and demo | Restaurants, addresses and couriers: fictional São Paulo data |
-| Tests: 290 backend (295 with the database contract), 19 frontend, 5 browser journeys with axe | Hosting: deploy artifacts exist, nothing is deployed by CI |
+| Tests: 290 backend (295 with the database contract), 19 frontend, 5 browser journeys with axe | API/web hosting: the static lab is live on Pages; API and web deploy artifacts exist but are not deployed by CI |
 | The optional PostgreSQL adapter: transactional snapshot, optimistic version guard, outbox, drained by a worker | Production operations: no backups, no readiness probe, single writer |
 
-## Three claims and where they are proven
+## Five claims and where they are proven
 
 | Claim | Evidence |
 | --- | --- |

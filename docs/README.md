@@ -9,10 +9,11 @@ The seed design and the user-approved M1 design under `docs/superpowers/specs/` 
 - [M1 core delivery loop](superpowers/specs/2026-09-01-milestone-1-core-delivery-loop-design.md) — the current implementation contract.
 - [Platform evolution roadmap](roadmap/platform-evolution.md) — M1 through portfolio release, with dependencies and exit evidence.
 - [Portfolio improvement plan](roadmap/portfolio-improvements.md) — review findings and a prioritized backlog (routing, benchmarks, reviewer experience, Windows tooling) within the Python + Node toolchain.
-- [M1 development runbook](runbooks/milestone-1-development.md) — local modes, planned commands, acceptance journey, and release checks.
+- [M1 development runbook](runbooks/milestone-1-development.md) (historical, superseded) — how M1 was planned: local modes, planned commands, acceptance journey, and release checks.
 - [PostgreSQL, outbox and metrics](runbooks/postgres.md) — persistent mode, the worker and the two metric views.
 - [Deploying the demo](runbooks/deploy.md) — Fly.io, Vercel and GitHub Pages artifacts.
-- [Static lab](../site/index.html) — self-contained replay of the committed traces.
+- [Live lab](https://fishraposo.github.io/entrega-clara/) — the self-contained replay served by GitHub Pages.
+- [Static lab](../site/index.html) — the same replay from the committed file, offline.
 
 ## Architecture
 
