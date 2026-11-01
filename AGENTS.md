@@ -1,5 +1,17 @@
 # Repository guidance
 
+## What this project is
+
+- Entrega Clara combines two undergraduate assignments — a food-delivery requirements document and a
+  brute-force route-optimizer exercise — into one working platform, then uses it as a portfolio piece
+  for employers and freelance clients.
+- It is **not** an iFood clone and **not** a startup pitch. The iFood recruiter section was added
+  later, after the project already existed; keep that chronology in docs and copy.
+- The engineering framing is conventional: domain modeling, transactions, state machines, algorithms,
+  tests, trade-offs. Do not bolt AI features on to make it look modern.
+- Keep the default run free of Docker, WSL and database requirements. The PostgreSQL adapter is
+  opt-in; see `docs/origin.md` for the reasoning.
+
 ## Setup and commands
 
 - Requires Python 3.11+ and Node 22+. Install from root with `python -m pip install -e "app/backend[dev]"`; run `npm ci` in `app/web` (the only npm package/lockfile, not a root workspace).

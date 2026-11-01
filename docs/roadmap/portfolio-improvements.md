@@ -40,7 +40,7 @@ This page lists what would make Entrega Clara a stronger portfolio piece, and ho
 | Search replay GIF (stdlib renderer) | ✅ done | `scripts/media/render_search_gif.py` → `docs/media/lab-alt-vs-dijkstra.gif` |
 | Pathfinding-first README | ✅ done | pitch, replay, chart, screenshots, built-vs-deferred table, origin story |
 | Batch optimization payoff | ✅ done | `RoutePlan.baseline_*`, courier console line (Held-Karp vs nearest-neighbor) |
-| R4 origin story | ✅ done | "Origem / Origin" section in the README, linking the benchmark chart |
+| R4 origin story | ✅ done | "Origem / Origin" in the README plus [docs/origin.md](../origin.md): two assignments merged, brute force kept as the legacy router, portfolio layer, iFood chronology |
 | W5 housekeeping leftovers | ⏳ partial | `httpx` TestClient deprecation still shows (upstream) |
 
 ## Where the project stands

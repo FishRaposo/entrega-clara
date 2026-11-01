@@ -9,10 +9,22 @@ finite, numeric, and non-negative.
 `execution_time_ns`, and `routes_evaluated`. A solver may include `route_history`
 only for bounded experiments; consumers must treat it as optional.
 
-`LegacyBruteForceTSPSolver` is deliberately retained as the original exact,
-zero-origin permutation baseline for small matrices. It is a portfolio comparison
-reference, not the production dispatch strategy. Its timing covers solver computation
-only and excludes rendering, networking, and other application work.
+## The legacy baseline
+
+`LegacyBruteForceTSPSolver` is the algorithm from the coursework exercise that started this repository:
+try every ordering, keep the cheapest. It is deliberately retained, and not only as a comparison.
+
+- **Correctness oracle.** Every exact replacement (Held-Karp, 2-opt, the windowed VRP) is asserted
+  against it on small matrices, because an exhaustive search is hard to get subtly wrong.
+- **Published baseline.** It is the reference row in [the benchmark table](../benchmarks/routing.md),
+  so "the new solver is better" is a measured claim rather than an adjective.
+- **The demo's first router.** In the fictional company's history this is the legacy system it
+  outgrew: the class is named `Legacy…`, the benchmark table doubles as the migration memo, and this
+  page is the contract note explaining why it was replaced. A coursework algorithm about
+  combinatorial explosion became an in-world piece of technical debt.
+
+It fixes the route origin at index zero, covers solver computation only, and excludes rendering,
+networking, and other application work. See [the origin story](../origin.md) for why it stayed.
 
 ## M1 delivery-route extension
 

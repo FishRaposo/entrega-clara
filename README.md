@@ -1,10 +1,11 @@
 # Entrega Clara
 
-**Pathfinding under real constraints, framed as a São Paulo food-delivery platform.** A college
-brute-force route optimizer becomes unusable at about ten stops; this repository keeps it as the
-baseline and answers it with a measured solver ladder running on **real OpenStreetMap streets** —
-then wires that ladder into a delivery product where the courier actually drives the computed route,
-batches orders under pickup-before-dropoff precedence, and the customer watches it happen.
+**Pathfinding under real constraints, framed as a São Paulo food-delivery platform.** It began as two
+undergraduate assignments — a food-delivery requirements document and a brute-force route optimizer —
+that turned out to describe one system. The optimizer still dies at about ten stops; this repository
+keeps it as the baseline and answers it with a measured solver ladder on **real OpenStreetMap
+streets**, wired into a delivery product where the courier drives the computed route, batches orders
+under pickup-before-dropoff precedence, and the customer watches it happen.
 
 ![A linha do tempo... ALT contra Dijkstra na mesma rota de entrega](docs/media/lab-alt-vs-dijkstra.gif)
 
@@ -57,9 +58,14 @@ hierarchies it deferred are [ADR 0009](docs/adr/0009-city-scale-graph-and-contra
 
 ## Para recrutadores (iFood)
 
-Este repositório demonstra, de ponta a ponta e sem dependências externas, o mesmo recorte operacional
-que um app de delivery resolve em produção: cardápio → sacola → checkout idempotente → fila do
-restaurante → oferta, coleta, rota e entrega do entregador → rastreamento por SSE → visão de
+Uma observação de cronologia, porque ela importa: este projeto não foi construído para o iFood. Ele
+nasceu de dois trabalhos de faculdade e virou peça de portfólio antes deste processo seletivo; a
+afinidade com o domínio de delivery foi uma coincidência que o tornou especialmente relevante — e não
+o contrário. [A história completa está em docs/origin.md](docs/origin.md).
+
+Este repositório demonstra, de ponta a ponta e sem dependências externas obrigatórias, o mesmo recorte
+operacional que um app de delivery resolve em produção: cardápio → sacola → checkout idempotente →
+fila do restaurante → oferta, coleta, rota e entrega do entregador → rastreamento por SSE → visão de
 operações.
 
 - **Roteirização de verdade**: grafo real do OpenStreetMap do centro de SP (2 405 nós, filtrado para
@@ -80,16 +86,23 @@ operações.
 
 ## Origem / Origin
 
-**pt-BR** — Em outubro de 2026, uma aula de Análise e Desenvolvimento de Sistemas apresentou um
-algoritmo de força bruta para roteirização: testar todas as ordens de visita. Ele funciona até cerca
-de dez paradas e morre na décima primeira. Este repositório é a continuação desse exercício —
-`LegacyBruteForceTSPSolver` continua no código como baseline e
-[o gráfico de benchmarks](docs/benchmarks/routing.md) mostra, com números medidos, o que o substitui.
+**pt-BR** — O projeto começou como dois trabalhos de faculdade: um documento de requisitos de um app
+de delivery e um exercício de otimização de rotas por força bruta. Eles descreviam metades do mesmo
+sistema, então a decisão foi implementar o sistema. A força bruta (`LegacyBruteForceTSPSolver`) ficou
+no código como baseline e oráculo de corretude — e virou o roteador legado da empresa fictícia,
+substituído com justificativa documentada. Depois o projeto virou peça de portfólio: complementa o
+trabalho de IA aplicada com engenharia convencional — domínio, transações, algoritmos e trade-offs —
+e roda sem exigir Docker, WSL ou banco (PostgreSQL é opcional).
+[História completa em docs/origin.md](docs/origin.md), inclusive por que o iFood veio depois.
 
-**English** — In October 2026 an undergraduate class introduced brute-force route optimization: try
-every visit order. It works up to about ten stops and dies at eleven. This repository is that
-exercise's follow-up — `LegacyBruteForceTSPSolver` stays in the code as the baseline and
-[the benchmark table](docs/benchmarks/routing.md) measures what replaces it.
+**English** — The project began as two undergraduate assignments: a food-delivery requirements
+document and a brute-force route optimizer. They described two halves of one system, so the decision
+was to build the system. The brute force (`LegacyBruteForceTSPSolver`) stayed as the baseline and the
+correctness oracle — and became the fictional company's first router, replaced with a documented
+rationale. It then became a portfolio piece: conventional engineering (domain, transactions,
+algorithms, trade-offs) that complements applied-AI work, and a default run that needs no Docker, WSL
+or database (PostgreSQL is optional). [The full story is in docs/origin.md](docs/origin.md),
+including why iFood came afterwards.
 
 ## Built vs. deferred
 

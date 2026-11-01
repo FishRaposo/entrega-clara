@@ -4,7 +4,7 @@ The seed design and the user-approved M1 design under `docs/superpowers/specs/` 
 
 ## Start here
 
-- [Platform build research](research/2026-09-01-platform-build-research.md) — source-backed technical, product, security, privacy, provider, testing, and operations findings.
+- [Origin](origin.md) — why the project exists: two assignments, one system, and how it became a portfolio piece.
 - [M1 core delivery loop](superpowers/specs/2026-09-01-milestone-1-core-delivery-loop-design.md) — the current implementation contract.
 - [Platform evolution roadmap](roadmap/platform-evolution.md) — M1 through portfolio release, with dependencies and exit evidence.
 - [Portfolio improvement plan](roadmap/portfolio-improvements.md) — review findings and a prioritized backlog (routing, benchmarks, reviewer experience, Windows tooling) within the Python + Node toolchain.
