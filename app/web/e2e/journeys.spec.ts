@@ -82,9 +82,9 @@ test("páginas de papel não têm violações de acessibilidade automáticas", a
 }) => {
   for (const route of ["/", "/customer", "/restaurant", "/courier", "/admin", "/demo", "/lab"]) {
     await page.goto(route);
-    // Scan the settled page, not a loading skeleton: panels fed by the API (the
-    // lab traffic strip, for one) mount after the first paint.
-    await page.waitForLoadState("networkidle");
+    // Let client-side data settle. Network idle is not usable here: the
+    // customer page holds an SSE stream open, so it never becomes idle.
+    await page.waitForTimeout(1_200);
     const results = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa"])
       .analyze();
