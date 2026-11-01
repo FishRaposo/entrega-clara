@@ -34,10 +34,13 @@ logger = logging.getLogger(__name__)
 _REPO_ROOT = Path(__file__).resolve().parents[5]
 _GRAPH_DIR = _REPO_ROOT / "data" / "graph"
 
-# Named graph documents served by the lab and picked by configuration.
+# Named graph documents: the centro extract powers the product and the lab, the
+# synthetic lattice is the deterministic fixture and offline fallback, and the
+# city-scale graph is the benchmark/dispatch artifact (compressed compact-v1).
 GRAPH_FILES: dict[str, str] = {
     "osm": "sao-paulo-centro-osm.json",
     "synthetic": "sao-paulo-centro.json",
+    "city": "sao-paulo-city.json.gz",
 }
 # Preference order when no explicit path is configured: the real street extract
 # first, the deterministic synthetic lattice as the offline fallback.

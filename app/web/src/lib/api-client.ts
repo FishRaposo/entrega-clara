@@ -334,6 +334,7 @@ export type LabSolverName =
   | "dijkstra"
   | "alt"
   | "bidirectional"
+  | "ch"
   | "weighted-astar";
 
 export type LabPathResult = {

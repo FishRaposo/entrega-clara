@@ -10,6 +10,7 @@ that produced it.
 
 from __future__ import annotations
 
+import gzip
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -79,16 +80,39 @@ class StreetGraph:
 
 
 def load_graph(path: str | Path) -> StreetGraph:
-    """Load and validate a versioned graph document."""
-    raw: Any = json.loads(Path(path).read_text(encoding="utf-8"))
+    """Load and validate a versioned graph document.
+
+    Two shapes are accepted: the object-per-node document used by the demo
+    graphs, and the index-aligned ``compact-v1`` document used for city-scale
+    artifacts. A ``.gz`` suffix is read through gzip transparently, so the large
+    graph can stay compressed in the repository.
+    """
+    raw: Any = json.loads(_read_document(path))
     if not isinstance(raw, dict):
         raise TypeError("Graph document must be an object")
-    graph_id = raw.get("graph_id")
-    version = raw.get("version")
-    if not isinstance(graph_id, str) or not graph_id:
-        raise ValueError("Graph requires a graph_id")
-    if not isinstance(version, str) or not version:
-        raise ValueError("Graph requires a version")
+    if raw.get("format") == "compact-v1":
+        return _load_compact(raw)
+    return _load_object(raw)
+
+
+def _read_document(path: str | Path) -> str:
+    document = Path(path)
+    if document.suffix == ".gz":
+        with gzip.open(document, "rt", encoding="utf-8") as handle:
+            return handle.read()
+    return document.read_text(encoding="utf-8")
+
+
+def _required_str(raw: dict[str, Any], key: str) -> str:
+    value = raw.get(key)
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"Graph requires a {key}")
+    return value
+
+
+def _load_object(raw: dict[str, Any]) -> StreetGraph:
+    graph_id = _required_str(raw, "graph_id")
+    version = _required_str(raw, "version")
 
     raw_nodes = raw.get("nodes")
     if not isinstance(raw_nodes, list) or len(raw_nodes) < 2:
@@ -125,7 +149,72 @@ def load_graph(path: str | Path) -> StreetGraph:
         adjacency[from_node].append(
             GraphEdge(to_node=to_node, distance_meters=float(distance), speed_kmh=float(speed))
         )
+    return _build_graph(graph_id, version, nodes, adjacency, raw)
 
+
+def _load_compact(raw: dict[str, Any]) -> StreetGraph:
+    graph_id = _required_str(raw, "graph_id")
+    version = _required_str(raw, "version")
+    ids = raw.get("ids")
+    coordinates = raw.get("nodes")
+    raw_edges = raw.get("edges")
+    if not isinstance(ids, list) or len(ids) < 2:
+        raise ValueError("Compact graph requires at least two node ids")
+    if not isinstance(coordinates, list) or len(coordinates) != len(ids):
+        raise ValueError("Compact graph ids and nodes must have the same length")
+    if not isinstance(raw_edges, list) or not raw_edges:
+        raise ValueError("Compact graph requires edges")
+
+    nodes: dict[str, GeoPoint] = {}
+    for position, node_id in enumerate(ids):
+        if not isinstance(node_id, str) or not node_id:
+            raise ValueError("Compact graph ids must be non-empty strings")
+        point = coordinates[position]
+        if not isinstance(point, list) or len(point) != 2:
+            raise TypeError(f"Compact graph node {node_id} requires [latitude, longitude]")
+        latitude, longitude = point
+        if not isinstance(latitude, int | float) or not isinstance(longitude, int | float):
+            raise TypeError(f"Compact graph node {node_id} requires numeric coordinates")
+        if node_id in nodes:
+            raise ValueError(f"Duplicate graph node {node_id}")
+        nodes[node_id] = GeoPoint(latitude=float(latitude), longitude=float(longitude))
+
+    size = len(ids)
+    adjacency: dict[str, list[GraphEdge]] = {node: [] for node in nodes}
+    for edge in raw_edges:
+        if not isinstance(edge, list) or len(edge) != 4:
+            raise TypeError("Compact graph edges must be [from, to, distance, speed]")
+        from_index, to_index, distance, speed = edge
+        if (
+            not isinstance(from_index, int)
+            or not isinstance(to_index, int)
+            or isinstance(from_index, bool)
+            or isinstance(to_index, bool)
+        ):
+            raise TypeError("Compact graph edge indices must be integers")
+        if not 0 <= from_index < size or not 0 <= to_index < size:
+            raise ValueError("Compact graph edge references an unknown node index")
+        if not isinstance(distance, int | float) or distance <= 0:
+            raise ValueError("Graph edges require positive distance_meters")
+        if not isinstance(speed, int | float) or speed <= 0:
+            raise ValueError("Graph edges require positive speed_kmh")
+        adjacency[ids[from_index]].append(
+            GraphEdge(
+                to_node=ids[to_index],
+                distance_meters=float(distance),
+                speed_kmh=float(speed),
+            )
+        )
+    return _build_graph(graph_id, version, nodes, adjacency, raw)
+
+
+def _build_graph(
+    graph_id: str,
+    version: str,
+    nodes: dict[str, GeoPoint],
+    adjacency: dict[str, list[GraphEdge]],
+    raw: dict[str, Any],
+) -> StreetGraph:
     frozen_adjacency = {node: tuple(edges) for node, edges in adjacency.items()}
     max_speed_kmh = max(
         (edge.speed_kmh for edges in frozen_adjacency.values() for edge in edges),

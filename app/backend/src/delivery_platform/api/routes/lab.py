@@ -16,6 +16,7 @@ from delivery_platform.api.deps import get_identity
 from delivery_platform.application.container import graph_path, load_graph_document
 from delivery_platform.application.identity import IdentityContext
 from delivery_platform.core.config import settings
+from delivery_platform.routing.ch import ChPathSolver
 from delivery_platform.routing.graph import StreetGraph
 from delivery_platform.routing.informed import (
     AltPathSolver,
@@ -42,7 +43,7 @@ IdentityDep = Annotated[IdentityContext, Depends(get_identity)]
 
 BENCHMARK_PATH = Path(__file__).resolve().parents[6] / "docs" / "benchmarks" / "routing.json"
 
-PathSolverName = Literal["astar", "dijkstra", "alt", "bidirectional", "weighted-astar"]
+PathSolverName = Literal["astar", "dijkstra", "alt", "bidirectional", "ch", "weighted-astar"]
 TspSolverName = Literal["held-karp", "nearest-neighbor", "two-opt"]
 Objective = Literal["time", "distance"]
 GraphName = Literal["default", "osm", "synthetic"]
@@ -77,6 +78,8 @@ def build_path_solver(
         return AltPathSolver(landmarks=landmarks)
     if name == "bidirectional":
         return BidirectionalPathSolver(landmarks=landmarks)
+    if name == "ch":
+        return ChPathSolver()
     return WeightedAStarSolver(epsilon=epsilon)
 
 

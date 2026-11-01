@@ -32,6 +32,11 @@ const SOLVERS: { value: LabSolverName; label: string; hint: string }[] = [
   { value: "astar", label: "A* (linha reta)", hint: "heurística admissível" },
   { value: "alt", label: "A* + ALT", hint: "marcos pré-computados" },
   { value: "bidirectional", label: "Bidirecional + ALT", hint: "duas frentes de busca" },
+  {
+    value: "ch",
+    label: "Hierarquia de contração",
+    hint: "pré-processa uma vez, responde em milissegundos",
+  },
   { value: "weighted-astar", label: "A* ponderado (ε)", hint: "inexato, no máximo ε× o ótimo" },
 ];
 
