@@ -420,6 +420,33 @@ export function getLabBenchmarks(identity: DemoIdentity): Promise<LabBenchmarks>
   return request<LabBenchmarks>("/api/v1/lab/benchmarks", { identity });
 }
 
+export type LabTrafficPoint = {
+  hour: number;
+  estimated_seconds: number;
+  distance_meters: number;
+};
+
+export type LabTraffic = {
+  profile_id: string;
+  profile_source: string;
+  static_seconds: number;
+  points: LabTrafficPoint[];
+  peak_hour: number;
+  peak_seconds: number;
+  night_hour: number;
+  night_seconds: number;
+};
+
+export function getLabTraffic(
+  identity: DemoIdentity,
+  origin: string,
+  destination: string,
+  graph: LabGraphName = "default",
+): Promise<LabTraffic> {
+  const params = new URLSearchParams({ origin, destination, graph });
+  return request<LabTraffic>(`/api/v1/lab/traffic?${params.toString()}`, { identity });
+}
+
 export function rateOrder(
   identity: DemoIdentity,
   orderId: string,

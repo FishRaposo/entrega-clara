@@ -228,6 +228,10 @@ class RoutePlan:
     scenario_id: str | None = None
     objective: str = "time"
     batch_id: str | None = None
+    #: Time-dependent planning: when the route was priced and when it lands.
+    departure_at: datetime | None = None
+    arrival_at: datetime | None = None
+    traffic_profile_id: str | None = None
     # Batch tours also record a cheaper-to-compute baseline over the same cost
     # matrix, so the courier surface can show what the exact solver bought.
     baseline_solver_name: str | None = None

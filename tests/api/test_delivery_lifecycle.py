@@ -128,7 +128,13 @@ def test_full_delivery_lifecycle(client: TestClient):
     assert detail["state"] == "en_route"
     assert detail["route"] is not None
     assert detail["route"]["distance_meters"] > 0
-    assert detail["route"]["solver_name"] == "astar-haversine"
+    # The demo clock runs through the lunch peak, so the planner prices travel
+    # with the committed traffic profile and records both ends of the trip.
+    assert detail["route"]["solver_name"] == "td-astar"
+    assert detail["route"]["traffic_profile_id"] == "sao-paulo-lunch-rush"
+    assert detail["route"]["departure_at"] is not None
+    assert detail["route"]["arrival_at"] is not None
+    assert detail["route"]["arrival_at"] > detail["route"]["departure_at"]
     assert detail["route"]["graph_id"] == "sao-paulo-centro-osm"
 
     loc = client.post(

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getLabBenchmarks,
   getLabGraph,
+  getLabTraffic,
   runLabPath,
   runLabTsp,
   type LabBenchmarks,
@@ -11,6 +12,7 @@ import {
   type LabGraphName,
   type LabPathResult,
   type LabSolverName,
+  type LabTraffic,
   type LabTspResult,
 } from "../lib/api-client";
 import { formatDuration } from "../lib/format";
@@ -92,6 +94,7 @@ export function AlgorithmLab() {
   const [tspResult, setTspResult] = useState<LabTspResult | null>(null);
   const [tspReference, setTspReference] = useState<LabTspResult | null>(null);
   const [benchmarks, setBenchmarks] = useState<LabBenchmarks | null>(null);
+  const [traffic, setTraffic] = useState<LabTraffic | null>(null);
   const autoRunRef = useRef(false);
   const prefersReducedMotion = useMemo(
     () =>
@@ -126,6 +129,29 @@ export function AlgorithmLab() {
       .then(setBenchmarks)
       .catch(() => setBenchmarks(null));
   }, []);
+
+  useEffect(() => {
+    if (!graph || originIndex === null || destinationIndex === null) {
+      setTraffic(null);
+      return;
+    }
+    let cancelled = false;
+    getLabTraffic(
+      IDENTITY,
+      graph.ids[originIndex],
+      graph.ids[destinationIndex],
+      graphName,
+    )
+      .then((loaded) => {
+        if (!cancelled) setTraffic(loaded);
+      })
+      .catch(() => {
+        if (!cancelled) setTraffic(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [graph, graphName, originIndex, destinationIndex]);
 
   const indexById = useMemo(
     () => new Map((graph?.ids ?? []).map((id, index) => [id, index])),
@@ -677,6 +703,50 @@ export function AlgorithmLab() {
           </p>
         ) : null}
       </div>
+
+      {traffic ? (
+        <div className="panel stack">
+          <h3>ETA ao longo do dia</h3>
+          <p className="muted">
+            mesma origem e destino, perfil <strong>{traffic.profile_id}</strong> · pico às{" "}
+            {traffic.peak_hour}h: {formatDuration(traffic.peak_seconds)} · madrugada às{" "}
+            {traffic.night_hour}h: {formatDuration(traffic.night_seconds)} · sem trânsito:{" "}
+            {formatDuration(traffic.static_seconds)}
+          </p>
+          <div
+            className="traffic-strip"
+            role="img"
+            aria-label={`ETA por hora do dia: pico às ${traffic.peak_hour} horas com ${formatDuration(traffic.peak_seconds)}`}
+          >
+            {traffic.points.map((point) => {
+              const ceiling = Math.max(...traffic.points.map((item) => item.estimated_seconds));
+              const height = Math.max(8, (point.estimated_seconds / ceiling) * 100);
+              const className =
+                point.hour === traffic.peak_hour
+                  ? "peak"
+                  : point.hour === traffic.night_hour
+                    ? "night"
+                    : undefined;
+              return (
+                <span
+                  key={point.hour}
+                  className={className}
+                  style={{ height: `${height}%` }}
+                  title={`${point.hour}h · ${formatDuration(point.estimated_seconds)}`}
+                />
+              );
+            })}
+          </div>
+          <div className="traffic-strip-labels">
+            <span>0h</span>
+            <span>6h</span>
+            <span>12h</span>
+            <span>18h</span>
+            <span>23h</span>
+          </div>
+          <p className="muted">{traffic.profile_source}</p>
+        </div>
+      ) : null}
 
       {benchmarkRows.length ? (
         <div className="panel stack">

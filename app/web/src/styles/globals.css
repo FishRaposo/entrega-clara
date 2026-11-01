@@ -89,6 +89,12 @@ button { font: inherit; cursor: pointer; }
 .lab-counters dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 700; }
 .lab-summary { border-left: .3rem solid var(--accent); background: #fdf1e7; padding: .6rem .9rem; border-radius: .4rem; margin: .9rem 0 0; }
 
+.traffic-strip { display: flex; align-items: flex-end; gap: 2px; height: 88px; margin: .5rem 0 .25rem; border-bottom: 1px solid var(--line); }
+.traffic-strip span { flex: 1; min-width: 0; min-height: 3px; background: #a9bd9f; border-top: 2px solid #7d9670; border-radius: 2px 2px 0 0; }
+.traffic-strip span.peak { background: var(--accent); border-top-color: var(--accent-dark); }
+.traffic-strip span.night { background: #4f6b45; border-top-color: #3c5334; }
+.traffic-strip-labels { display: flex; justify-content: space-between; color: var(--muted); font-size: .7rem; }
+
 .ops-table {
   width: 100%;
   border-collapse: collapse;

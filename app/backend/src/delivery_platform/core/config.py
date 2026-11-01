@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     default_currency: str = "BRL"
     tracking_update_interval_seconds: int = 2
     routing_graph_path: str = ""
+    #: Time-of-day speed profile. Empty means the committed default
+    #: (data/graph/traffic-profile.json); routing stays static if it is missing.
+    traffic_profile_path: str = ""
     public_web_origin: str = "http://localhost:3000"
     maptiler_api_key: str = ""
     maptiler_style_url: str = ""

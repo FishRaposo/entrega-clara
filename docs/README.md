@@ -32,6 +32,7 @@ The seed design and the user-approved M1 design under `docs/superpowers/specs/` 
 - [ADR 0007: multi-stop batching](adr/0007-multi-stop-batching.md)
 - [ADR 0008: real street graph and landmark-based acceleration](adr/0008-real-street-graph-and-landmarks.md)
 - [ADR 0009: city-scale graph and contraction hierarchies](adr/0009-city-scale-graph-and-contraction-hierarchies.md)
+- [ADR 0010: time-dependent routing under a FIFO speed profile](adr/0010-time-dependent-routing.md)
 
 ## Evidence
 

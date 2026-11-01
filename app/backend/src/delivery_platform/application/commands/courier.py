@@ -140,6 +140,7 @@ class CourierCommands:
                 BatchRouteRequest(
                     batch_id=batch.id,
                     courier_location=courier.location,
+                    departure_at=self._container.clock.now(),
                     deliveries=tuple(
                         BatchStopRequest(
                             delivery_id=delivery.id,
@@ -225,6 +226,7 @@ class CourierCommands:
                     pickup_label=restaurant.name,
                     dropoff_point=address.location,
                     dropoff_label=order.address_label,
+                    departure_at=self._container.clock.now(),
                 ),
                 route_id=self._container.ids.new_id("rpl"),
             )

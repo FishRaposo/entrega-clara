@@ -45,4 +45,10 @@ test("capturas para documentação @screens", async ({ page }) => {
   await page.locator(".lab-counters").first().scrollIntoViewIfNeeded();
   await page.waitForTimeout(800);
   await page.screenshot({ path: "../../docs/media/lab.png", fullPage: false });
+
+  // The day-long ETA strip: same trip, priced at every local hour.
+  const strip = page.locator(".traffic-strip");
+  await strip.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: "../../docs/media/lab-traffic.png", fullPage: false });
 });

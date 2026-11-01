@@ -5,6 +5,7 @@ and returns solver metadata, so the lab never touches orders/deliveries.
 """
 
 import json
+from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Literal, Protocol
@@ -13,7 +14,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from delivery_platform.api.deps import get_identity
-from delivery_platform.application.container import graph_path, load_graph_document
+from delivery_platform.application.container import (
+    graph_path,
+    load_graph_document,
+    load_traffic_profile,
+)
 from delivery_platform.application.identity import IdentityContext
 from delivery_platform.core.config import settings
 from delivery_platform.routing.ch import ChPathSolver
@@ -31,6 +36,11 @@ from delivery_platform.routing.path import (
     PathProblem,
     PathResult,
 )
+from delivery_platform.routing.time_dependent import (
+    TimeDependentAStarPathSolver,
+    TimeDependentDijkstraPathSolver,
+)
+from delivery_platform.routing.time_profile import TravelTimeProfile
 from delivery_platform.routing.tsp import (
     HeldKarpSolver,
     NearestNeighborSolver,
@@ -43,7 +53,16 @@ IdentityDep = Annotated[IdentityContext, Depends(get_identity)]
 
 BENCHMARK_PATH = Path(__file__).resolve().parents[6] / "docs" / "benchmarks" / "routing.json"
 
-PathSolverName = Literal["astar", "dijkstra", "alt", "bidirectional", "ch", "weighted-astar"]
+PathSolverName = Literal[
+    "astar",
+    "dijkstra",
+    "alt",
+    "bidirectional",
+    "ch",
+    "td-astar",
+    "td-dijkstra",
+    "weighted-astar",
+]
 TspSolverName = Literal["held-karp", "nearest-neighbor", "two-opt"]
 Objective = Literal["time", "distance"]
 GraphName = Literal["default", "osm", "synthetic"]
@@ -80,6 +99,10 @@ def build_path_solver(
         return BidirectionalPathSolver(landmarks=landmarks)
     if name == "ch":
         return ChPathSolver()
+    if name == "td-astar":
+        return TimeDependentAStarPathSolver()
+    if name == "td-dijkstra":
+        return TimeDependentDijkstraPathSolver()
     return WeightedAStarSolver(epsilon=epsilon)
 
 
@@ -107,6 +130,8 @@ class PathExperimentRequest(BaseModel):
     # Only used by the landmark-based solvers / the inexact weighted variant.
     epsilon: float = Field(default=2.0, ge=1.0, le=10.0)
     landmarks: int = Field(default=DEFAULT_LANDMARK_COUNT, ge=1, le=32)
+    # Only used by the time-dependent solvers: local hour of the departure.
+    departure_hour: float | None = Field(default=None, ge=0.0, lt=24.0)
 
 
 class TspExperimentRequest(BaseModel):
@@ -133,6 +158,8 @@ def _path_payload(result: PathResult, problem: PathProblem) -> dict:
         "nodes_expanded": result.nodes_expanded,
         "computation_time_ns": result.computation_time_ns,
         "preprocessing_time_ns": result.preprocessing_time_ns,
+        "departure_at": result.departure_at,
+        "arrival_at": result.arrival_at,
         "objective": problem.objective,
         "geometry": [
             [graph.nodes[n].longitude, graph.nodes[n].latitude]
@@ -179,11 +206,82 @@ def lab_path(
     solver = build_path_solver(
         payload.solver, epsilon=payload.epsilon, landmarks=payload.landmarks
     )
+    time_dependent = payload.solver in ("td-astar", "td-dijkstra")
+    profile = load_traffic_profile(settings) if time_dependent else None
+    departure: float | None = None
+    if time_dependent:
+        if profile is None:
+            raise HTTPException(status_code=409, detail="traffic profile unavailable")
+        if payload.departure_hour is None:
+            raise HTTPException(
+                status_code=400, detail="time-dependent solvers require departure_hour"
+            )
+        departure = _local_hour_epoch(profile, payload.departure_hour)
     problem = PathProblem(
-        graph, payload.origin, payload.destination, payload.objective
+        graph,
+        payload.origin,
+        payload.destination,
+        payload.objective,
+        departure,
+        profile,
     )
     result = solver.solve(problem, trace=payload.trace)
     return _path_payload(result, problem)
+
+
+def _local_hour_epoch(profile: TravelTimeProfile, hour: float) -> float:
+    """Epoch at a given local hour of a fixed reference day (deterministic)."""
+    midnight = datetime(2026, 1, 1, tzinfo=UTC).timestamp() - profile.tz_offset_hours * 3600.0
+    return midnight + hour * 3600.0
+
+
+@router.get("/traffic")
+def lab_traffic(
+    _identity: IdentityDep,
+    origin: str,
+    destination: str,
+    graph: GraphName = "default",
+) -> dict:
+    """ETA of the same trip for every hour of the day under the traffic profile."""
+    document = _graph(graph)
+    if origin not in document.nodes or destination not in document.nodes:
+        raise HTTPException(status_code=400, detail="unknown node id")
+    profile = load_traffic_profile(settings)
+    if profile is None:
+        raise HTTPException(status_code=409, detail="traffic profile unavailable")
+    static = DijkstraPathSolver().solve(PathProblem(document, origin, destination, "time"))
+    solver = TimeDependentAStarPathSolver()
+    points: list[dict] = []
+    for hour in range(24):
+        result = solver.solve(
+            PathProblem(
+                document,
+                origin,
+                destination,
+                "time",
+                _local_hour_epoch(profile, float(hour)),
+                profile,
+            )
+        )
+        points.append(
+            {
+                "hour": hour,
+                "estimated_seconds": round(result.estimated_seconds, 3),
+                "distance_meters": round(result.distance_meters, 1),
+            }
+        )
+    peak = max(points, key=lambda point: point["estimated_seconds"])
+    night = min(points, key=lambda point: point["estimated_seconds"])
+    return {
+        "profile_id": profile.profile_id,
+        "profile_source": profile.source,
+        "static_seconds": round(static.estimated_seconds, 3),
+        "points": points,
+        "peak_hour": peak["hour"],
+        "peak_seconds": peak["estimated_seconds"],
+        "night_hour": night["hour"],
+        "night_seconds": night["estimated_seconds"],
+    }
 
 
 @router.post("/tsp")

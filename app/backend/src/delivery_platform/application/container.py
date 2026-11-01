@@ -28,6 +28,7 @@ from delivery_platform.domain.entities import DemoIdentity
 from delivery_platform.domain.errors import MissingIdentityError
 from delivery_platform.routing.graph import StreetGraph, load_graph
 from delivery_platform.routing.graph_planner import GraphRoutePlanner
+from delivery_platform.routing.time_profile import TravelTimeProfile, load_profile
 
 logger = logging.getLogger(__name__)
 
@@ -98,8 +99,25 @@ class AppContainer:
         return IdentityContext.from_demo_identity(identity)
 
 
+def load_traffic_profile(settings: Settings) -> TravelTimeProfile | None:
+    """Load the traffic profile once; a missing or broken profile means static routing."""
+    configured = settings.traffic_profile_path
+    path = Path(configured) if configured else _GRAPH_DIR / "traffic-profile.json"
+    if configured and not path.is_absolute():
+        path = _REPO_ROOT / path
+    if not path.exists():
+        logger.warning("Traffic profile %s is not available; routing stays static", path)
+        return None
+    try:
+        return load_profile(path)
+    except (OSError, ValueError):
+        logger.exception("Traffic profile %s is unusable; routing stays static", path)
+        return None
+
+
 def _load_route_planner(settings: Settings) -> DeliveryRoutePlanner | None:
     """Load the configured graph; fall back graph by graph, then to straight lines."""
+    profile = load_traffic_profile(settings)
     candidates: list[Path] = []
     if settings.routing_graph_path:
         explicit = graph_path(settings)
@@ -111,7 +129,7 @@ def _load_route_planner(settings: Settings) -> DeliveryRoutePlanner | None:
             logger.warning("Routing graph %s is not available", candidate)
             continue
         try:
-            return GraphRoutePlanner(load_graph_document(str(candidate)))
+            return GraphRoutePlanner(load_graph_document(str(candidate)), profile)
         except (OSError, TypeError, ValueError) as error:
             logger.warning("Routing graph %s could not be loaded (%s)", candidate, error)
     logger.warning("No usable routing graph; falling back to straight-line routing")

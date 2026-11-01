@@ -26,6 +26,7 @@ from typing import Any, Literal, Protocol
 from delivery_platform.domain.entities import RouteSegment, RouteStop
 from delivery_platform.domain.geo import haversine_m
 from delivery_platform.routing.graph import GraphEdge, StreetGraph
+from delivery_platform.routing.time_profile import TravelTimeProfile
 
 Objective = Literal["time", "distance"]
 
@@ -36,6 +37,10 @@ class PathProblem:
     origin: str
     destination: str
     objective: Objective = "time"
+    #: Time-dependent inputs. When both are set, a solver may price each edge
+    #: with the profile at the moment the courier would reach it.
+    departure_at: float | None = None
+    profile: TravelTimeProfile | None = None
 
     def __post_init__(self) -> None:
         if self.origin not in self.graph.nodes:
@@ -44,6 +49,8 @@ class PathProblem:
             raise ValueError(f"Unknown destination node {self.destination}")
         if self.objective not in ("time", "distance"):
             raise ValueError(f"Unknown objective {self.objective}")
+        if self.departure_at is not None and not isinstance(self.departure_at, int | float):
+            raise TypeError("departure_at must be epoch seconds")
 
 
 @dataclass(frozen=True)
@@ -66,6 +73,9 @@ class PathResult:
     # Preprocessing cost (landmark tables) paid once per graph and objective,
     # reported separately from the per-query computation time.
     preprocessing_time_ns: int = 0
+    #: Time-dependent results carry both ends of the trip (epoch seconds).
+    departure_at: float | None = None
+    arrival_at: float | None = None
 
 
 class PathSolver(Protocol):
@@ -104,12 +114,22 @@ def geometry_for(graph: StreetGraph, node_path: tuple[str, ...]) -> dict[str, An
     }
 
 
-def _reconstruct(came_from: dict[str, str], destination: str) -> tuple[str, ...]:
+def reconstruct_path(came_from: dict[str, str], destination: str) -> tuple[str, ...]:
     path = [destination]
     while path[-1] in came_from:
         path.append(came_from[path[-1]])
     path.reverse()
     return tuple(path)
+
+
+def path_distance(graph: StreetGraph, node_path: tuple[str, ...]) -> float:
+    """Length of a path in meters, ignoring time (used by time-dependent runs)."""
+    distance = 0.0
+    for current, nxt in itertools.pairwise(node_path):
+        distance += next(
+            edge.distance_meters for edge in graph.neighbors(current) if edge.to_node == nxt
+        )
+    return distance
 
 
 def path_totals(graph: StreetGraph, node_path: tuple[str, ...]) -> tuple[float, float]:
@@ -151,7 +171,7 @@ def astar_search(
     while frontier:
         _, current = heapq.heappop(frontier)
         if current == goal:
-            node_path = _reconstruct(came_from, goal)
+            node_path = reconstruct_path(came_from, goal)
             distance, seconds = path_totals(graph, node_path)
             return PathResult(
                 node_path=node_path,
@@ -293,7 +313,7 @@ class DijkstraPathSolver:
                 frontier_series.append(len(frontier))
                 cost_series.append(cost)
             if current == problem.destination:
-                node_path = _reconstruct(came_from, current)
+                node_path = reconstruct_path(came_from, current)
                 distance, seconds = path_totals(graph, node_path)
                 return PathResult(
                     node_path=node_path,
@@ -331,6 +351,9 @@ class DeliveryRouteProblem:
     delivery_id: str
     deterministic_seed: int = 0
     objective: Objective = "time"
+    #: Time-dependent inputs; the second leg departs when the first one lands.
+    departure_at: float | None = None
+    profile: TravelTimeProfile | None = None
 
     def __post_init__(self) -> None:
         for name, node in (
@@ -357,6 +380,9 @@ class DeliveryRouteResult:
     graph_version: str
     warnings: list[str] = field(default_factory=list)
     objective: str = "time"
+    departure_at: float | None = None
+    arrival_at: float | None = None
+    traffic_profile_id: str | None = None
 
 
 class DeliveryRouteSolver:
@@ -370,12 +396,24 @@ class DeliveryRouteSolver:
         graph = problem.graph
         leg_pickup = self._solver.solve(
             PathProblem(
-                graph, problem.courier_origin, problem.pickup_node, problem.objective
+                graph,
+                problem.courier_origin,
+                problem.pickup_node,
+                problem.objective,
+                problem.departure_at,
+                problem.profile,
             )
         )
         leg_dropoff = self._solver.solve(
             PathProblem(
-                graph, problem.pickup_node, problem.dropoff_node, problem.objective
+                graph,
+                problem.pickup_node,
+                problem.dropoff_node,
+                problem.objective,
+                leg_pickup.arrival_at
+                if leg_pickup.arrival_at is not None
+                else problem.departure_at,
+                problem.profile,
             )
         )
         stops = [
@@ -431,4 +469,11 @@ class DeliveryRouteSolver:
             graph_id=graph.graph_id,
             graph_version=graph.version,
             objective=problem.objective,
+            departure_at=problem.departure_at,
+            arrival_at=leg_dropoff.arrival_at,
+            traffic_profile_id=(
+                problem.profile.profile_id
+                if problem.profile is not None and problem.departure_at is not None
+                else None
+            ),
         )

@@ -222,6 +222,8 @@ class DeliveryRouteRequest:
     pickup_label: str
     dropoff_point: GeoPoint
     dropoff_label: str
+    #: When set, the planner prices travel with the traffic profile at this time.
+    departure_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -242,6 +244,8 @@ class BatchRouteRequest:
     batch_id: str
     courier_location: GeoPoint
     deliveries: tuple[BatchStopRequest, ...]
+    #: When set, matrix cells and legs are priced with the traffic profile.
+    departure_at: datetime | None = None
 
 
 class DeliveryRoutePlanner(Protocol):
