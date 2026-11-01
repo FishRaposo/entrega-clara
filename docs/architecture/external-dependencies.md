@@ -19,7 +19,14 @@ Development-only tooling installed through the manifests above: pytest, ruff, an
 
 | Setting | Effect when present | Behavior when absent |
 | --- | --- | --- |
-There is no optional runtime configuration today. Settings like a future `MAPTILER_API_KEY` are reserved names documented under expansions below — they are browser-visible configuration, never backend secrets; see [provider boundaries](provider-and-integration-boundaries.md).
+| `ROUTING_GRAPH_PATH` | Loads that graph document for the product and the lab | Falls back to the committed OSM extract, then the synthetic lattice, then straight-line routing |
+| `MAPTILER_API_KEY` / `MAPTILER_STYLE_URL` | Reserved for the future MapLibre adapter (browser-visible configuration, never a backend secret) | The deterministic map fallback renders the route |
+
+## Committed data derived from external sources
+
+| Artifact | Source | Licence / obligation |
+| --- | --- | --- |
+| `data/graph/sao-paulo-centro-osm.json` | OpenStreetMap via the Overpass API, fetched offline by `scripts/data/fetch_osm_graph.py` | © OpenStreetMap contributors, ODbL 1.0 — attribution is stored in the document, served by the lab, shown on the lab page and repeated in the README. No network access at run time |
 
 ## Documented future expansions
 

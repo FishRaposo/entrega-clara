@@ -14,6 +14,7 @@ GATES = [
     ("seed validation", [sys.executable, "scripts/data/validate_seed.py", "data/scenarios/lunch-rush.json"], ROOT),
     ("requirement coverage", [sys.executable, "scripts/quality/check_requirement_coverage.py", "docs/requirements/traceability.md"], ROOT),
     ("app boundary", [sys.executable, "scripts/repo/check_app_boundary.py"], ROOT),
+    ("routing benchmark smoke", [sys.executable, "scripts/bench/routing_benchmark.py", "--smoke"], ROOT),
     ("ruff", [sys.executable, "-m", "ruff", "check", "app/backend/src", "tests", "scripts"], ROOT),
     ("mypy", [sys.executable, "-m", "mypy", "app/backend/src"], ROOT),
     ("backend tests", [sys.executable, "-m", "pytest", "tests", "-q"], ROOT),

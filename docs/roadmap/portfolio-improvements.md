@@ -25,10 +25,38 @@ This page lists what would make Entrega Clara a stronger portfolio piece, and ho
 | O1 ops timeline/ETA | ✅ done | `GET /operations/timeline` + panel table |
 | O2 route-following GPS | ✅ done | `courier.route_step`, polyline-constrained pings |
 | O3 snapshots | ✅ done | named in-memory + JSON export/import roundtrip |
-| O4 courier batching | ✅ done | `POST /courier/deliveries/batch`, ADR 0007, cross-restaurant |
+| O4 courier batching | ✅ done | `POST /courier/batches/accept`, ADR 0007, cross-restaurant |
 | Rate + cancel | ✅ done | `/me/orders/{id}/rate|cancel`, e2e covers rating |
-| R4 origin story | ⏳ open | README has recruiter section; narrative polish optional |
+| Real street graph | ✅ done | `scripts/data/fetch_osm_graph.py`, `data/graph/sao-paulo-centro-osm.json` (OSM, ODbL), ADR 0008 |
+| ALT landmarks + bidirectional + weighted A* | ✅ done | `routing/landmarks.py`, `routing/informed.py`, differential tests on both graphs |
+| Animated solver lab | ✅ done | `components/lab-canvas.tsx` + canvas `algorithm-lab.tsx`, `/lab` in the axe loop |
+| Search replay GIF (stdlib renderer) | ✅ done | `scripts/media/render_search_gif.py` → `docs/media/lab-alt-vs-dijkstra.gif` |
+| Pathfinding-first README | ✅ done | pitch, replay, chart, screenshots, built-vs-deferred table, origin story |
+| Batch optimization payoff | ✅ done | `RoutePlan.baseline_*`, courier console line (Held-Karp vs nearest-neighbor) |
+| R4 origin story | ✅ done | "Origem / Origin" section in the README, linking the benchmark chart |
 | W5 housekeeping leftovers | ⏳ partial | `httpx` TestClient deprecation still shows (upstream) |
+
+## Where the project stands
+
+The repo now answers its origin question with measured evidence. A college
+brute-force TSP that dies at ten stops is retained as the baseline, and the
+ladder that replaces it — nearest neighbor, 2-opt, Held-Karp with precedence,
+plus Dijkstra, A*, ALT landmarks, balanced bidirectional search and weighted
+ε-A* for point-to-point routing — runs on **real OpenStreetMap streets of
+central São Paulo** and is measured in `docs/benchmarks/`.
+
+What a reviewer sees quickly:
+
+1. `docs/media/lab-alt-vs-dijkstra.gif` — the same delivery route searched by
+   ALT (70 expansions) and Dijkstra (167), replayed and drawn by a
+   standard-library renderer.
+2. `docs/benchmarks/routing.md` — the ladder on one table, with the quality
+   overshoot of the inexact variant and the one-time preprocessing cost.
+3. The courier console showing a batch tour computed by Held-Karp next to what
+   nearest-neighbor would have cost.
+
+What a reviewer still cannot see: a hosted demo, a durable database adapter,
+real providers, or a graph larger than one city district.
 
 ## Constraints every item respects
 
@@ -38,15 +66,27 @@ This page lists what would make Entrega Clara a stronger portfolio piece, and ho
 - **New dependencies are listed only under [Future maybe](#future-maybe-new-dependencies),** each with what it would unlock.
 - **Honest claims.** Nothing gets described as done, measured or production-grade until a test or a committed result shows it.
 
-## Where the project stands
+## Where the project stood before this round
 
-The M1 slice is real and well built: catalog, cart, coupons, idempotent checkout with simulated payment, restaurant and courier commands with business invariants, a versioned synthetic São Paulo graph, A\* with a Dijkstra oracle, post-commit events, authorized SSE, an operations read model, four pt-BR role surfaces, a guided lunch-rush replay through the same handlers, Playwright journeys with axe scans, and a pt-BR recruiter section in the README.
+The M1 slice was real and well built: catalog, cart, coupons, idempotent
+checkout with simulated payment, restaurant and courier commands with business
+invariants, post-commit events, authorized SSE, an operations read model, four
+pt-BR role surfaces, a guided lunch-rush replay through the same handlers, and
+Playwright journeys with axe scans.
 
-What a reviewer cannot yet see in five minutes:
+What a reviewer could not see in five minutes:
 
-1. **The original question is unanswered.** The project started from the professor's brute-force route algorithm, which becomes unusable at around 10 stops. The repo keeps that algorithm as `LegacyBruteForceTSPSolver`, but nothing replaces it yet. A\* solves a different problem (point to point, not "best order for many stops").
-2. **There is no visual or numeric proof.** No screenshot, no benchmark, no chart, no verification record with exact counts.
-3. **Some docs and tooling still describe the earlier Docker/Postgres plan.**
+1. **The graph was fictional.** Every distance, ETA and benchmark number came
+   from a 77-node synthetic lattice.
+2. **The solver ladder stopped at A*.** No landmarks, no bidirectional search,
+   no measured quality/work trade-off.
+3. **The lab was static.** Expanded-node sets were drawn as fixed circles; a
+   real-size graph could not be rendered at all.
+4. **Nothing showed the search moving**, and no screenshot or chart put a
+   number on the algorithms.
+
+Items 1–4 are addressed above; the sections below keep the original review
+findings and implementation notes for history.
 
 ## Findings from the review
 

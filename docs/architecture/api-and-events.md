@@ -1,11 +1,13 @@
 # M1 API and event contract
 
-**Status:** Planned contract for implementation
+**Status:** Implemented for M1 — measured gates in [verification.md](../verification.md)
 **Version:** `v1`
 **Product:** Entrega Clara
 **Related:** [M1 design](../superpowers/specs/2026-09-01-milestone-1-core-delivery-loop-design.md), [provider boundaries](provider-and-integration-boundaries.md), [M1 runbook](../runbooks/milestone-1-development.md)
 
-This is the implementation-facing contract for the M1 HTTP and realtime surface. It describes the shape that clients and tests should target; it does not claim that these endpoints are already implemented in the current scaffold.
+This is the implementation-facing contract for the M1 HTTP and realtime surface. FastAPI's generated
+OpenAPI is the machine-readable source of truth; this page records intent, invariants, and the parts
+that tests pin down.
 
 ## Contract principles
 
@@ -32,7 +34,7 @@ The client must never be able to grant itself a role by sending `role=admin`. Au
 | --- | --- |
 | Customer | Own cart, seeded addresses, own orders, own notifications/tracking |
 | Restaurant operator | Orders belonging to their restaurant; confirmation/preparation actions |
-| Courier | Own availability, offers, active delivery, location, pickup/completion |
+| Courier | Own availability, offers, active delivery/batch, location, pickup/completion, and the tracking snapshot of the order currently assigned to them |
 | Operations | Read-only operational projections and demo controls |
 
 Every denied response is safe and does not reveal whether an unrelated resource exists when that distinction would expose private information.
@@ -134,13 +136,18 @@ The application verifies the operator owns the restaurant before applying a tran
 | Method | Path | State/effect |
 | --- | --- | --- |
 | `PUT` | `/courier/availability` | Set current courier available/unavailable |
+| `POST` | `/courier/batches/accept` | Accept 2–3 offered deliveries as one optimized tour (ADR 0007) |
 | `POST` | `/courier/deliveries/{delivery_id}/accept` | Assign courier and order `courier_assigned` |
 | `POST` | `/courier/deliveries/{delivery_id}/pickup` | `courier_assigned → picked_up` |
 | `POST` | `/courier/deliveries/{delivery_id}/start` | `picked_up → en_route` |
 | `POST` | `/courier/deliveries/{delivery_id}/location` | Append monotonic tracking event |
+| `POST` | `/courier/deliveries/{delivery_id}/route-advance` | Simulated GPS step that follows the route polyline |
 | `POST` | `/courier/deliveries/{delivery_id}/complete` | `en_route → delivered` |
 
-The courier can have only one active M1 delivery. Location payloads must contain a sequence and coordinates bounded by the selected graph/market policy:
+The courier can hold one active delivery **or** one active batch of 2–3 deliveries. A batch accept
+prices every stop pair with one-to-all Dijkstra, orders the stops with Held-Karp under
+pickup-before-dropoff precedence, and returns the tour plus a nearest-neighbor baseline cost so the
+console can show what the exact solver bought.
 
 ```json
 {
@@ -164,6 +171,29 @@ The existing deterministic controls remain namespaced:
 | `POST` | `/demo/clock` | Advance deterministic time |
 
 Demo controls cannot write repository state directly. They invoke the same command handlers used by role surfaces.
+
+## Algorithm lab (read-only)
+
+The lab is a bounded, deterministic experiment surface over the committed street graph. It never
+touches orders, deliveries, tracking, or the store: every request builds its own problem and returns
+solver metadata.
+
+| Method | Path | Effect |
+| --- | --- | --- |
+| `GET` | `/lab/graph?graph=default\|osm\|synthetic` | Compact graph document: `ids`, `nodes` (`[lat, lon]` per node), `edges` (`[fromIndex, toIndex, speed_kmh]`), graph metadata and the ODbL attribution. Gzip-encoded |
+| `POST` | `/lab/path` | `{origin, destination, solver, objective, trace, graph, epsilon?, landmarks?}`; solvers `astar`, `dijkstra`, `alt`, `bidirectional`, `weighted-astar` |
+| `POST` | `/lab/tsp` | 3–10 stops, solvers `held-karp`, `nearest-neighbor`, `two-opt`, an objective and an origin index |
+| `GET` | `/lab/benchmarks` | The committed `docs/benchmarks/routing.json` artifact |
+
+`trace=true` adds `expanded_order` plus the parallel `frontier_sizes` (priority-queue size after each
+expansion) and `expansion_costs` (settled cost of the expanded node) series, so a client can replay
+the search frame by frame. Results carry `nodes_expanded`, `computation_time_ns` and, for the
+landmark-based solvers, `preprocessing_time_ns` — paid once per graph and objective and reported
+separately from query time.
+
+Exact solvers (`dijkstra`, `astar`, `alt`, `bidirectional`) must agree on optimal cost; the client
+labels `weighted-astar` as inexact because it may return up to ε × the optimum. No factorial solver is
+exposed over HTTP: the lab bounds stops at 10 and the batch dispatch stays ≤ 3 deliveries.
 
 ## Response conventions
 

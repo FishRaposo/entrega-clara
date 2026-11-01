@@ -9,6 +9,15 @@ This roadmap describes the order in which Entrega Clara should become a credible
 
 The earlier seed document described a smaller “Milestone 1 — Customer ordering” and separate restaurant/courier milestones. The user-approved M1 design expands M1 to the complete core delivery loop. This roadmap uses that newer decision as the execution baseline; the older numbering remains historical context.
 
+> **Status update (2026-11-01).** Delivery went further than M1 in two areas. The routing thesis
+> (M3) is largely delivered: the legacy brute-force baseline, Held-Karp / nearest-neighbor / 2-opt
+> with pickup-before-dropoff precedence, A\* / Dijkstra / ALT landmarks / bidirectional / weighted
+> ε-A\* on a **real OpenStreetMap extract**, a multi-stop courier batch in the product, an animated
+> algorithm lab, and committed benchmark charts. The M1.5 row's "versioned synthetic graph" is now
+> the deterministic test fixture and offline fallback; the product and lab read the OSM extract
+> ([ADR 0008](../adr/0008-real-street-graph-and-landmarks.md)). Still deferred inside M3: capacity,
+> time windows, dynamic re-routing, and provider parity. M2, M4, M5 and M6 remain ahead.
+
 ## North-star product loop
 
 ```mermaid
@@ -56,7 +65,7 @@ Reviews and ratings are intentionally not part of M1. They begin in M2.
 | M1.2 Checkout and payment simulation | Order/item snapshots, totals, payment attempt state, idempotency, safe decline | Approved and declined paths; duplicate checkout cannot duplicate an order |
 | M1.3 Restaurant operations | Restaurant queue, confirmation, preparation, ready-for-pickup commands | Authorized restaurant operator advances the shared order |
 | M1.4 Courier operations | Availability, one active offer, acceptance, pickup, start, location, complete | Authorized courier completes the delivery and cannot take another active M1 delivery |
-| M1.5 Route and map | Versioned synthetic graph, A*, Dijkstra oracle, GeoJSON result, MapLibre/MapTiler adapter, fallback | Route order is correct; map is optional; attribution/key restrictions are documented |
+| M1.5 Route and map | Versioned street graph (real OSM extract in the product, synthetic fixture for tests), A\*/ALT/bidirectional ladder, Dijkstra oracle, GeoJSON result, MapLibre/MapTiler adapter, fallback | Route order is correct; map is optional; attribution/key restrictions are documented |
 | M1.6 Events and tracking | Event envelope, audit/notification projections, SSE snapshot/stream, deterministic simulator | Reconnect restores snapshot; timeline remains useful without provider/network |
 | M1.7 Operations and hardening | Read-only operations view, errors, accessibility, E2E, docs, seed safety, CI | Full happy path plus negative cases passes in both persistence modes |
 

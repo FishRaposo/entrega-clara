@@ -28,6 +28,16 @@ The seed design and the user-approved M1 design under `docs/superpowers/specs/` 
 - [ADR 0004: local routing and provider-neutral map rendering](adr/0004-local-routing-and-provider-neutral-map-rendering.md)
 - [ADR 0005: SSE for M1 realtime updates](adr/0005-sse-for-m1-realtime-updates.md)
 - [ADR 0006: defer real providers behind ports](adr/0006-defer-real-providers-behind-ports.md)
+- [ADR 0007: multi-stop batching](adr/0007-multi-stop-batching.md)
+- [ADR 0008: real street graph and landmark-based acceleration](adr/0008-real-street-graph-and-landmarks.md)
+
+## Evidence
+
+- [Verification record](verification.md) — exact gate results, routing evidence highlights, and the honest scope notes.
+- [Routing benchmark](benchmarks/routing.md) — the solver ladder measured on the committed OSM extract (JSON and two SVG charts alongside).
+- [Benchmarks directory](benchmarks/) — machine-readable results and the replayable search trace (`lab-trace.json`).
+- [Media](media/) — role screenshots and the ALT-vs-Dijkstra replay GIF.
+- [ADR 0008](adr/0008-real-street-graph-and-landmarks.md) — why a real graph and landmark acceleration, and why contraction hierarchies were rejected at this scale.
 
 ## Source materials
 

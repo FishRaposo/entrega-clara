@@ -2,7 +2,11 @@
 
 ## Status
 
-Accepted for Milestone 1.
+Accepted for Milestone 1. **Partially superseded by [ADR 0008](0008-real-street-graph-and-landmarks.md):**
+the live route still uses local A* behind the same route contract, but the graph is now a real
+OpenStreetMap extract instead of the synthetic lattice named below, and the solver ladder around it
+grew (ALT landmarks, bidirectional search, weighted ε-A\*). The routing-ownership and
+map-rendering decisions in this ADR stand.
 
 ## Context
 

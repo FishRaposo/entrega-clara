@@ -46,8 +46,19 @@ The table below is the full product requirement set, not a claim that every requ
 | RNF09 | Backup and recoverability | Demo data and operations | Seed snapshots, demo export/import, reproducible reset, database backup documentation, and recovery verification | — |
 | RNF10 | Friendly errors | All product surfaces | Domain errors translated into user-facing messages without stack traces, internal codes, or infrastructure details | — |
 
-## Scaffold verification status
+## Verification status
 
-The current scaffold provides local evidence for its repository boundaries, seed validity, requirement identifier coverage, application-source containment, backend health and demo contracts, routing contracts, and web type/build/test checks. The matrix above remains the source of truth for product acceptance evidence; a passing scaffold check is not a claim that every product surface is complete or production-certified.
+Routing is the deepest evidence in the repository. The product and the algorithm lab run on a real
+OpenStreetMap extract of central São Paulo (2,405 nodes / 3,431 directed edges, filtered to its
+largest strongly connected component, ODbL 1.0 — [ADR 0008](../adr/0008-real-street-graph-and-landmarks.md)).
+`docs/benchmarks/routing.md` and `docs/verification.md` record exact, reproducible numbers: ALT
+landmarks expand 14.6% of the graph where Dijkstra expands 56.1% with the same optimal cost; the
+exact multi-stop solver matches brute force at ≤9 stops and beats nearest-neighbor by 18% on a
+7-stop batch.
 
-The release runbook distinguishes checks verified in the current local environment from Docker Compose checks that are unavailable locally. Payments, location movement, provider notifications, and role access remain simulated. The Toronto international example consistently uses Canadian identity, locale, currency, address, privacy, and time-zone values.
+The remaining rows map to implemented surfaces with focused tests — customer, restaurant, courier,
+operations, SSE tracking, snapshots, rate/cancel, and the demo replay. Payments, location movement,
+provider notifications, and role access remain simulated. The release runbook distinguishes checks
+verified locally from Docker/provider checks that are unavailable locally, and a passing gate is not
+a claim of production certification. The Toronto international example consistently uses Canadian
+identity, locale, currency, address, privacy, and time-zone values.

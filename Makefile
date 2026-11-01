@@ -1,4 +1,4 @@
-.PHONY: install test lint typecheck check dev demo-reset demo-preview seed-validate requirement-coverage app-boundary
+.PHONY: install test lint typecheck check dev demo-reset demo-preview seed-validate requirement-coverage app-boundary bench bench-smoke media screens
 
 install:
 	cd app/backend && python -m pip install -e '.[dev]'
@@ -38,3 +38,16 @@ requirement-coverage:
 
 app-boundary:
 	python scripts/repo/check_app_boundary.py
+
+bench:
+	python scripts/bench/routing_benchmark.py --export-lab-trace
+	python scripts/media/render_search_gif.py
+
+bench-smoke:
+	python scripts/bench/routing_benchmark.py --smoke
+
+media:
+	python scripts/media/render_search_gif.py
+
+screens:
+	cd app/web && npx playwright test --grep @screens
