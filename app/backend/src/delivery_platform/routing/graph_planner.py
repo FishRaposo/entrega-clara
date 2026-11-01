@@ -18,6 +18,7 @@ from delivery_platform.application.ports import (
     BatchStopRequest,
     DeliveryRouteRequest,
 )
+from delivery_platform.core.metrics import METRICS
 from delivery_platform.domain.entities import (
     RoutePlan,
     RouteSegment,
@@ -84,6 +85,15 @@ class GraphRoutePlanner:
             )
         except ValueError as error:
             raise RouteUnavailableError() from error
+        METRICS.inc(
+            "entrega_routing_queries_total", {"kind": "route", "solver": result.solver_name}
+        )
+        METRICS.observe(
+            "entrega_routing_seconds", result.computation_time_ns / 1e9, {"kind": "route"}
+        )
+        METRICS.inc(
+            "entrega_routing_nodes_expanded_total", {"kind": "route"}, result.nodes_expanded
+        )
         return RoutePlan(
             id=route_id,
             delivery_id=request.delivery_id,
@@ -219,6 +229,9 @@ class GraphRoutePlanner:
         solver = ExactWindowSolver() if problem.size <= EXACT_STOP_LIMIT else InsertionWindowSolver()
         result = solver.solve(problem)
         if not result.order or not result.schedule.feasible:
+            METRICS.inc(
+                "entrega_routing_queries_total", {"kind": "batch", "solver": "infeasible"}
+            )
             raise BatchInfeasibleError(result.schedule.violations)
 
         legs: list[PathResult] = []
@@ -278,6 +291,12 @@ class GraphRoutePlanner:
         # travel against travel.
         offered = evaluate(problem, tuple(range(1, problem.size + 1)), require_complete=False)
         total_seconds = result.schedule.visits[-1].finish
+        METRICS.inc(
+            "entrega_routing_queries_total", {"kind": "batch", "solver": result.solver_name}
+        )
+        METRICS.observe(
+            "entrega_routing_seconds", result.execution_time_ns / 1e9, {"kind": "batch"}
+        )
         return RoutePlan(
             id=route_id,
             delivery_id=planned[0].ref_id,

@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     app_name: str = "Entrega Clara"
     demo_mode: bool = True
     persistence_mode: str = "memory"
+    #: Only read when PERSISTENCE_MODE=postgres; memory mode ignores it.
+    database_url: str = ""
     default_locale: str = "pt-BR"
     default_currency: str = "BRL"
     tracking_update_interval_seconds: int = 2

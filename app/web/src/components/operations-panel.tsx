@@ -72,6 +72,31 @@ export function OperationsPanel() {
                 </li>
               ))}
             </ul>
+            {metrics.counters?.length ? (
+              <>
+                <h3>Processo</h3>
+                <ul className="stacked-list">
+                  {metrics.counters
+                    .filter((counter) => counter.name.startsWith("entrega_routing"))
+                    .slice(0, 4)
+                    .map((counter) => (
+                      <li key={`${counter.name}-${JSON.stringify(counter.labels)}`}>
+                        {counter.name.replace("entrega_", "")}
+                        {counter.labels?.kind ? ` (${String(counter.labels.kind)})` : ""}:{" "}
+                        <strong>{counter.value}</strong>
+                      </li>
+                    ))}
+                  <li>
+                    requisições HTTP:{" "}
+                    <strong>
+                      {(metrics.counters ?? [])
+                        .filter((counter) => counter.name === "entrega_http_requests_total")
+                        .reduce((total, counter) => total + (counter.value ?? 0), 0)}
+                    </strong>
+                  </li>
+                </ul>
+              </>
+            ) : null}
           </div>
         ) : null}
 

@@ -5,7 +5,9 @@ Measured on the committed tree — rerun with `python scripts/check.py`
 
 | Gate | Command | Last result |
 | --- | --- | --- |
-| Backend tests | `python -m pytest tests -q` | 244 passed |
+| Backend tests | `python -m pytest tests -q` | 289 passed, 5 skipped (PostgreSQL cases without `DATABASE_URL`) |
+| Backend tests, persistent mode | same, with `DATABASE_URL` set | 294 passed |
+| Persistence contract | `python -m pytest tests/repo -q` | memory + PostgreSQL (9 tests each environment) |
 | Ruff | `ruff check app/backend/src tests scripts` | clean |
 | Mypy (strict-ish) | `mypy app/backend/src` | clean, 68 files |
 | Web vitest | `npm test -- --run` (app/web) | 19 passed |
@@ -17,6 +19,26 @@ Measured on the committed tree — rerun with `python scripts/check.py`
 | Routing benchmark | `scripts/bench/routing_benchmark.py` | artifacts in `docs/benchmarks/` |
 | Benchmark smoke | `routing_benchmark.py --smoke` | solvers agree on a 6-stop matrix and on the street graph |
 | Scenario replay | 40-step `lunch-rush` via `validate_seed.py` | batch + GPS + cancel + rate all pass |
+
+## Persistence and observability highlights
+
+- **PostgreSQL 16.9 was exercised locally** (portable server, `docs/runbooks/postgres.md`).
+  The same contract suite passes on the memory and PostgreSQL adapters:
+  committed writes visible to a later unit of work, rollback discarding
+  everything, events published only after commit, the event log surviving a
+  restart, a stale write rejected with `version_conflict`, and the outbox
+  recovering the commit → publish window.
+- **Restart smoke:** the app places an order through HTTP, a second application
+  instance is built (new container, snapshot reloaded from PostgreSQL), and the
+  order and catalog are read back unchanged.
+- **Outbox worker:** `scripts/worker.py --once` drained a pending event written
+  by a commit whose publisher never ran, marked it delivered, and left the
+  pending queue empty.
+- **Metrics:** `/metrics` renders Prometheus text (HTTP requests and latency by
+  route template, routing queries/latency by kind and solver, events and lag,
+  SSE gauge) and `/operations/metrics` returns the same series plus the product
+  counters the operations panel renders. Counters are process-local and reset on
+  restart — stated in the ADR and runbook.
 
 ## Routing evidence highlights (committed, reproducible)
 
@@ -49,9 +71,16 @@ Measured on the committed tree — rerun with `python scripts/check.py`
 
 ## Honest scope notes
 
-- Memory persistence only; `PERSISTENCE_MODE=postgres` fails fast by design.
-- Snapshots are in-process deep copies plus a JSON export/import round trip;
-  there is no durable store behind them.
+- The PostgreSQL adapter persists the store as one transactional snapshot with
+  an optimistic version guard, not one table per aggregate. Concurrent writers
+  get `version_conflict` instead of silent overwrites; row-per-aggregate is the
+  recorded next step (ADR 0012).
+- Persistent mode needs the optional `[postgres]` extra and a reachable server;
+  memory mode never imports the driver.
+- Metrics are in-process and unaggregated across workers. Grafana/Prometheus
+  configuration is out of scope; the exposition format is what is claimed.
+- Snapshot export/import is still the offline portability path; the durable one
+  is `PERSISTENCE_MODE=postgres`.
 - The street graph is a **dated OSM snapshot**: distances, ETAs and benchmark
   numbers change when it is regenerated, and the artifacts must be regenerated
   with it.

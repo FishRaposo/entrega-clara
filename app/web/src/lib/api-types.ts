@@ -207,10 +207,22 @@ export type CheckoutResult = {
   replayed: boolean;
 };
 
+export type MetricSeries = {
+  name: string;
+  labels: Record<string, string>;
+  value?: number;
+  count?: number;
+  sum?: number;
+};
+
 export type Metrics = Record<string, unknown> & {
   orders_by_state?: Record<string, number>;
   deliveries_by_status?: Record<string, number>;
   totals?: Record<string, number>;
+  persistence_mode?: string;
+  counters?: MetricSeries[];
+  gauges?: MetricSeries[];
+  histograms?: MetricSeries[];
 };
 
 export type DemoSnapshot = {

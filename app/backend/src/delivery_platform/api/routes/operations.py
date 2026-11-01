@@ -11,11 +11,30 @@ from delivery_platform.api.deps import command_context, get_container
 from delivery_platform.application.container import AppContainer
 from delivery_platform.application.context import CommandContext
 from delivery_platform.application.queries import OperationsQueries
+from delivery_platform.core.metrics import METRICS
 
 router = APIRouter(prefix="/api/v1/operations", tags=["operations"])
 
 Container = Annotated[AppContainer, Depends(get_container)]
 Ctx = Annotated[CommandContext, Depends(command_context)]
+
+
+@router.get("/metrics")
+def metrics_snapshot(container: Container, ctx: Ctx) -> dict[str, Any]:
+    """Product counts plus the process metrics, shaped for the operations panel.
+
+    The same registry feeds ``/metrics`` (Prometheus text); this view adds the
+    business counters the panel already renders.
+    """
+    product = OperationsQueries(container).metrics(ctx)
+    process = METRICS.snapshot()
+    return {
+        **product,
+        "persistence_mode": container.settings.persistence_mode,
+        "counters": process["counters"],
+        "gauges": process["gauges"],
+        "histograms": process["histograms"],
+    }
 
 
 @router.get("/orders")

@@ -13,11 +13,23 @@ services:
     command: uvicorn delivery_platform.api.main:app --host 0.0.0.0 --port 8000
     environment:
       DATABASE_URL: postgresql+psycopg://delivery:delivery@db:5432/delivery
+      PERSISTENCE_MODE: postgres
       DEMO_MODE: "true"
     ports:
       - "8000:8000"
     depends_on:
       - db
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python scripts/worker.py --interval 5
+    environment:
+      DATABASE_URL: postgresql+psycopg://delivery:delivery@db:5432/delivery
+      PERSISTENCE_MODE: postgres
+    depends_on:
+      - api
 
   web:
     build:

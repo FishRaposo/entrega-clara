@@ -8,9 +8,11 @@ unit-of-work port.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
 from delivery_platform.adapters.memory.clock import DeterministicClock
 from delivery_platform.adapters.memory.events import InProcessEventHub
@@ -82,8 +84,14 @@ class AppContainer:
     route_planner: DeliveryRoutePlanner = field(
         default_factory=StraightLineRoutePlanner
     )
+    #: Set only in persistent mode: builds a UoW over the loaded snapshot.
+    uow_factory: Callable[[], UnitOfWork] | None = None
+    persistence: Any | None = None
+    persistence_version: int = 0
 
-    def uow(self) -> MemoryUnitOfWork:
+    def uow(self) -> UnitOfWork:
+        if self.uow_factory is not None:
+            return self.uow_factory()
         return MemoryUnitOfWork(self.store, self.publisher)
 
     def recorder(self, uow: UnitOfWork, ctx: CommandContext) -> LifecycleRecorder:
@@ -137,15 +145,42 @@ def _load_route_planner(settings: Settings) -> DeliveryRoutePlanner | None:
 
 
 def build_container(settings: Settings) -> AppContainer:
-    if settings.persistence_mode != "memory":
-        raise RuntimeError(
-            "PERSISTENCE_MODE=postgres is a documented future expansion; "
-            "the PostgreSQL adapter is not implemented yet."
-        )
     container = AppContainer(settings=settings)
     planner = _load_route_planner(settings)
     if planner is not None:
         container.route_planner = planner
+    if settings.persistence_mode == "memory":
+        return container
+    if settings.persistence_mode != "postgres":
+        raise RuntimeError(f"Unknown PERSISTENCE_MODE {settings.persistence_mode!r}")
+    try:
+        from delivery_platform.adapters.postgres.store import (
+            PostgresStore,
+            PostgresUnavailable,
+            adopt_store,
+        )
+        from delivery_platform.adapters.postgres.unit_of_work import PostgresUnitOfWork
+    except ImportError as error:
+        raise RuntimeError(
+            "PERSISTENCE_MODE=postgres requires the optional extra: "
+            "pip install -e 'app/backend[postgres]'"
+        ) from error
+    try:
+        store = PostgresStore.from_url(settings.database_url)
+        store.migrate()
+        snapshot, version = store.load()
+    except PostgresUnavailable:
+        raise
+    except Exception as error:
+        raise RuntimeError(
+            f"PERSISTENCE_MODE=postgres could not reach the database: {error}"
+        ) from error
+    # Boot with the persisted snapshot; every unit of work reloads it inside a
+    # transaction, so this copy is only the process's reference for reads.
+    adopt_store(container.store, snapshot)
+    container.persistence = store
+    container.persistence_version = version
+    container.uow_factory = lambda: PostgresUnitOfWork(store, container.store, container.publisher)
     return container
 
 

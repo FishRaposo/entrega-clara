@@ -14,6 +14,7 @@ from delivery_platform.api.deps import command_context, get_container
 from delivery_platform.application.container import AppContainer
 from delivery_platform.application.context import CommandContext
 from delivery_platform.application.queries import CustomerQueries
+from delivery_platform.core.metrics import METRICS
 
 router = APIRouter(prefix="/api/v1/orders", tags=["orders"])
 
@@ -70,6 +71,7 @@ def stream_order(order_id: str, container: Container, ctx: Ctx) -> StreamingResp
     subscription = container.publisher.subscribe_many(aggregates)
 
     def event_stream() -> Iterator[str]:
+        METRICS.add_gauge("entrega_sse_connections", 1)
         try:
             yield f"event: snapshot\ndata: {json.dumps(snapshot)}\n\n"
             while True:
@@ -80,6 +82,7 @@ def stream_order(order_id: str, container: Container, ctx: Ctx) -> StreamingResp
                     payload = json.dumps(serializers.event_view(event))
                     yield f"id: {event.id}\nevent: {event.type}\ndata: {payload}\n\n"
         finally:
+            METRICS.add_gauge("entrega_sse_connections", -1)
             subscription.close()
 
     return StreamingResponse(

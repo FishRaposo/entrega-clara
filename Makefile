@@ -1,4 +1,4 @@
-.PHONY: install test lint typecheck check dev demo-reset demo-preview seed-validate requirement-coverage app-boundary bench bench-city bench-smoke media screens
+.PHONY: install test lint typecheck check dev demo-reset demo-preview seed-validate requirement-coverage app-boundary bench bench-city bench-smoke worker contract db-check media screens
 
 install:
 	cd app/backend && python -m pip install -e '.[dev]'
@@ -47,6 +47,15 @@ bench-city:
 
 bench-smoke:
 	python scripts/bench/routing_benchmark.py --smoke
+
+worker:
+	python scripts/worker.py --interval 5
+
+contract:
+	python -m pytest tests/repo/test_persistence_contract.py -q
+
+db-check:
+	python scripts/check_postgres.py
 
 media:
 	python scripts/media/render_search_gif.py

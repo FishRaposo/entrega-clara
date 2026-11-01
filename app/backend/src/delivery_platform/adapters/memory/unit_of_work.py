@@ -3,11 +3,16 @@
 Entering snapshots the shared store; all repository work mutates the private
 copy; ``commit`` swaps the copy back and publishes pending events post-commit;
 ``rollback`` (or exiting with an exception) discards it.
+
+The repository bindings live in ``build_repositories`` so the PostgreSQL adapter
+can reuse the exact same repository implementations over its loaded snapshot —
+which is what makes "the same contract passes on both adapters" meaningful.
 """
 
 from __future__ import annotations
 
 import copy
+from dataclasses import dataclass, fields
 from typing import Self
 
 from delivery_platform.adapters.memory.events import InProcessEventHub
@@ -54,6 +59,86 @@ from delivery_platform.application.ports import (
     UnitOfWork,
 )
 from delivery_platform.domain.events import DomainEvent
+
+
+@dataclass
+class RepositorySet:
+    """The eighteen repository ports bound to one ``MemoryStore``."""
+
+    identities: IdentityRepository
+    restaurants: RestaurantRepository
+    menu_items: MenuItemRepository
+    addresses: AddressRepository
+    carts: CartRepository
+    coupons: CouponRepository
+    orders: OrderRepository
+    payment_attempts: PaymentAttemptRepository
+    couriers: CourierRepository
+    deliveries: DeliveryRepository
+    batches: DeliveryBatchRepository
+    route_plans: RoutePlanRepository
+    tracking_events: TrackingEventRepository
+    notifications: NotificationRepository
+    audit_events: AuditEventRepository
+    event_log: EventLogRepository
+    idempotency: IdempotencyRepository
+    scenarios: ScenarioRepository
+
+    def bind_to(self, target: object) -> None:
+        for field in fields(self):
+            setattr(target, field.name, getattr(self, field.name))
+
+
+class _PublishingEventLog:
+    """MemoryEventLog that also queues appended events for post-commit publish."""
+
+    def __init__(
+        self,
+        events: list[DomainEvent],
+        sequence: list[int],
+        pending: list[DomainEvent],
+    ) -> None:
+        self._inner = MemoryEventLog(events, sequence)
+        self._pending = pending
+
+    def append(self, event: DomainEvent) -> DomainEvent:
+        stored = self._inner.append(event)
+        self._pending.append(stored)
+        return stored
+
+    def list_since(self, sequence: int) -> list[DomainEvent]:
+        return self._inner.list_since(sequence)
+
+    def list_for_aggregate(self, aggregate_id: str) -> list[DomainEvent]:
+        return self._inner.list_for_aggregate(aggregate_id)
+
+    def list_all(self) -> list[DomainEvent]:
+        return self._inner.list_all()
+
+
+def build_repositories(
+    store: MemoryStore, sequence: list[int], pending: list[DomainEvent]
+) -> RepositorySet:
+    return RepositorySet(
+        identities=MemoryIdentities(store.identities),
+        restaurants=MemoryRestaurants(store.restaurants),
+        menu_items=MemoryMenuItems(store.menu_items),
+        addresses=MemoryAddresses(store.addresses),
+        carts=MemoryCarts(store.carts),
+        coupons=MemoryCoupons(store.coupons),
+        orders=MemoryOrders(store.orders),
+        payment_attempts=MemoryPaymentAttempts(store.payment_attempts),
+        couriers=MemoryCouriers(store.couriers),
+        deliveries=MemoryDeliveries(store.deliveries),
+        batches=MemoryDeliveryBatches(store.batches),
+        route_plans=MemoryRoutePlans(store.route_plans),
+        tracking_events=MemoryTrackingEvents(store.tracking_events),
+        notifications=MemoryNotifications(store.notifications),
+        audit_events=MemoryAuditEvents(store.audit_events),
+        event_log=_PublishingEventLog(store.event_log, sequence, pending),
+        idempotency=MemoryIdempotency(store.idempotency),
+        scenarios=MemoryScenarios(store),
+    )
 
 
 class MemoryUnitOfWork(UnitOfWork):
@@ -129,60 +214,4 @@ class MemoryUnitOfWork(UnitOfWork):
         self._pending_events = []
 
     def _bind(self, store: MemoryStore) -> None:
-        sequence_proxy = _SequenceProxy(self)
-        self.identities = MemoryIdentities(store.identities)
-        self.restaurants = MemoryRestaurants(store.restaurants)
-        self.menu_items = MemoryMenuItems(store.menu_items)
-        self.addresses = MemoryAddresses(store.addresses)
-        self.carts = MemoryCarts(store.carts)
-        self.coupons = MemoryCoupons(store.coupons)
-        self.orders = MemoryOrders(store.orders)
-        self.payment_attempts = MemoryPaymentAttempts(store.payment_attempts)
-        self.couriers = MemoryCouriers(store.couriers)
-        self.deliveries = MemoryDeliveries(store.deliveries)
-        self.batches = MemoryDeliveryBatches(store.batches)
-        self.route_plans = MemoryRoutePlans(store.route_plans)
-        self.tracking_events = MemoryTrackingEvents(store.tracking_events)
-        self.notifications = MemoryNotifications(store.notifications)
-        self.audit_events = MemoryAuditEvents(store.audit_events)
-        self.event_log = _PublishingEventLog(store.event_log, sequence_proxy, self._pending_events)
-        self.idempotency = MemoryIdempotency(store.idempotency)
-        self.scenarios = MemoryScenarios(store)
-
-
-class _SequenceProxy:
-    """Gives the event log access to the UoW's working sequence counter."""
-
-    def __init__(self, uow: MemoryUnitOfWork) -> None:
-        self._uow = uow
-
-    @property
-    def value(self) -> list[int]:
-        return self._uow._sequence
-
-
-class _PublishingEventLog:
-    """MemoryEventLog that also queues appended events for post-commit publish."""
-
-    def __init__(
-        self,
-        events: list[DomainEvent],
-        sequence: _SequenceProxy,
-        pending: list[DomainEvent],
-    ) -> None:
-        self._inner = MemoryEventLog(events, sequence.value)
-        self._pending = pending
-
-    def append(self, event: DomainEvent) -> DomainEvent:
-        stored = self._inner.append(event)
-        self._pending.append(stored)
-        return stored
-
-    def list_since(self, sequence: int) -> list[DomainEvent]:
-        return self._inner.list_since(sequence)
-
-    def list_for_aggregate(self, aggregate_id: str) -> list[DomainEvent]:
-        return self._inner.list_for_aggregate(aggregate_id)
-
-    def list_all(self) -> list[DomainEvent]:
-        return self._inner.list_all()
+        build_repositories(store, self._sequence, self._pending_events).bind_to(self)

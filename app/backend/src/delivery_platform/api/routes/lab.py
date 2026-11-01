@@ -21,6 +21,7 @@ from delivery_platform.application.container import (
 )
 from delivery_platform.application.identity import IdentityContext
 from delivery_platform.core.config import settings
+from delivery_platform.core.metrics import METRICS
 from delivery_platform.routing.ch import ChPathSolver
 from delivery_platform.routing.graph import StreetGraph
 from delivery_platform.routing.informed import (
@@ -226,6 +227,11 @@ def lab_path(
         profile,
     )
     result = solver.solve(problem, trace=payload.trace)
+    METRICS.inc("entrega_routing_queries_total", {"kind": "lab", "solver": result.solver_name})
+    METRICS.observe("entrega_routing_seconds", result.computation_time_ns / 1e9, {"kind": "lab"})
+    METRICS.inc(
+        "entrega_routing_nodes_expanded_total", {"kind": "lab"}, result.nodes_expanded
+    )
     return _path_payload(result, problem)
 
 

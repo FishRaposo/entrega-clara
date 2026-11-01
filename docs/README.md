@@ -9,6 +9,7 @@ The seed design and the user-approved M1 design under `docs/superpowers/specs/` 
 - [Platform evolution roadmap](roadmap/platform-evolution.md) — M1 through portfolio release, with dependencies and exit evidence.
 - [Portfolio improvement plan](roadmap/portfolio-improvements.md) — review findings and a prioritized backlog (routing, benchmarks, reviewer experience, Windows tooling) within the Python + Node toolchain.
 - [M1 development runbook](runbooks/milestone-1-development.md) — local modes, planned commands, acceptance journey, and release checks.
+- [PostgreSQL, outbox and metrics](runbooks/postgres.md) — persistent mode, the worker and the two metric views.
 
 ## Architecture
 
@@ -34,6 +35,7 @@ The seed design and the user-approved M1 design under `docs/superpowers/specs/` 
 - [ADR 0009: city-scale graph and contraction hierarchies](adr/0009-city-scale-graph-and-contraction-hierarchies.md)
 - [ADR 0010: time-dependent routing under a FIFO speed profile](adr/0010-time-dependent-routing.md)
 - [ADR 0011: capacity, promised windows and dynamic re-planning](adr/0011-capacity-windows-and-dynamic-replanning.md)
+- [ADR 0012: PostgreSQL adapter, transactional outbox and process metrics](adr/0012-postgres-adapter-outbox-and-metrics.md)
 
 ## Evidence
 

@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import logging
+import time
 import uuid
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.gzip import GZipMiddleware
 
 from delivery_platform.adapters.seed.loader import load_reference_seed_file
@@ -22,6 +23,7 @@ from delivery_platform.api.routes.orders import router as orders_router
 from delivery_platform.api.routes.restaurant import router as restaurant_router
 from delivery_platform.application.container import build_container
 from delivery_platform.core.config import settings
+from delivery_platform.core.metrics import METRICS
 from delivery_platform.demo.runner import ScenarioRunner
 from delivery_platform.domain.errors import DemoScenarioError
 
@@ -42,6 +44,12 @@ def create_app() -> FastAPI:
         load_reference_seed_file(container.store, _SEED_PATH)
     else:
         logger.warning("Reference seed not found at %s; catalog starts empty", _SEED_PATH)
+    if container.persistence is not None:
+        # Seeding runs against the loaded snapshot; persist it once at boot so a
+        # fresh database starts with the reference data committed.
+        container.persistence_version = container.persistence.save(
+            container.store, expected_version=container.persistence_version, events=[]
+        )
     app.state.container = container
     try:
         app.state.scenario_runner = ScenarioRunner.from_seed_file(container, _SCENARIO_PATH)
@@ -55,9 +63,27 @@ def create_app() -> FastAPI:
         request.state.correlation_id = request.headers.get(
             "x-correlation-id", f"cor_{uuid.uuid4().hex[:12]}"
         )
+        started = time.perf_counter()
         response = await call_next(request)
         response.headers["x-correlation-id"] = request.state.correlation_id
+        elapsed = time.perf_counter() - started
+        route = request.scope.get("route")
+        path = getattr(route, "path", None) or request.url.path
+        METRICS.inc(
+            "entrega_http_requests_total",
+            {"method": request.method, "path": path, "status": str(response.status_code)},
+        )
+        METRICS.observe(
+            "entrega_http_request_seconds", elapsed, {"method": request.method, "path": path}
+        )
         return response
+
+    @app.get("/metrics", include_in_schema=False)
+    def metrics() -> Response:
+        """Prometheus text exposition; process-local counters."""
+        return Response(
+            content=METRICS.render(), media_type="text/plain; version=0.0.4; charset=utf-8"
+        )
 
     register_error_handlers(app)
 

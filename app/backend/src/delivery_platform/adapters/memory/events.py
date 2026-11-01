@@ -10,7 +10,9 @@ from __future__ import annotations
 import queue
 import threading
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 
+from delivery_platform.core.metrics import METRICS
 from delivery_platform.domain.events import DomainEvent
 
 
@@ -44,10 +46,14 @@ class InProcessEventHub:
         self._subscribers: dict[str, list[queue.Queue[DomainEvent]]] = {}
 
     def publish(self, events: list[DomainEvent]) -> None:
+        now = datetime.now(UTC)
         with self._lock:
             for event in events:
                 for subscriber in self._subscribers.get(event.aggregate_id, []):
                     subscriber.put(event)
+                METRICS.inc("entrega_events_published_total", {"type": event.type})
+                lag = (now - event.occurred_at).total_seconds()
+                METRICS.observe("entrega_event_lag_seconds", max(0.0, lag))
 
     def subscribe(self, aggregate_id: str) -> Subscription:
         return self.subscribe_many((aggregate_id,))
