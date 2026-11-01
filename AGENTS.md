@@ -11,6 +11,8 @@
   tests, trade-offs. Do not bolt AI features on to make it look modern.
 - Keep the default run free of Docker, WSL and database requirements. The PostgreSQL adapter is
   opt-in; see `docs/origin.md` for the reasoning.
+- When asked to explain or pitch the repository, start from `docs/for-reviewers.md` (five-minute path,
+  real-vs-simulated table) and keep claims tied to `docs/verification.md`.
 
 ## Setup and commands
 

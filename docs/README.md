@@ -4,6 +4,7 @@ The seed design and the user-approved M1 design under `docs/superpowers/specs/` 
 
 ## Start here
 
+- [Reviewing this repository](for-reviewers.md) — five-minute path, role-specific reading paths, and what is real vs simulated.
 - [Origin](origin.md) — why the project exists: two assignments, one system, and how it became a portfolio piece.
 - [M1 core delivery loop](superpowers/specs/2026-09-01-milestone-1-core-delivery-loop-design.md) — the current implementation contract.
 - [Platform evolution roadmap](roadmap/platform-evolution.md) — M1 through portfolio release, with dependencies and exit evidence.

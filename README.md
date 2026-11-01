@@ -13,6 +13,18 @@ under pickup-before-dropoff precedence, and the customer watches it happen.
 Dijkstra needs 167. The frame is drawn and encoded by `scripts/media/render_search_gif.py` with
 nothing but the Python standard library — no image or charting dependency anywhere.*
 
+## At a glance
+
+| | |
+| --- | --- |
+| **What it is** | A São Paulo food-delivery platform where the courier drives the computed route. Built from two undergraduate assignments — a requirements document and a brute-force route optimizer — merged into one product. |
+| **What it proves** | A measured solver ladder on real streets: **CH answers in 85 expansions / 1.45 ms** where Dijkstra needs 53,885 / 89 ms, inside a product with batching, capacity, promised windows, time-dependent ETAs and a PostgreSQL option. |
+| **Engineering** | Python/FastAPI + Next.js/TypeScript; 290 backend tests (295 with the database contract), 19 frontend, 5 browser journeys with axe; 12 ADRs; 11 quality gates. |
+| **See it without running it** | [Static lab](site/index.html) (offline replay, no server) · [35-second tour](docs/media/demo-tour.webm) · [screenshots](#see-it-without-running-it) |
+| **Review it** | [Reviewing this repository](docs/for-reviewers.md) — five-minute path, role-specific paths, what is real vs simulated, and where each claim is proven. |
+
+No Docker, database, `make` or provider accounts are required for the default run.
+
 ## The measured ladder
 
 One harness, two real graphs — `docs/benchmarks/routing-city.md` (104 991 nodes) and
