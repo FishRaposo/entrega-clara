@@ -34,11 +34,9 @@ const SOLVERS: { value: LabSolverName; label: string; hint: string }[] = [
   { value: "astar", label: "A* (linha reta)", hint: "heurística admissível" },
   { value: "alt", label: "A* + ALT", hint: "marcos pré-computados" },
   { value: "bidirectional", label: "Bidirecional + ALT", hint: "duas frentes de busca" },
-  {
-    value: "ch",
-    label: "Hierarquia de contração",
-    hint: "pré-processa uma vez, responde em milissegundos",
-  },
+  { value: "ch", label: "Hierarquia de contração", hint: "pré-processa uma vez, responde em milissegundos" },
+  { value: "td-astar", label: "A* com trânsito", hint: "preço por hora de partida" },
+  { value: "td-dijkstra", label: "Dijkstra com trânsito", hint: "oráculo do A* com trânsito" },
   { value: "weighted-astar", label: "A* ponderado (ε)", hint: "inexato, no máximo ε× o ótimo" },
 ];
 
@@ -95,6 +93,7 @@ export function AlgorithmLab() {
   const [tspReference, setTspReference] = useState<LabTspResult | null>(null);
   const [benchmarks, setBenchmarks] = useState<LabBenchmarks | null>(null);
   const [traffic, setTraffic] = useState<LabTraffic | null>(null);
+  const [departureHour, setDepartureHour] = useState(12);
   const autoRunRef = useRef(false);
   const prefersReducedMotion = useMemo(
     () =>
@@ -242,6 +241,11 @@ export function AlgorithmLab() {
         setError("Escolha uma origem e um destino diferentes.");
         return;
       }
+      const timeDependent = panels.some((panel) => panel.solver.startsWith("td-"));
+      if (timeDependent && objective !== "time") {
+        setError("Solvers com trânsito usam apenas o objetivo tempo.");
+        return;
+      }
       setBusy(true);
       setError(null);
       try {
@@ -255,6 +259,7 @@ export function AlgorithmLab() {
               trace: true,
               graph: graphName,
               epsilon: panel.epsilon,
+              ...(panel.solver.startsWith("td-") ? { departure_hour: departureHour } : {}),
             }),
           ),
         );
@@ -276,7 +281,16 @@ export function AlgorithmLab() {
         setBusy(false);
       }
     },
-    [graph, graphName, originIndex, destinationIndex, panels, objective, prefersReducedMotion],
+    [
+      graph,
+      graphName,
+      originIndex,
+      destinationIndex,
+      panels,
+      objective,
+      prefersReducedMotion,
+      departureHour,
+    ],
   );
 
   // Poster state: a finished delivery-route race appears as soon as a graph
@@ -563,6 +577,21 @@ export function AlgorithmLab() {
         <span className="muted">
           {Math.min(Math.floor(step), maxFrames)} / {maxFrames} expansões
         </span>
+        <label>
+          Hora de partida{" "}
+          <select
+            value={departureHour}
+            onChange={(event) => setDepartureHour(Number(event.target.value))}
+            aria-label="Hora de partida usada pelos solvers com trânsito"
+          >
+            {Array.from({ length: 24 }, (_, hour) => (
+              <option key={hour} value={hour}>
+                {String(hour).padStart(2, "0")}h
+              </option>
+            ))}
+          </select>
+        </label>
+        <span className="muted">usada por “com trânsito”</span>
       </div>
 
       <div className="lab-panels">

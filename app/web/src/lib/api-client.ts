@@ -335,6 +335,8 @@ export type LabSolverName =
   | "alt"
   | "bidirectional"
   | "ch"
+  | "td-astar"
+  | "td-dijkstra"
   | "weighted-astar";
 
 export type LabPathResult = {
@@ -390,6 +392,7 @@ export function runLabPath(
     graph?: LabGraphName;
     epsilon?: number;
     landmarks?: number;
+    departure_hour?: number;
   },
 ): Promise<LabPathResult> {
   return request<LabPathResult>("/api/v1/lab/path", {
