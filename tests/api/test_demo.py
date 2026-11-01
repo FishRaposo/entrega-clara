@@ -123,6 +123,6 @@ def test_full_scenario_replay_reaches_delivered(client: TestClient):
         total -= chunk
     assert body["order"]["state"] == "rated"
     assert body["delivery"]["status"] == "delivered"
-    assert body["route"]["graph_id"] == "sao-paulo-centro"
+    assert body["route"]["graph_id"] == "sao-paulo-centro-osm"
     assert body["tracking_points"] >= 2
     assert any("entregue" in n for n in body["notifications"])

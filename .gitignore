@@ -12,6 +12,7 @@ node_modules/
 dist/
 test-results/
 playwright-report/
+.osm-cache/
 coverage/
 .coverage
 .DS_Store

@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     default_locale: str = "pt-BR"
     default_currency: str = "BRL"
     tracking_update_interval_seconds: int = 2
+    routing_graph_path: str = ""
     public_web_origin: str = "http://localhost:3000"
     maptiler_api_key: str = ""
     maptiler_style_url: str = ""

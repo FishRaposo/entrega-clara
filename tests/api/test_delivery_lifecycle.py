@@ -128,8 +128,8 @@ def test_full_delivery_lifecycle(client: TestClient):
     assert detail["state"] == "en_route"
     assert detail["route"] is not None
     assert detail["route"]["distance_meters"] > 0
-    assert detail["route"]["solver_name"] == "astar-synthetic-graph"
-    assert detail["route"]["graph_id"] == "sao-paulo-centro"
+    assert detail["route"]["solver_name"] == "astar-haversine"
+    assert detail["route"]["graph_id"] == "sao-paulo-centro-osm"
 
     loc = client.post(
         f"/api/v1/courier/deliveries/{delivery_id}/location",

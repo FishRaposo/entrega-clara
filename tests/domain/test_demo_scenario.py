@@ -47,7 +47,7 @@ def test_full_script_replay_produces_a_real_rated_order():
 
     assert snapshot["order"]["state"] == "rated"
     assert snapshot["delivery"]["status"] == "delivered"
-    assert snapshot["route"]["graph_id"] == "sao-paulo-centro"
+    assert snapshot["route"]["graph_id"] == "sao-paulo-centro-osm"
     assert snapshot["tracking_points"] >= 2
     assert snapshot["remaining_steps"] == 0
 

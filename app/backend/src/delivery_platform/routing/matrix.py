@@ -3,6 +3,12 @@
 This is the bridge between the two contracts: point-to-point pathfinding
 produces the real travel costs; the matrix then lets any ``RouteSolver``
 optimize the stop order on identical numbers.
+
+The default builder runs one-to-all Dijkstra from each distinct stop (n runs)
+instead of A* for every ordered pair (n² runs). A* wins when a single
+destination is asked for; Dijkstra wins when every destination is needed at
+once — a batch matrix asks for all of them. Passing ``solver`` restores the
+pairwise behaviour, which the tests use to prove both builders agree.
 """
 
 from __future__ import annotations
@@ -14,9 +20,10 @@ from typing import cast
 from delivery_platform.routing.graph import StreetGraph
 from delivery_platform.routing.models import RouteProblem
 from delivery_platform.routing.path import (
-    AStarPathSolver,
+    Objective,
     PathProblem,
     PathResult,
+    distances_from,
 )
 
 PathSolverFn = Callable[[PathProblem], PathResult]
@@ -41,25 +48,55 @@ def build_cost_matrix(
         raise ValueError("labels and nodes must have the same length")
     if len(nodes) < 2:
         raise ValueError("cost matrix needs at least two nodes")
-    solve = solver if solver is not None else AStarPathSolver().solve
+    if objective not in ("time", "distance"):
+        raise ValueError(f"Unknown objective {objective}")
+
+    metric = cast("Objective", objective)
+    if solver is None:
+        costs = _dijkstra_costs(graph, nodes, metric)
+    else:
+        costs = _pairwise_costs(graph, nodes, metric, solver)
+
+    return RouteProblem(
+        labels=labels,
+        costs=cast("tuple[tuple[Real, ...], ...]", tuple(tuple(row) for row in costs)),
+        origin_index=origin_index,
+        objective=objective,
+    )
+
+
+def _dijkstra_costs(
+    graph: StreetGraph, nodes: tuple[str, ...], objective: Objective
+) -> list[list[float]]:
+    """n one-to-all searches instead of n² point-to-point searches."""
+    tables: dict[str, dict[str, float]] = {}
+    rows: list[list[float]] = []
+    for source in nodes:
+        table = tables.get(source)
+        if table is None:
+            table = distances_from(graph, source, objective)
+            tables[source] = table
+        row: list[float] = []
+        for target in nodes:
+            cost = table.get(target)
+            if cost is None:
+                raise ValueError(f"No path from {source} to {target}")
+            row.append(float(cost))
+        rows.append(row)
+    return rows
+
+
+def _pairwise_costs(
+    graph: StreetGraph,
+    nodes: tuple[str, ...],
+    objective: Objective,
+    solver: PathSolverFn,
+) -> list[list[float]]:
     metric = "estimated_seconds" if objective == "time" else "distance_meters"
+
     def cell(a: int, b: int) -> float:
         if a == b:
             return 0.0
-        return float(
-            getattr(
-                solve(PathProblem(graph, nodes[a], nodes[b], objective)),  # type: ignore[arg-type]
-                metric,
-            )
-        )
+        return float(getattr(solver(PathProblem(graph, nodes[a], nodes[b], objective)), metric))
 
-    costs: list[list[float]] = [
-        [cell(a, b) for b in range(len(nodes))]
-        for a in range(len(nodes))
-    ]
-    return RouteProblem(
-        labels=labels,
-        costs=cast("tuple[tuple[Real, ...], ...]", tuple(tuple(r) for r in costs)),
-        origin_index=origin_index,
-        objective=objective,  # type: ignore[arg-type]
-    )
+    return [[cell(a, b) for b in range(len(nodes))] for a in range(len(nodes))]

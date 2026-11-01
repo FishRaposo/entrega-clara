@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 
 from delivery_platform.adapters.memory.clock import DeterministicClock
@@ -25,13 +26,43 @@ from delivery_platform.application.ports import DeliveryRoutePlanner, UnitOfWork
 from delivery_platform.core.config import Settings
 from delivery_platform.domain.entities import DemoIdentity
 from delivery_platform.domain.errors import MissingIdentityError
-from delivery_platform.routing.graph import load_graph
+from delivery_platform.routing.graph import StreetGraph, load_graph
 from delivery_platform.routing.graph_planner import GraphRoutePlanner
 
 logger = logging.getLogger(__name__)
 
 _REPO_ROOT = Path(__file__).resolve().parents[5]
-_GRAPH_PATH = _REPO_ROOT / "data" / "graph" / "sao-paulo-centro.json"
+_GRAPH_DIR = _REPO_ROOT / "data" / "graph"
+
+# Named graph documents served by the lab and picked by configuration.
+GRAPH_FILES: dict[str, str] = {
+    "osm": "sao-paulo-centro-osm.json",
+    "synthetic": "sao-paulo-centro.json",
+}
+# Preference order when no explicit path is configured: the real street extract
+# first, the deterministic synthetic lattice as the offline fallback.
+DEFAULT_GRAPH_ORDER = ("osm", "synthetic")
+
+
+def graph_path(settings: Settings, name: str = "default") -> Path | None:
+    """Resolve a graph document by name, honoring the configured override."""
+    if name == "default":
+        if settings.routing_graph_path:
+            explicit = Path(settings.routing_graph_path)
+            return explicit if explicit.is_absolute() else _REPO_ROOT / explicit
+        for candidate_name in DEFAULT_GRAPH_ORDER:
+            candidate = _GRAPH_DIR / GRAPH_FILES[candidate_name]
+            if candidate.exists():
+                return candidate
+        return _GRAPH_DIR / GRAPH_FILES[DEFAULT_GRAPH_ORDER[0]]
+    file_name = GRAPH_FILES.get(name)
+    return _GRAPH_DIR / file_name if file_name else None
+
+
+@lru_cache(maxsize=4)
+def load_graph_document(path: str) -> StreetGraph:
+    """Parse a graph document once per process; loaded graphs are immutable."""
+    return load_graph(path)
 
 
 @dataclass
@@ -64,6 +95,26 @@ class AppContainer:
         return IdentityContext.from_demo_identity(identity)
 
 
+def _load_route_planner(settings: Settings) -> DeliveryRoutePlanner | None:
+    """Load the configured graph; fall back graph by graph, then to straight lines."""
+    candidates: list[Path] = []
+    if settings.routing_graph_path:
+        explicit = graph_path(settings)
+        if explicit is not None:
+            candidates.append(explicit)
+    candidates.extend(_GRAPH_DIR / GRAPH_FILES[name] for name in DEFAULT_GRAPH_ORDER)
+    for candidate in candidates:
+        if not candidate.exists():
+            logger.warning("Routing graph %s is not available", candidate)
+            continue
+        try:
+            return GraphRoutePlanner(load_graph_document(str(candidate)))
+        except (OSError, TypeError, ValueError) as error:
+            logger.warning("Routing graph %s could not be loaded (%s)", candidate, error)
+    logger.warning("No usable routing graph; falling back to straight-line routing")
+    return None
+
+
 def build_container(settings: Settings) -> AppContainer:
     if settings.persistence_mode != "memory":
         raise RuntimeError(
@@ -71,14 +122,9 @@ def build_container(settings: Settings) -> AppContainer:
             "the PostgreSQL adapter is not implemented yet."
         )
     container = AppContainer(settings=settings)
-    try:
-        container.route_planner = GraphRoutePlanner(load_graph(_GRAPH_PATH))
-    except (OSError, TypeError, ValueError) as error:
-        logger.warning(
-            "Synthetic graph unavailable at %s (%s); falling back to straight-line routing",
-            _GRAPH_PATH,
-            error,
-        )
+    planner = _load_route_planner(settings)
+    if planner is not None:
+        container.route_planner = planner
     return container
 
 

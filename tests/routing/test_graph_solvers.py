@@ -139,7 +139,7 @@ def test_delivery_route_solver_orders_stops(graph: StreetGraph):
     assert result.objective == "time"
     assert result.distance_meters > 0
     assert result.geometry["type"] == "LineString"
-    assert result.solver_name == "astar-synthetic-graph"
+    assert result.solver_name == "astar-haversine"
 
 
 def test_graph_planner_produces_route_plan(graph: StreetGraph):
@@ -156,7 +156,7 @@ def test_graph_planner_produces_route_plan(graph: StreetGraph):
         route_id="rpl-1",
     )
     assert plan.graph_id == "sao-paulo-centro"
-    assert plan.solver_name == "astar-synthetic-graph"
+    assert plan.solver_name == "astar-haversine"
     assert [s.kind for s in plan.stops] == ["pickup", "dropoff"]
     assert all(seg.node_path for seg in plan.segments)
     assert plan.warnings == []
