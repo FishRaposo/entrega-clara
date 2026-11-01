@@ -4,9 +4,13 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Response
 from pydantic import BaseModel, Field, StrictInt
 
+from delivery_platform.adapters.memory.snapshot_codec import (
+    store_from_json,
+    store_to_json,
+)
 from delivery_platform.adapters.memory.store import MemoryStore
 from delivery_platform.application.container import AppContainer
 from delivery_platform.demo.runner import ScenarioRunner
@@ -87,3 +91,34 @@ def restore_snapshot(request: Request, body: SnapshotRequest) -> dict[str, Any]:
     for field_name in restored.__dataclass_fields__:
         setattr(container.store, field_name, getattr(restored, field_name))
     return {"restored": body.name}
+
+
+@router.get("/snapshot/{name}/export")
+def export_snapshot(name: str) -> Response:
+    """Download a named snapshot as JSON (typed, human-inspectable)."""
+    if name not in _SNAPSHOTS:
+        raise DemoScenarioError(f"Não existe snapshot '{name}'.")
+    return Response(
+        content=store_to_json(_SNAPSHOTS[name]),
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{name}.json"'},
+    )
+
+
+class ImportSnapshotRequest(BaseModel):
+    name: Annotated[str, Field(min_length=1, max_length=40, pattern=r"^[\w-]+$")]
+    data: str
+
+
+@router.post("/snapshot/import")
+def import_snapshot(request: Request, body: ImportSnapshotRequest) -> dict[str, Any]:
+    """Restore a store from an exported JSON document."""
+    try:
+        store = store_from_json(body.data)
+    except (ValueError, KeyError, TypeError) as error:
+        raise DemoScenarioError("Snapshot inválido para importação.") from error
+    container: AppContainer = request.app.state.container
+    for field_name in store.__dataclass_fields__:
+        setattr(container.store, field_name, getattr(store, field_name))
+    _SNAPSHOTS[body.name] = store
+    return {"imported": body.name, "snapshots": sorted(_SNAPSHOTS)}

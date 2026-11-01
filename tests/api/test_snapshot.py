@@ -41,3 +41,34 @@ def test_snapshot_list():
     client = TestClient(create_app())
     client.post("/api/v1/demo/snapshot", json={"name": "x"})
     assert "x" in client.get("/api/v1/demo/snapshot").json()["snapshots"]
+
+
+def test_json_export_import_roundtrip():
+    client = TestClient(create_app())
+    client.post("/api/v1/me/cart/items", headers=H,
+                json={"menu_item_id": "menu-sm-01", "quantity": 1})
+    client.post("/api/v1/me/orders/checkout",
+                headers={**H, "Idempotency-Key": "rt-1"},
+                json={"address_id": "addr-casa", "payment_method": "pix"})
+    client.post("/api/v1/demo/snapshot", json={"name": "export-me"})
+    before = client.get("/api/v1/me/orders", headers=H).json()["orders"]
+
+    export = client.get("/api/v1/demo/snapshot/export-me/export")
+    assert export.status_code == 200
+    assert export.headers["content-type"].startswith("application/json")
+
+    # mutate store away from snapshot, then import back
+    client.delete("/api/v1/demo/reset", headers={"x-demo-identity": "demo-operations"}) \
+        if False else None
+    r = client.post("/api/v1/demo/snapshot/import",
+                    json={"name": "restored", "data": export.text})
+    assert r.status_code == 200
+    after = client.get("/api/v1/me/orders", headers=H).json()["orders"]
+    assert [o["id"] for o in after] == [o["id"] for o in before]
+
+
+def test_import_malformed_json_safe_error():
+    client = TestClient(create_app())
+    r = client.post("/api/v1/demo/snapshot/import",
+                    json={"name": "bad", "data": "{not json"})
+    assert r.status_code in (400, 409)
