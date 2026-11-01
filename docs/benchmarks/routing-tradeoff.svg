@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="380" font-family="monospace" font-size="12">
+<text x="12" y="22">Median nodes expanded vs. optimality overshoot</text>
+<text x="12" y="42" fill="#475569">200 sampled pairs, time objective, committed OSM extract</text>
+<line x1="84" y1="288.0" x2="640" y2="288.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="76" y="292.0" text-anchor="end" fill="#475569">1</text>
+<line x1="84" y1="217.1" x2="640" y2="217.1" stroke="#e2e8f0" stroke-width="1"/>
+<text x="76" y="221.1" text-anchor="end" fill="#475569">10</text>
+<line x1="84" y1="146.2" x2="640" y2="146.2" stroke="#e2e8f0" stroke-width="1"/>
+<text x="76" y="150.2" text-anchor="end" fill="#475569">100</text>
+<line x1="84" y1="75.2" x2="640" y2="75.2" stroke="#e2e8f0" stroke-width="1"/>
+<text x="76" y="79.2" text-anchor="end" fill="#475569">1000</text>
+<line x1="84" y1="288" x2="640" y2="288" stroke="#334155"/>
+<line x1="84" y1="66" x2="84" y2="288" stroke="#334155"/>
+<line x1="84.0" y1="288" x2="84.0" y2="293" stroke="#334155"/>
+<text x="84.0" y="307" text-anchor="middle" fill="#475569">0%</text>
+<line x1="362.0" y1="288" x2="362.0" y2="293" stroke="#334155"/>
+<text x="362.0" y="307" text-anchor="middle" fill="#475569">0.5%</text>
+<line x1="640.0" y1="288" x2="640.0" y2="293" stroke="#334155"/>
+<text x="640.0" y="307" text-anchor="middle" fill="#475569">1.0%</text>
+<text x="362" y="326" text-anchor="middle" fill="#475569">overshoot vs. the optimum (%)</text>
+<text x="20" y="177" text-anchor="middle" fill="#475569" transform="rotate(-90 20 177)">median expansions</text>
+<circle cx="84.0" cy="66.0" r="5" fill="#0b66c3"/>
+<text x="98.0" y="70.0" fill="#12231b">dijkstra (1350)</text>
+<circle cx="84.0" cy="81.5" r="5" fill="#0b66c3"/>
+<text x="98.0" y="85.5" fill="#12231b">astar (815)</text>
+<circle cx="84.0" cy="87.9" r="5" fill="#0b66c3"/>
+<text x="98.0" y="100.5" fill="#12231b">weighted_eps1.5 (662)</text>
+<line x1="89.0" y1="92.9" x2="95.0" y2="96.5" stroke="#94a3b8" stroke-width="1"/>
+<circle cx="84.0" cy="91.3" r="5" fill="#0b66c3"/>
+<text x="98.0" y="115.5" fill="#12231b">bidirectional (594)</text>
+<line x1="89.0" y1="96.3" x2="95.0" y2="111.5" stroke="#94a3b8" stroke-width="1"/>
+<circle cx="84.0" cy="100.0" r="5" fill="#0b66c3"/>
+<text x="98.0" y="130.5" fill="#12231b">weighted_eps2.5 (448)</text>
+<line x1="89.0" y1="105.0" x2="95.0" y2="126.5" stroke="#94a3b8" stroke-width="1"/>
+<circle cx="84.0" cy="107.4" r="5" fill="#0b66c3"/>
+<text x="98.0" y="145.5" fill="#12231b">alt (352)</text>
+<line x1="89.0" y1="112.4" x2="95.0" y2="141.5" stroke="#94a3b8" stroke-width="1"/>
+<circle cx="244.1" cy="108.5" r="5" fill="#0b66c3"/>
+<text x="258.1" y="160.5" fill="#12231b">weighted_eps5 (340)</text>
+<line x1="249.1" y1="113.5" x2="255.1" y2="156.5" stroke="#94a3b8" stroke-width="1"/>
+<text x="84" y="346" fill="#475569">Exact solvers sit on the left (0% overshoot);</text>
+<text x="84" y="362" fill="#475569">weighted A* trades solution quality for fewer expansions.</text>
+</svg>

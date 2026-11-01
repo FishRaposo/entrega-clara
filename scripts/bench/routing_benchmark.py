@@ -1,29 +1,54 @@
-"""Deterministic routing benchmark — brute-force baseline vs. portfolio solvers.
+"""Deterministic routing benchmark — the measured evidence for the solver ladder.
 
-Compares the retained ``LegacyBruteForceTSPSolver`` against Held-Karp,
-nearest-neighbor and 2-opt on identical bounded matrices, plus A* vs. Dijkstra
-on the committed synthetic graph. Emits committed evidence:
+Two families, one harness:
 
-    docs/benchmarks/routing.json  — machine-readable results
-    docs/benchmarks/routing.md    — human-readable summary
-    docs/benchmarks/routing.svg   — execution-time bar chart
+* **Multi-stop (TSP)** — the retained ``LegacyBruteForceTSPSolver`` baseline
+  against Held-Karp, nearest-neighbor and 2-opt on identical cost matrices
+  built from the committed street graph.
+* **Point-to-point** — Dijkstra, A*, ALT landmarks, balanced bidirectional
+  search and weighted ε-admissible A* over the same sampled pairs, reporting
+  median nodes expanded, median solver time and the solution-quality overshoot.
+
+Emits committed evidence:
+
+    docs/benchmarks/routing.json          machine-readable results
+    docs/benchmarks/routing.md            human-readable summary
+    docs/benchmarks/routing.svg           execution-time bar chart
+    docs/benchmarks/routing-tradeoff.svg  work vs. solution quality
+    docs/benchmarks/lab-trace.json        replayable search trace (see below)
+
+``--export-lab-trace`` writes the subgraph of the delivery demo route with both
+traces embedded, which the standard-library GIF renderer consumes; it is
+self-contained because only the touched nodes and edges are kept.
 
 Standard library only. Runs in seconds; factorial sizes stay bounded.
 """
 
 import json
+import math
+import platform
+import random
+import statistics
+import subprocess
 import sys
 import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "app" / "backend" / "src"))
-sys.path.insert(0, str(ROOT / "src")) if (ROOT / "src").is_dir() else None
 
-from delivery_platform.routing.graph import load_graph
+from delivery_platform.domain.entities import GeoPoint
+from delivery_platform.routing.graph import StreetGraph, load_graph
+from delivery_platform.routing.informed import (
+    AltPathSolver,
+    BidirectionalPathSolver,
+    WeightedAStarSolver,
+)
+from delivery_platform.routing.landmarks import landmark_table
 from delivery_platform.routing.legacy_bruteforce import (
     LegacyBruteForceTSPSolver,
 )
+from delivery_platform.routing.matrix import build_cost_matrix
 from delivery_platform.routing.models import RouteProblem
 from delivery_platform.routing.path import (
     AStarPathSolver,
@@ -37,12 +62,27 @@ from delivery_platform.routing.tsp import (
 )
 
 OUT_DIR = ROOT / "docs" / "benchmarks"
-GRAPH_PATH = ROOT / "data" / "graph" / "sao-paulo-centro.json"
+GRAPH_CANDIDATES = (
+    ROOT / "data" / "graph" / "sao-paulo-centro-osm.json",
+    ROOT / "data" / "graph" / "sao-paulo-centro.json",
+)
+PAIR_COUNT = 200
+WEIGHTED_EPSILONS = (1.5, 2.5, 5.0)
+TSP_SIZES = (5, 7, 9, 11, 13)
+BATCH_STOPS = 7
+# Delivery demo endpoints (seeded restaurant → customer), used for the trace.
+TRACE_ORIGIN = GeoPoint(latitude=-23.5482, longitude=-46.6371)
+TRACE_DESTINATION = GeoPoint(latitude=-23.5515, longitude=-46.632)
+
+
+def _graph_path() -> Path:
+    for candidate in GRAPH_CANDIDATES:
+        if candidate.exists():
+            return candidate
+    raise SystemExit("No committed graph found under data/graph/")
 
 
 def _matrix(n: int, seed: int) -> RouteProblem:
-    import random
-
     rng = random.Random(seed)
     costs = [[0.0] * n for _ in range(n)]
     for i in range(n):
@@ -68,6 +108,40 @@ def _run(solver, problem) -> dict:
     }
 
 
+def _machine_context() -> dict:
+    commit = ""
+    dirty = False
+    try:
+        commit = (
+            subprocess.run(
+                ["git", "rev-parse", "--short", "HEAD"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            ).stdout.strip()
+        )
+        dirty = bool(
+            subprocess.run(
+                ["git", "status", "--porcelain"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            ).stdout.strip()
+        )
+    except (OSError, subprocess.SubprocessError):
+        commit = ""
+    return {
+        "platform": platform.platform(),
+        "processor": platform.processor(),
+        "python": platform.python_version(),
+        "commit": f"{commit}-dirty" if commit and dirty else commit,
+    }
+
+
 def _smoke() -> None:
     """Fast CI gate: solvers run and agree on a small matrix."""
     problem = _matrix(6, seed=7)
@@ -76,110 +150,516 @@ def _smoke() -> None:
     assert abs(bf.total_cost - hk.total_cost) < 1e-9, (
         f"held-karp {hk.total_cost} != brute-force {bf.total_cost}"
     )
-    graph = load_graph(GRAPH_PATH)
+    graph = load_graph(_graph_path())
     assert graph.nodes, "graph failed to load"
-    print("benchmark smoke ok: solvers agree on 6-stop matrix")
+    origin, destination = min(graph.nodes), max(graph.nodes)
+    oracle = DijkstraPathSolver().solve(PathProblem(graph, origin, destination, "time"))
+    alt = AltPathSolver(landmarks=2).solve(PathProblem(graph, origin, destination, "time"))
+    assert abs(oracle.estimated_seconds - alt.estimated_seconds) < 0.01, (
+        "ALT disagrees with the Dijkstra oracle"
+    )
+    print(
+        f"benchmark smoke ok: solvers agree on a 6-stop matrix and on the graph "
+        f"({graph.graph_id})"
+    )
+
+
+def _tsp_section(graph: StreetGraph) -> list[dict]:
+    """TSP ladder on cost matrices built from the street graph."""
+    nodes = sorted(graph.nodes)
+    rng = random.Random(20261101)
+    rows: list[dict] = []
+    for size in TSP_SIZES:
+        picks = rng.sample(nodes, size)
+        problem = build_cost_matrix(
+            graph,
+            labels=tuple(f"s{i}" for i in range(size)),
+            nodes=tuple(picks),
+            objective="time",
+        )
+        row: dict = {"stops": size, "matrix": "street graph (one-to-all Dijkstra)"}
+        run_brute = size <= 9
+        row["brute_force"] = (
+            _run(LegacyBruteForceTSPSolver(), problem)
+            if run_brute
+            else {"solver": "legacy_bruteforce_tsp", "skipped": True}
+        )
+        row["held_karp"] = (
+            _run(HeldKarpSolver(), problem)
+            if size <= HeldKarpSolver.MAX_STOPS
+            else {"solver": "held-karp", "skipped": True}
+        )
+        row["nearest_neighbor"] = _run(NearestNeighborSolver(), problem)
+        row["two_opt"] = _run(TwoOptSolver(), problem)
+        rows.append(row)
+    return rows
+
+
+def _tsp_matrix_section() -> list[dict]:
+    """Seeded random matrices — the solver-only comparison, no graph involved."""
+    rows: list[dict] = []
+    for size in TSP_SIZES:
+        problem = _matrix(size, seed=42 + size)
+        row: dict = {"stops": size, "matrix": "seeded random (symmetric)"}
+        row["brute_force"] = (
+            _run(LegacyBruteForceTSPSolver(), problem)
+            if size <= 9
+            else {"solver": "legacy_bruteforce_tsp", "skipped": True}
+        )
+        row["held_karp"] = _run(HeldKarpSolver(), problem)
+        row["nearest_neighbor"] = _run(NearestNeighborSolver(), problem)
+        row["two_opt"] = _run(TwoOptSolver(), problem)
+        rows.append(row)
+    return rows
+
+
+def _path_section(graph: StreetGraph, pairs: list[tuple[str, str]]) -> dict:
+    solvers: dict[str, object] = {
+        "dijkstra": DijkstraPathSolver(),
+        "astar": AStarPathSolver(),
+        "alt": AltPathSolver(),
+        "bidirectional": BidirectionalPathSolver(),
+    }
+    for epsilon in WEIGHTED_EPSILONS:
+        solvers[f"weighted_eps{epsilon:g}"] = WeightedAStarSolver(epsilon=epsilon)
+
+    oracle = DijkstraPathSolver()
+    optimums = [
+        oracle.solve(PathProblem(graph, origin, destination, "time")).estimated_seconds
+        for origin, destination in pairs
+    ]
+    rows: dict[str, dict] = {}
+    for name, solver in solvers.items():
+        expansions: list[int] = []
+        nanos: list[int] = []
+        overshoots: list[float] = []
+        for (origin, destination), optimal in zip(pairs, optimums, strict=True):
+            result = solver.solve(PathProblem(graph, origin, destination, "time"))  # type: ignore[attr-defined]
+            expansions.append(result.nodes_expanded)
+            nanos.append(result.computation_time_ns)
+            overshoots.append(
+                0.0 if optimal <= 0 else (result.estimated_seconds - optimal) / optimal * 100
+            )
+        rows[name] = {
+            "pairs": len(pairs),
+            "median_nodes_expanded": statistics.median(expansions),
+            "max_nodes_expanded": max(expansions),
+            "median_solver_time_ns": int(statistics.median(nanos)),
+            "total_solver_time_ns": sum(nanos),
+            "share_of_graph_median": round(statistics.median(expansions) / len(graph.nodes), 4),
+            "median_overshoot_percent": round(statistics.median(overshoots), 3),
+            "max_overshoot_percent": round(max(overshoots), 3),
+        }
+    table = landmark_table(graph, objective="time")
+    rows["alt"]["landmarks"] = list(table.landmarks)
+    rows["alt"]["preprocessing_time_ns"] = table.preprocessing_time_ns
+    return rows
+
+
+def _batch_realism(graph: StreetGraph) -> dict:
+    """What one 2-3 order batch costs end to end: matrix build + exact tour.
+
+    Timed three times and reported as a median: a single wall-clock sample on a
+    laptop swings by several times, and the point of the number is the order of
+    magnitude, not the machine's mood.
+    """
+    nodes = sorted(graph.nodes)
+    rng = random.Random(20261102)
+    picks = rng.sample(nodes, BATCH_STOPS)
+    matrix_samples: list[int] = []
+    tour_samples: list[int] = []
+    tour = None
+    baseline = None
+    for _ in range(3):
+        started = time.perf_counter_ns()
+        problem = build_cost_matrix(
+            graph,
+            labels=tuple(f"stop{i}" for i in range(BATCH_STOPS)),
+            nodes=tuple(picks),
+            objective="time",
+        )
+        matrix_samples.append(time.perf_counter_ns() - started)
+        precedence = {
+            1 + (BATCH_STOPS - 1) // 2 + i: 1 + i for i in range((BATCH_STOPS - 1) // 2)
+        }
+        started = time.perf_counter_ns()
+        tour = HeldKarpSolver(precedence=precedence, closed=False).solve(problem)
+        tour_samples.append(time.perf_counter_ns() - started)
+        baseline = NearestNeighborSolver(precedence=precedence, closed=False).solve(problem)
+    assert tour is not None and baseline is not None
+    matrix_ns = statistics.median(matrix_samples)
+    tour_ns = statistics.median(tour_samples)
+    return {
+        "stops": BATCH_STOPS,
+        "repeats": len(matrix_samples),
+        "matrix_build_ms": round(matrix_ns / 1e6, 2),
+        "held_karp_ms": round(tour_ns / 1e6, 2),
+        "total_ms": round((matrix_ns + tour_ns) / 1e6, 2),
+        "held_karp_cost": round(tour.total_cost, 2),
+        "nearest_neighbor_cost": round(baseline.total_cost, 2),
+        "savings_seconds": round(baseline.total_cost - tour.total_cost, 2),
+    }
+
+
+def _export_lab_trace(graph: StreetGraph) -> dict:
+    """Self-contained replay of one delivery-route search (A* and Dijkstra)."""
+    origin = graph.nearest_node(TRACE_ORIGIN)
+    destination = graph.nearest_node(TRACE_DESTINATION)
+    traces: dict[str, dict] = {}
+    keep: set[str] = {origin, destination}
+    for name, solver in (
+        ("alt", AltPathSolver()),
+        ("astar", AStarPathSolver()),
+        ("dijkstra", DijkstraPathSolver()),
+    ):
+        result = solver.solve(PathProblem(graph, origin, destination, "time"), trace=True)
+        traces[name] = {
+            "solver_name": result.solver_name,
+            "nodes_expanded": result.nodes_expanded,
+            "estimated_seconds": result.estimated_seconds,
+            "distance_meters": result.distance_meters,
+            "expanded_order": list(result.expanded_order),
+            "frontier_sizes": list(result.frontier_sizes),
+            "expansion_costs": list(result.expansion_costs),
+            "node_path": list(result.node_path),
+        }
+        keep.update(result.expanded_order)
+        keep.update(result.node_path)
+
+    # Three hops of context around the touched nodes so the replay shows streets
+    # rather than floating dots; the file stays small because the halo is local.
+    halo = set(keep)
+    for _ in range(3):
+        halo |= {
+            edge.to_node
+            for node in halo
+            for edge in graph.neighbors(node)
+        }
+    keep = halo
+
+    ids = sorted(keep)
+    index_of = {node: position for position, node in enumerate(ids)}
+    edges = [
+        [index_of[node], index_of[edge.to_node], edge.speed_kmh]
+        for node in ids
+        for edge in graph.neighbors(node)
+        if edge.to_node in index_of
+    ]
+    document = {
+        "graph_id": graph.graph_id,
+        "graph_version": graph.version,
+        "attribution": graph.attribution,
+        "objective": "time",
+        "origin": index_of[origin],
+        "destination": index_of[destination],
+        "ids": ids,
+        "nodes": [
+            [round(graph.nodes[node].latitude, 6), round(graph.nodes[node].longitude, 6)]
+            for node in ids
+        ],
+        "edges": edges,
+        "solvers": {
+            name: {
+                **trace,
+                "expanded_order": [index_of[node] for node in trace["expanded_order"]],
+                "node_path": [index_of[node] for node in trace["node_path"]],
+            }
+            for name, trace in traces.items()
+        },
+    }
+    (OUT_DIR / "lab-trace.json").write_text(
+        json.dumps(document) + "\n", encoding="utf-8"
+    )
+    print(
+        f"Wrote lab-trace.json: {len(ids)} nodes, "
+        + ", ".join(
+            f"{name} {trace['nodes_expanded']} expansions"
+            for name, trace in traces.items()
+        )
+    )
+    return document
+
+
+def _bar_chart(row: dict, path: Path) -> None:
+    bars = [
+        (key, row[key]["wall_time_ns"] / 1e6)
+        for key in ("brute_force", "held_karp", "nearest_neighbor", "two_opt")
+        if not row[key].get("skipped")
+    ]
+    max_value = max(value for _, value in bars)
+    width, height, bar_height, gap = 700, 210, 30, 14
+    svg = [
+        (
+            f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
+            'font-family="monospace" font-size="12">'
+        ),
+        f'<text x="10" y="20">Solver wall time — {row["stops"]} stops (ms, log scale)</text>',
+    ]
+    for index, (name, value) in enumerate(bars):
+        y = 40 + index * (bar_height + gap)
+        bar = 8 + (math.log10(max(value, 0.001)) / math.log10(max(max_value, 0.001))) * (
+            width - 260
+        )
+        label = f"{value:.2f} ms"
+        svg.append(f'<text x="10" y="{y + 20}">{name}</text>')
+        svg.append(
+            f'<rect x="150" y="{y}" width="{bar:.1f}" height="{bar_height}" fill="#0e7a3d"/>'
+        )
+        if 150 + bar + 70 > width:
+            # The value label would clip: draw it inside the bar instead.
+            svg.append(
+                f'<text x="{150 + bar - 6:.1f}" y="{y + 20}" text-anchor="end" '
+                f'fill="#ffffff">{label}</text>'
+            )
+        else:
+            svg.append(f'<text x="{155 + bar:.1f}" y="{y + 20}">{label}</text>')
+    svg.append("</svg>")
+    path.write_text("\n".join(svg) + "\n", encoding="utf-8")
+
+
+def _tradeoff_chart(path_rows: dict, path: Path) -> None:
+    """Work vs. solution quality: expansions against optimality overshoot."""
+    width, height = 700, 380
+    left, right, top, bottom = 84, 640, 66, 288
+    points = [
+        (row["median_overshoot_percent"], row["median_nodes_expanded"], name)
+        for name, row in path_rows.items()
+    ]
+    max_overshoot = max(1.0, max(overshoot for overshoot, _, _ in points))
+    max_expanded = max(1.0, max(expanded for _, expanded, _ in points))
+    log_max = math.log10(max(max_expanded, 10))
+
+    def x_of(value: float) -> float:
+        return left + (value / max_overshoot) * (right - left)
+
+    def y_of(value: float) -> float:
+        return bottom - (math.log10(max(value, 1)) / log_max) * (bottom - top)
+
+    svg = [
+        (
+            f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
+            'font-family="monospace" font-size="12">'
+        ),
+        '<text x="12" y="22">Median nodes expanded vs. optimality overshoot</text>',
+        (
+            '<text x="12" y="42" fill="#475569">200 sampled pairs, time objective, '
+            "committed OSM extract</text>"
+        ),
+    ]
+
+    # Horizontal gridlines with power-of-ten labels.
+    power = 0
+    while 10**power <= max_expanded * 1.05:
+        value = 10**power
+        y = y_of(value)
+        svg.append(
+            f'<line x1="{left}" y1="{y:.1f}" x2="{right}" y2="{y:.1f}" '
+            'stroke="#e2e8f0" stroke-width="1"/>'
+        )
+        svg.append(
+            f'<text x="{left - 8}" y="{y + 4:.1f}" text-anchor="end" '
+            f'fill="#475569">{value:g}</text>'
+        )
+        power += 1
+
+    svg.append(
+        f'<line x1="{left}" y1="{bottom}" x2="{right}" y2="{bottom}" stroke="#334155"/>'
+    )
+    svg.append(f'<line x1="{left}" y1="{top}" x2="{left}" y2="{bottom}" stroke="#334155"/>')
+    for fraction in (0.0, 0.5, 1.0):
+        value = max_overshoot * fraction
+        x = x_of(value)
+        svg.append(
+            f'<line x1="{x:.1f}" y1="{bottom}" x2="{x:.1f}" y2="{bottom + 5}" '
+            'stroke="#334155"/>'
+        )
+        label = "0%" if value == 0 else f"{value:.1f}%"
+        svg.append(
+            f'<text x="{x:.1f}" y="{bottom + 19}" text-anchor="middle" '
+            f'fill="#475569">{label}</text>'
+        )
+    svg.append(
+        f'<text x="{(left + right) / 2:.0f}" y="{bottom + 38}" text-anchor="middle" '
+        'fill="#475569">overshoot vs. the optimum (%)</text>'
+    )
+    svg.append(
+        f'<text x="20" y="{(top + bottom) / 2:.0f}" text-anchor="middle" fill="#475569" '
+        f'transform="rotate(-90 20 {(top + bottom) / 2:.0f})">median expansions</text>'
+    )
+
+    # Exact solvers cluster at 0% overshoot, so labels are staggered downwards
+    # in point order with a short connector; otherwise they overlap.
+    last_text_y = -10**9
+    for overshoot, expanded, name in sorted(points, key=lambda point: -point[1]):
+        x, y = x_of(overshoot), y_of(expanded)
+        svg.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="5" fill="#0b66c3"/>')
+        text_y = max(y + 4, last_text_y + 15)
+        last_text_y = text_y
+        label = f"{name} ({expanded:.0f})"
+        svg.append(
+            f'<text x="{x + 14:.1f}" y="{text_y:.1f}" fill="#12231b">{label}</text>'
+        )
+        if text_y - (y + 4) > 1:
+            svg.append(
+                f'<line x1="{x + 5:.1f}" y1="{y + 5:.1f}" x2="{x + 11:.1f}" '
+                f'y2="{text_y - 4:.1f}" stroke="#94a3b8" stroke-width="1"/>'
+            )
+
+    svg.append(
+        f'<text x="{left}" y="{bottom + 58}" fill="#475569">Exact solvers sit on the left '
+        "(0% overshoot);</text>"
+    )
+    svg.append(
+        f'<text x="{left}" y="{bottom + 74}" fill="#475569">weighted A* trades solution '
+        "quality for fewer expansions.</text>"
+    )
+    svg.append("</svg>")
+    path.write_text("\n".join(svg) + "\n", encoding="utf-8")
+
+
+def _markdown(results: dict) -> str:
+    md = [
+        "# Routing benchmark",
+        "",
+        f"Generated: {results['generated_at']}",
+        (f"Graph: `{results['graph']['graph_id']}` {results['graph']['version']} — "
+        f"{results['graph']['nodes']} nodes, {results['graph']['edges']} directed edges"),
+        (f"Machine: {results['machine']['platform']} · Python {results['machine']['python']} · "
+        f"commit {results['machine']['commit'] or 'n/a'}"),
+        "",
+        "## Multi-stop (TSP) solvers — seeded random matrices",
+        "",
+        "| Stops | Brute force | Held-Karp | Nearest-neighbor | 2-opt |",
+        "| --- | --- | --- | --- | --- |",
+    ]
+
+    def cell(row: dict, key: str) -> str:
+        entry = row[key]
+        if entry.get("skipped"):
+            return "skipped (exceeds bound)"
+        return (
+            f"{entry['total_cost']:.1f} ({entry['routes_evaluated']} evals, "
+            f"{entry['wall_time_ns'] / 1e6:.1f} ms)"
+        )
+
+    for row in results["tsp_random"]:
+        md.append(
+            f"| {row['stops']} | {cell(row, 'brute_force')} | {cell(row, 'held_karp')} "
+            f"| {cell(row, 'nearest_neighbor')} | {cell(row, 'two_opt')} |"
+        )
+    md += [
+        "",
+        "## Multi-stop (TSP) solvers — cost matrices from the street graph",
+        "",
+        "| Stops | Brute force | Held-Karp | Nearest-neighbor | 2-opt |",
+        "| --- | --- | --- | --- | --- |",
+    ]
+    for row in results["tsp_graph"]:
+        md.append(
+            f"| {row['stops']} | {cell(row, 'brute_force')} | {cell(row, 'held_karp')} "
+            f"| {cell(row, 'nearest_neighbor')} | {cell(row, 'two_opt')} |"
+        )
+    md += [
+        "",
+        "Costs are tour totals (seconds); counts in parentheses are solver work units.",
+        "Matrices use one-to-all Dijkstra per stop on the time objective.",
+        "",
+        f"## Point-to-point solvers — {PAIR_COUNT} sampled pairs, time objective",
+        "",
+        ("| Solver | Median nodes expanded | Share of graph | Median solver time | "
+        "Median overshoot | Max overshoot |"),
+        "| --- | --- | --- | --- | --- | --- |",
+    ]
+    for name, row in results["path"].items():
+        md.append(
+            f"| {name} | {row['median_nodes_expanded']:.0f} | "
+            f"{row['share_of_graph_median'] * 100:.1f}% | "
+            f"{row['median_solver_time_ns'] / 1e6:.2f} ms | "
+            f"{row['median_overshoot_percent']:.2f}% | {row['max_overshoot_percent']:.2f}% |"
+        )
+    alt = results["path"].get("alt", {})
+    if alt.get("preprocessing_time_ns") is not None:
+        md += [
+            "",
+            (f"ALT preprocessing (one-time, {len(alt.get('landmarks', []))} landmarks): "
+            f"{alt['preprocessing_time_ns'] / 1e6:.0f} ms — reported separately from query time, "
+            "amortized across every query on this graph and objective."),
+        ]
+    md += [
+        "",
+        ("Every exact solver (Dijkstra, A*, ALT, bidirectional) agrees on optimal cost; only the "
+        "weighted variant is allowed to overshoot, and only within its ε bound."),
+        "",
+        "## Batch realism — one 7-stop courier batch, end to end",
+        "",
+        f"Median of {results['batch']['repeats']} runs; the matrix dominates, the tour is negligible.",
+        "",
+        "| Stage | Time |",
+        "| --- | --- |",
+        f"| Cost matrix (one-to-all Dijkstra per stop) | {results['batch']['matrix_build_ms']} ms |",
+        f"| Exact tour (Held-Karp with precedence) | {results['batch']['held_karp_ms']} ms |",
+        f"| **Total** | **{results['batch']['total_ms']} ms** |",
+        "",
+        (f"Held-Karp {results['batch']['held_karp_cost']:.1f} s vs. nearest-neighbor "
+        f"{results['batch']['nearest_neighbor_cost']:.1f} s on the same matrix "
+        f"({results['batch']['savings_seconds']:.1f} s saved)."),
+        "",
+        (f"Exact solvers agree on optimal cost on every sampled pair "
+        f"({PAIR_COUNT} pairs, test suite asserts this)."),
+    ]
+    return "\n".join(md) + "\n"
 
 
 def main() -> None:
     if "--smoke" in sys.argv:
         _smoke()
         return
-    results: dict = {"generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
 
-    # --- TSP comparison: brute force vs replacements on identical matrices ---
-    tsp_rows = []
-    # Brute force is capped at 9 stops (9! = 362 880 permutations ≈ measured
-    # tens of ms → but the factorial doubles ~10x per stop and becomes
-    # unusable; replacements are shown scaling beyond that wall).
-    for n in (5, 7, 9, 11, 13):
-        problem = _matrix(n, seed=42 + n)
-        row = {"stops": n}
-        row["brute_force"] = (
-            _run(LegacyBruteForceTSPSolver(), problem)
-            if n <= 9
-            else {"solver": "legacy_bruteforce_tsp", "skipped": True}
-        )
-        row["held_karp"] = (
-            _run(HeldKarpSolver(), problem) if n <= HeldKarpSolver.MAX_STOPS
-            else {"solver": "held-karp", "skipped": True}
-        )
-        row["nearest_neighbor"] = _run(NearestNeighborSolver(), problem)
-        row["two_opt"] = _run(TwoOptSolver(), problem)
-        tsp_rows.append(row)
-    results["tsp"] = tsp_rows
-
-    # --- Path solvers: A* vs Dijkstra over 150 sampled pairs ---
-    graph = load_graph(GRAPH_PATH)
+    graph_path = _graph_path()
+    graph = load_graph(graph_path)
     nodes = sorted(graph.nodes)
-    import random
+    edge_count = sum(len(edges) for edges in graph.adjacency.values())
+    results: dict = {
+        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "machine": _machine_context(),
+        "graph": {
+            "path": graph_path.relative_to(ROOT).as_posix(),
+            "graph_id": graph.graph_id,
+            "version": graph.version,
+            "nodes": len(nodes),
+            "edges": edge_count,
+            "source": graph.source,
+            "attribution": graph.attribution,
+        },
+    }
+    print(f"Benchmarking {graph.graph_id} ({len(nodes)} nodes, {edge_count} edges)")
+
+    results["tsp_random"] = _tsp_matrix_section()
+    print("TSP (random matrices): done")
+    results["tsp_graph"] = _tsp_section(graph)
+    print("TSP (street graph): done")
 
     rng = random.Random(20260901)
-    pairs = rng.sample([(a, b) for a in nodes for b in nodes if a != b], 150)
-    path_rows = {}
-    for name, solver in (("astar", AStarPathSolver()), ("dijkstra", DijkstraPathSolver())):
-        expanded = 0
-        nanos = 0
-        for origin, destination in pairs:
-            r = solver.solve(PathProblem(graph, origin, destination, "time"))
-            expanded += r.nodes_expanded
-            nanos += r.computation_time_ns
-        path_rows[name] = {
-            "pairs": len(pairs),
-            "total_nodes_expanded": expanded,
-            "total_solver_time_ns": nanos,
-        }
-    results["path"] = path_rows
+    pairs = rng.sample([(a, b) for a in nodes for b in nodes if a != b], PAIR_COUNT)
+    results["path"] = _path_section(graph, pairs)
+    print("Path ladder: done")
+
+    results["batch"] = _batch_realism(graph)
+    print("Batch realism: done")
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    (OUT_DIR / "routing.json").write_text(
-        json.dumps(results, indent=2) + "\n", encoding="utf-8"
+    (OUT_DIR / "routing.json").write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")
+    (OUT_DIR / "routing.md").write_text(_markdown(results), encoding="utf-8")
+
+    largest = next(
+        row for row in reversed(results["tsp_random"]) if not row["brute_force"].get("skipped")
     )
-
-    md = ["# Routing benchmark\n",
-          f"Generated: {results['generated_at']}\n",
-          "## Multi-stop (TSP) solvers — identical matrices\n",
-          "| Stops | Brute force | Held-Karp | Nearest-neighbor | 2-opt |",
-          "| --- | --- | --- | --- | --- |"]
-    for row in tsp_rows:
-        def cell(key, row=row):
-            r = row[key]
-            if r.get("skipped"):
-                return "skipped (exceeds bound)"
-            return f"{r['total_cost']:.1f} ({r['routes_evaluated']} evals, {r['wall_time_ns']/1e6:.1f} ms)"
-        md.append(
-            f"| {row['stops']} | {cell('brute_force')} | {cell('held_karp')} "
-            f"| {cell('nearest_neighbor')} | {cell('two_opt')} |"
-        )
-    md += ["",
-           "Costs are the optimized tour total; counts in parentheses are solver work units.",
-           "",
-           "## Path solvers — A* vs. Dijkstra (150 pairs, time objective)",
-           "",
-           "| Solver | Nodes expanded | Solver time |",
-           "| --- | --- | --- |"]
-    for name, r in path_rows.items():
-        md.append(f"| {name} | {r['total_nodes_expanded']} | {r['total_solver_time_ns']/1e6:.1f} ms |")
-    md += ["", "Exact solvers agree on optimal cost on every sampled pair (test suite asserts this)."]
-    (OUT_DIR / "routing.md").write_text("\n".join(md) + "\n", encoding="utf-8")
-
-    # --- SVG bar chart: solver wall times at the largest fully-run size ---
-    row = next(r for r in reversed(tsp_rows) if not r["brute_force"].get("skipped"))
-    bars = [(k, row[k]["wall_time_ns"] / 1e6) for k in ("brute_force", "held_karp", "nearest_neighbor", "two_opt")]
-    max_v = max(v for _, v in bars)
-    w, h, bar_h, gap = 640, 200, 30, 14
-    svg = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" font-family="monospace" font-size="12">',
-           f'<text x="10" y="20">Solver wall time — {row["stops"]} stops (ms, log scale)</text>']
-    import math
-    for i, (name, v) in enumerate(bars):
-        y = 40 + i * (bar_h + gap)
-        bw = 8 + (math.log10(max(v, 0.001)) / math.log10(max(max_v, 0.001))) * (w - 200)
-        svg.append(f'<text x="10" y="{y + 20}">{name}</text>')
-        svg.append(f'<rect x="150" y="{y}" width="{bw:.1f}" height="{bar_h}" fill="#0e7a3d"/>')
-        svg.append(f'<text x="{155 + bw:.1f}" y="{y + 20}">{v:.2f} ms</text>')
-    svg.append("</svg>")
-    (OUT_DIR / "routing.svg").write_text("\n".join(svg) + "\n", encoding="utf-8")
+    _bar_chart(largest, OUT_DIR / "routing.svg")
+    _tradeoff_chart(results["path"], OUT_DIR / "routing-tradeoff.svg")
     print(f"Wrote benchmark artifacts to {OUT_DIR.as_posix()}")
+
+    if "--export-lab-trace" in sys.argv:
+        _export_lab_trace(graph)
 
 
 if __name__ == "__main__":
