@@ -101,3 +101,21 @@ def test_point_along_polyline_edges():
     assert (start.longitude, start.latitude) == (-46.64, -23.55)
     assert (end.longitude, end.latitude) == (-46.63, -23.55)
     assert abs(mid.longitude + 46.635) < 1e-3
+
+
+def test_assigned_courier_reads_tracking_for_its_own_delivery_only():
+    client = _client()
+    order_id, _delivery_id = _en_route(client)
+
+    # The courier console draws the map for the delivery it is running, so the
+    # assigned courier must be able to read that order's tracking…
+    mine = client.get(f"/api/v1/orders/{order_id}/tracking", headers=COURIER)
+    assert mine.status_code == 200, mine.text
+    assert mine.json()["route"] is not None
+
+    # …and it must not become a way to read orders the courier is not carrying.
+    other = client.get(
+        f"/api/v1/orders/{order_id}/tracking",
+        headers={"x-demo-identity": "demo-courier-bruno"},
+    )
+    assert other.status_code == 403

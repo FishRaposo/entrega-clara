@@ -104,8 +104,12 @@ class CustomerQueries:
     def get_order(self, ctx: CommandContext, order_id: str) -> OrderView:
         with self._container.uow() as uow:
             order = uow.orders.get(order_id)
+            delivery = uow.deliveries.find_by_order(order_id)
             if not can_read_order(
-                ctx.identity, customer_id=order.customer_id, restaurant_id=order.restaurant_id
+                ctx.identity,
+                customer_id=order.customer_id,
+                restaurant_id=order.restaurant_id,
+                courier_id=delivery.courier_id if delivery else None,
             ):
                 raise OwnershipForbiddenError()
             attempt = (
@@ -113,7 +117,6 @@ class CustomerQueries:
                 if order.payment_attempt_id
                 else None
             )
-            delivery = uow.deliveries.find_by_order(order_id)
             route = _resolve_route(uow, delivery) if delivery else None
             tracking = uow.tracking_events.list_by_delivery(delivery.id) if delivery else []
             uow.rollback()

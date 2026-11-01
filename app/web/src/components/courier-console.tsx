@@ -13,7 +13,7 @@ import {
   setCourierAvailability,
 } from "../lib/api-client";
 import type { Delivery, TrackingView } from "../lib/api-types";
-import { deliveryStatusLabel } from "../lib/format";
+import { deliveryStatusLabel, formatDuration } from "../lib/format";
 import { DEMO_IDENTITIES } from "../lib/identities";
 import { DeliveryMap } from "./delivery-map";
 
@@ -121,6 +121,17 @@ export function CourierConsole() {
                 );
               })}
             </ol>
+          ) : null}
+          {activeRoute?.baseline_cost != null ? (
+            <p className="muted">
+              {formatDuration(activeRoute.estimated_seconds)} na ordem exata
+              {activeRoute.baseline_solver_name
+                ? ` · ${activeRoute.baseline_solver_name}: ${formatDuration(activeRoute.baseline_cost)}`
+                : ""}
+              {activeRoute.computation_time_ns
+                ? ` · busca em ${(activeRoute.computation_time_ns / 1e6).toFixed(1)} ms`
+                : ""}
+            </p>
           ) : null}
           <DeliveryMap route={tracking?.route ?? activeRoute} lastKnown={tracking?.last_known_location} />
           {actives.map((delivery) => (

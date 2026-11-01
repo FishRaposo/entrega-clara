@@ -104,9 +104,13 @@ export type RoutePlan = {
   estimated_seconds: number;
   solver_name: string;
   solver_version: string;
+  computation_time_ns?: number;
   warnings: string[];
   objective?: string;
   batch_id?: string | null;
+  /** Batch tours only: the same matrix solved by a cheap heuristic, as a baseline. */
+  baseline_solver_name?: string | null;
+  baseline_cost?: number | null;
 };
 
 export type OrderSummary = {

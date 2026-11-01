@@ -190,6 +190,8 @@ def route_view(route: RoutePlan | None) -> dict[str, Any] | None:
         "solver_name": route.solver_name,
         "solver_version": route.solver_version,
         "batch_id": route.batch_id,
+        "baseline_solver_name": route.baseline_solver_name,
+        "baseline_cost": route.baseline_cost,
         "computation_time_ns": route.computation_time_ns,
         "nodes_expanded": route.nodes_expanded,
         "warnings": route.warnings,

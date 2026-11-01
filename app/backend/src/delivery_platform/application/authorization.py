@@ -32,10 +32,24 @@ def require_operations(identity: IdentityContext) -> None:
     require_role(identity, "operations")
 
 
-def can_read_order(identity: IdentityContext, *, customer_id: str, restaurant_id: str) -> bool:
-    """Who may read an order: its customer, its restaurant operator, operations."""
+def can_read_order(
+    identity: IdentityContext,
+    *,
+    customer_id: str,
+    restaurant_id: str,
+    courier_id: str | None = None,
+) -> bool:
+    """Who may read an order: its customer, its restaurant, its courier, operations.
+
+    ``courier_id`` is the courier currently assigned to the order's delivery (or
+    ``None`` while no delivery is assigned). The rule exists because the courier
+    console renders the map for the delivery it is running; it must not leak
+    orders the courier is not carrying.
+    """
     if identity.role == "customer":
         return identity.identity_id == customer_id
     if identity.role == "restaurant":
         return identity.restaurant_id == restaurant_id
+    if identity.role == "courier":
+        return courier_id is not None and identity.courier_id == courier_id
     return identity.role == "operations"

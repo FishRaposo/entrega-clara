@@ -25,7 +25,7 @@ from delivery_platform.routing.path import (
 
 
 class GraphRoutePlanner:
-    """Two-leg A* planner over the versioned synthetic graph."""
+    """Two-leg A* planner over the configured street graph."""
 
     def __init__(self, graph: StreetGraph) -> None:
         self._graph = graph
@@ -76,7 +76,7 @@ class GraphRoutePlanner:
         exact solver under pickup-before-dropoff constraints.
         """
         from delivery_platform.routing.matrix import build_cost_matrix
-        from delivery_platform.routing.tsp import HeldKarpSolver
+        from delivery_platform.routing.tsp import HeldKarpSolver, NearestNeighborSolver
 
         graph = self._graph
         count = len(request.deliveries)
@@ -102,6 +102,9 @@ class GraphRoutePlanner:
         precedence = {1 + count + i: 1 + i for i in range(count)}
         solver = HeldKarpSolver(precedence=precedence, closed=False)
         tour = solver.solve(problem)
+        # Same matrix, cheap heuristic: the pair turns "we optimize the stop
+        # order" into a number the courier console can show.
+        baseline = NearestNeighborSolver(precedence=precedence, closed=False).solve(problem)
 
         ordered = [labels.index(label) for label in tour.route[1:]]
         node_seq = [nodes[i] for i in ordered]
@@ -160,11 +163,13 @@ class GraphRoutePlanner:
             },
             distance_meters=sum(leg.distance_meters for leg in legs),
             estimated_seconds=sum(leg.estimated_seconds for leg in legs),
-            solver_name=f"{solver.solver_name}+astar-synthetic-graph",
+            solver_name=f"{solver.solver_name}+{AStarPathSolver.solver_name}",
             solver_version=legs[0].solver_version,
             computation_time_ns=sum(leg.computation_time_ns for leg in legs)
             + tour.execution_time_ns,
             nodes_expanded=sum(leg.nodes_expanded for leg in legs),
             warnings=[],
             objective="time",
+            baseline_solver_name=baseline.solver_name,
+            baseline_cost=baseline.total_cost,
         )

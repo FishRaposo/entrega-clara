@@ -160,3 +160,22 @@ def test_batch_order_tracking_resolves_shared_route():
     assert tracking["route"] is not None
     assert tracking["route"]["batch_id"] is not None
     assert len(tracking["route"]["stops"]) == 4
+
+
+def test_batch_records_heuristic_baseline_on_the_same_matrix():
+    client = _client()
+    _order_ready(client, CUSTOMER, MANOEL)
+    _order_ready(client, CUSTOMER2, NONNA)
+    _go_online(client)
+    ids = _offered_ids(client)
+    client.post("/api/v1/courier/batches/accept", headers=COURIER,
+                json={"delivery_ids": ids})
+
+    route = client.get("/api/v1/courier/deliveries/active", headers=COURIER).json()["route"]
+    assert route["baseline_solver_name"] == "nearest-neighbor"
+    # Same matrix, so the exact solver can never be worse than the heuristic
+    # baseline: this is the number the courier console shows.
+    assert route["baseline_cost"] is not None
+    assert route["baseline_cost"] >= route["estimated_seconds"] - 1e-6
+    assert route["solver_name"].startswith("held-karp")
+    assert route["computation_time_ns"] > 0
