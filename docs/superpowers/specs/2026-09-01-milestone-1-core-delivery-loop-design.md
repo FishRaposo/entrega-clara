@@ -12,10 +12,10 @@
 
 ## Design Specification
 
-**Status:** Draft for user review  
-**Date:** 2026-09-01  
-**Product:** Entrega Clara  
-**Build strategy:** Vertical slice first  
+**Status:** Draft for user review
+**Date:** 2026-09-01
+**Product:** Entrega Clara
+**Build strategy:** Vertical slice first
 **Parent specification:** [Entrega Clara seed design](2026-08-29-food-delivery-platform-seed-design.md)
 **Research basis:** [Platform build research](../../research/2026-09-01-platform-build-research.md)
 **Future sequence:** [Platform evolution roadmap](../../roadmap/platform-evolution.md)

@@ -63,7 +63,9 @@ jobs:
         run: npm run build
 
   e2e:
-    runs-on: ubuntu-latest
+    # Ubuntu 26.04 (current ubuntu-latest) is not supported by the pinned
+    # Playwright version; 24.04 is. See the install step below.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
