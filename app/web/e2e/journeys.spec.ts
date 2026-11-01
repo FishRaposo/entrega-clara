@@ -82,11 +82,19 @@ test("páginas de papel não têm violações de acessibilidade automáticas", a
 }) => {
   for (const route of ["/", "/customer", "/restaurant", "/courier", "/admin", "/demo", "/lab"]) {
     await page.goto(route);
+    // Scan the settled page, not a loading skeleton: panels fed by the API (the
+    // lab traffic strip, for one) mount after the first paint.
+    await page.waitForLoadState("networkidle");
     const results = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa"])
       .analyze();
     expect(
-      results.violations.map((v) => `${v.id} @ ${route}: ${v.nodes.length} nós`),
+      results.violations.map(
+        (violation) =>
+          `${violation.id} @ ${route}: ${violation.nodes.length} nós [${violation.nodes
+            .map((node) => node.target.join(" "))
+            .join(" | ")}]`,
+      ),
     ).toEqual([]);
   }
 });
