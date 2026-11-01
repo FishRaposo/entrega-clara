@@ -162,6 +162,54 @@ def test_batch_order_tracking_resolves_shared_route():
     assert len(tracking["route"]["stops"]) == 4
 
 
+def test_inserting_into_a_batch_replans_only_the_remaining_stops():
+    client = _client()
+    _order_ready(client, CUSTOMER, MANOEL)
+    _order_ready(client, CUSTOMER2, NONNA)
+    _order_ready(client, CUSTOMER, NONNA)
+    _go_online(client)
+    ids = _offered_ids(client)
+    assert len(ids) == 3
+    batch = client.post(
+        "/api/v1/courier/batches/accept",
+        headers=COURIER,
+        json={"delivery_ids": ids[:2]},
+    ).json()["batch"]
+
+    # One order is already on board: re-planning must not send the courier back.
+    picked_up = client.post(
+        f"/api/v1/courier/deliveries/{ids[0]}/pickup", headers=COURIER
+    )
+    assert picked_up.status_code == 200, picked_up.text
+
+    response = client.post(
+        f"/api/v1/courier/batches/{batch['id']}/insert",
+        headers=COURIER,
+        json={"delivery_id": ids[2]},
+    )
+    assert response.status_code == 200, response.text
+    route = response.json()["route"]
+
+    assert route["batch_id"] == batch["id"]
+    assert route["solver_name"].startswith("exact-windows")
+    refs = [(stop["kind"], stop["ref_id"]) for stop in route["stops"]]
+    assert ("pickup", ids[0]) not in refs, "a picked-up order has no pickup stop"
+    assert ("dropoff", ids[0]) in refs
+    assert ("pickup", ids[2]) in refs and ("dropoff", ids[2]) in refs
+    assert len(route["stops"]) == 5
+    assert route["capacity_used"] >= 1
+
+    active = client.get("/api/v1/courier/deliveries/active", headers=COURIER).json()
+    assert len(active["deliveries"]) == 3
+
+    events = client.get(
+        "/api/v1/operations/events", headers={"x-demo-identity": "demo-operations"}
+    ).json()["events"]
+    replanned = [event for event in events if event["type"] == "route.replanned"]
+    assert replanned, "the re-plan must be recorded as an event"
+    assert replanned[-1]["payload"]["delivery_id"] == ids[2]
+
+
 def test_batch_records_heuristic_baseline_on_the_same_matrix():
     client = _client()
     _order_ready(client, CUSTOMER, MANOEL)
@@ -172,10 +220,12 @@ def test_batch_records_heuristic_baseline_on_the_same_matrix():
                 json={"delivery_ids": ids})
 
     route = client.get("/api/v1/courier/deliveries/active", headers=COURIER).json()["route"]
-    assert route["baseline_solver_name"] == "nearest-neighbor"
-    # Same matrix, so the exact solver can never be worse than the heuristic
-    # baseline: this is the number the courier console shows.
+    # The baseline is now the order the deliveries were offered in, priced on the
+    # same windowed matrix: travel against travel.
+    assert route["baseline_solver_name"] == "offered-order"
     assert route["baseline_cost"] is not None
     assert route["baseline_cost"] >= route["estimated_seconds"] - 1e-6
-    assert route["solver_name"].startswith("held-karp")
+    assert route["solver_name"].startswith("exact-windows")
+    assert route["capacity_used"] >= 1
+    assert route["wait_seconds"] >= 0
     assert route["computation_time_ns"] > 0

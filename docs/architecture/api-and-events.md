@@ -137,6 +137,7 @@ The application verifies the operator owns the restaurant before applying a tran
 | --- | --- | --- |
 | `PUT` | `/courier/availability` | Set current courier available/unavailable |
 | `POST` | `/courier/batches/accept` | Accept 2–3 offered deliveries as one optimized tour (ADR 0007) |
+| `POST` | `/courier/batches/{batch_id}/insert` | Insert an offered delivery into an active batch and re-plan the remaining stops (ADR 0011) |
 | `POST` | `/courier/deliveries/{delivery_id}/accept` | Assign courier and order `courier_assigned` |
 | `POST` | `/courier/deliveries/{delivery_id}/pickup` | `courier_assigned → picked_up` |
 | `POST` | `/courier/deliveries/{delivery_id}/start` | `picked_up → en_route` |
@@ -144,10 +145,18 @@ The application verifies the operator owns the restaurant before applying a tran
 | `POST` | `/courier/deliveries/{delivery_id}/route-advance` | Simulated GPS step that follows the route polyline |
 | `POST` | `/courier/deliveries/{delivery_id}/complete` | `en_route → delivered` |
 
-The courier can hold one active delivery **or** one active batch of 2–3 deliveries. A batch accept
-prices every stop pair with one-to-all Dijkstra, orders the stops with Held-Karp under
-pickup-before-dropoff precedence, and returns the tour plus a nearest-neighbor baseline cost so the
-console can show what the exact solver bought.
+The courier can hold one active delivery **or** one active batch of 2–3 deliveries (up to 4 after a
+dynamic insertion). A batch accept prices every stop pair with one-to-all Dijkstra, then solves a
+capacitated VRP with pickup-before-dropoff precedence and per-drop-off promise windows (ADR 0011).
+Windows are soft in the solver and hard at acceptance: an infeasible batch is rejected with
+`409 batch_infeasible`. Each stop carries `planned_arrival_at` and `promised_until`; the route carries
+`wait_seconds`, `lateness_seconds` and `capacity_used`, plus an `offered-order` baseline cost on the
+same matrix.
+
+Insertion re-plans only stops still ahead: an order already picked up contributes its drop-off alone
+and its volume starts on board, so the courier is never routed back to a restaurant. The response is
+the new route; the previous plan is superseded and `route.replanned` is emitted with the stop count
+and ETA delta.
 
 ```json
 {

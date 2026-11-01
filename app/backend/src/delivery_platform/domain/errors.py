@@ -148,6 +148,22 @@ class RouteUnavailableError(DomainError):
         super().__init__("Não foi possível calcular a rota agora. Tente novamente.")
 
 
+class BatchInfeasibleError(DomainError):
+    """The optimized tour cannot satisfy capacity or the promised windows."""
+
+    code = "batch_infeasible"
+    http_status = 409
+
+    def __init__(self, reasons: tuple[str, ...] = ()) -> None:
+        if any("capacity" in reason for reason in reasons):
+            message = "O lote excede a capacidade do entregador."
+        elif any("lateness" in reason or "window" in reason for reason in reasons):
+            message = "O lote não cumpre a janela prometida ao cliente."
+        else:
+            message = "O lote não é viável para este entregador."
+        super().__init__(message)
+
+
 class TrackingDelayedError(DomainError):
     code = "tracking_delayed"
     http_status = 503

@@ -117,6 +117,12 @@ export function CourierConsole() {
                     {stop.kind === "pickup" ? "Retirada" : "Entrega"} ·{" "}
                     {stop.label}
                     {delivery ? ` (${deliveryStatusLabel(delivery.status)})` : ""}
+                    {stop.planned_arrival_at
+                      ? ` · ${new Date(stop.planned_arrival_at).toLocaleTimeString("pt-BR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}`
+                      : ""}
                   </li>
                 );
               })}
@@ -127,6 +133,13 @@ export function CourierConsole() {
               {formatDuration(activeRoute.estimated_seconds)} na ordem exata
               {activeRoute.baseline_solver_name
                 ? ` · ${activeRoute.baseline_solver_name}: ${formatDuration(activeRoute.baseline_cost)}`
+                : ""}
+              {activeRoute.capacity_used ? ` · carga ${activeRoute.capacity_used}/3` : ""}
+              {activeRoute.wait_seconds
+                ? ` · espera ${formatDuration(activeRoute.wait_seconds)}`
+                : ""}
+              {activeRoute.lateness_seconds
+                ? ` · atraso ${formatDuration(activeRoute.lateness_seconds)}`
                 : ""}
               {activeRoute.computation_time_ns
                 ? ` · busca em ${(activeRoute.computation_time_ns / 1e6).toFixed(1)} ms`

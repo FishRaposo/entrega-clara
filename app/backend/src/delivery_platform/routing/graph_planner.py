@@ -10,12 +10,12 @@ delivery.
 
 from __future__ import annotations
 
-import itertools
 from dataclasses import replace
 from datetime import UTC, datetime
 
 from delivery_platform.application.ports import (
     BatchRouteRequest,
+    BatchStopRequest,
     DeliveryRouteRequest,
 )
 from delivery_platform.domain.entities import (
@@ -24,7 +24,7 @@ from delivery_platform.domain.entities import (
     RouteStop,
     StopKind,
 )
-from delivery_platform.domain.errors import RouteUnavailableError
+from delivery_platform.domain.errors import BatchInfeasibleError, RouteUnavailableError
 from delivery_platform.routing.graph import StreetGraph
 from delivery_platform.routing.path import (
     AStarPathSolver,
@@ -106,15 +106,28 @@ class GraphRoutePlanner:
         )
 
     def plan_batch(self, request: BatchRouteRequest, *, route_id: str) -> RoutePlan:
-        """Open multi-stop tour: cost matrix + Held-Karp with precedence.
+        """Windowed multi-stop tour: cost matrix + capacitated VRP with precedence.
 
-        With a profile and a departure time, matrix cells and final legs are
-        priced by the time-dependent solver. Matrix cells start at the batch
-        departure (no accumulation across stops) — a first-order model that the
-        ADR records; the legs themselves accumulate arrival times exactly.
+        The optimizer now knows what dispatch actually promises: each drop-off
+        carries a window, each order a volume, the courier a capacity, and a
+        pickup must precede its drop-off. Windows are soft inside the solver
+        (lateness is priced) and hard at acceptance (``max_lateness_seconds``),
+        so an infeasible batch is rejected with a typed reason instead of being
+        silently planned late.
+
+        With a profile and a departure time, matrix cells and legs are priced by
+        the time-dependent solver; matrix cells start at the batch departure
+        (no accumulation), while the legs are scheduled from the VRP times.
         """
         from delivery_platform.routing.matrix import build_cost_matrix
-        from delivery_platform.routing.tsp import HeldKarpSolver, NearestNeighborSolver
+        from delivery_platform.routing.vrp import (
+            EXACT_STOP_LIMIT,
+            ExactWindowSolver,
+            InsertionWindowSolver,
+            VrpProblem,
+            VrpStop,
+            evaluate,
+        )
 
         graph = self._graph
         profile = self._profile
@@ -123,17 +136,27 @@ class GraphRoutePlanner:
         path_solver: AStarPathSolver | TimeDependentAStarPathSolver
         path_solver = TimeDependentAStarPathSolver() if time_dependent else AStarPathSolver()
 
-        count = len(request.deliveries)
+        if len(request.deliveries) < 2:
+            raise ValueError("a batch needs at least two deliveries")
         courier_node = graph.nearest_node(request.courier_location)
-        pickup_nodes = [graph.nearest_node(d.pickup_point) for d in request.deliveries]
-        dropoff_nodes = [graph.nearest_node(d.dropoff_point) for d in request.deliveries]
 
-        labels = (
-            ["courier"]
-            + [f"pickup-{i}" for i in range(count)]
-            + [f"dropoff-{i}" for i in range(count)]
-        )
-        nodes = (courier_node, *pickup_nodes, *dropoff_nodes)
+        # Matrix rows and stop indices are built together; an order picked up
+        # before a re-plan contributes only its drop-off, and its volume starts
+        # on board.
+        nodes: list[str] = [courier_node]
+        specs: list[tuple[BatchStopRequest, StopKind]] = []
+        initial_load = 0
+        for delivery in request.deliveries:
+            if delivery.picked_up:
+                initial_load += delivery.volume
+            else:
+                nodes.append(graph.nearest_node(delivery.pickup_point))
+                specs.append((delivery, "pickup"))
+            nodes.append(graph.nearest_node(delivery.dropoff_point))
+            specs.append((delivery, "dropoff"))
+
+        labels = ("courier", *(f"stop-{position}" for position in range(1, len(nodes))))
+        node_tuple = tuple(nodes)
         if time_dependent:
             assert departure is not None and profile is not None
 
@@ -142,65 +165,105 @@ class GraphRoutePlanner:
                     replace(problem, departure_at=departure, profile=profile)
                 )
 
-            problem = build_cost_matrix(
+            matrix = build_cost_matrix(
                 graph,
-                labels=tuple(labels),
-                nodes=nodes,
+                labels=labels,
+                nodes=node_tuple,
                 objective="time",
                 origin_index=0,
                 solver=price,
             )
         else:
-            problem = build_cost_matrix(
+            matrix = build_cost_matrix(
                 graph,
-                labels=tuple(labels),
-                nodes=nodes,
+                labels=labels,
+                nodes=node_tuple,
                 objective="time",
                 origin_index=0,
             )
-        precedence = {1 + count + i: 1 + i for i in range(count)}
-        solver = HeldKarpSolver(precedence=precedence, closed=False)
-        tour = solver.solve(problem)
-        # Same matrix, cheap heuristic: the pair turns "we optimize the stop
-        # order" into a number the courier console can show.
-        baseline = NearestNeighborSolver(precedence=precedence, closed=False).solve(problem)
+        costs = tuple(tuple(float(cell) for cell in row) for row in matrix.costs)
 
-        ordered = [labels.index(label) for label in tour.route[1:]]
-        node_seq = [nodes[i] for i in ordered]
+        stops: list[VrpStop] = []
+        for position, (delivery, kind) in enumerate(specs, start=1):
+            window_start: float | None = None
+            window_end: float | None = None
+            if kind == "dropoff" and (
+                delivery.promise_start_at is not None or delivery.promise_end_at is not None
+            ):
+                if departure is None:
+                    raise ValueError("promise windows require a batch departure time")
+                if delivery.promise_start_at is not None:
+                    window_start = delivery.promise_start_at.timestamp() - departure
+                if delivery.promise_end_at is not None:
+                    window_end = delivery.promise_end_at.timestamp() - departure
+            stops.append(
+                VrpStop(
+                    index=position,
+                    label=delivery.pickup_label
+                    if kind == "pickup"
+                    else delivery.dropoff_label,
+                    kind=kind,
+                    delivery_id=delivery.delivery_id,
+                    volume=delivery.volume if kind == "pickup" else -delivery.volume,
+                    window_start=window_start,
+                    window_end=window_end,
+                )
+            )
+        problem = VrpProblem(
+            costs=costs,
+            stops=tuple(stops),
+            capacity=request.capacity,
+            max_lateness=request.max_lateness_seconds,
+            initial_load=initial_load,
+        )
+        solver = ExactWindowSolver() if problem.size <= EXACT_STOP_LIMIT else InsertionWindowSolver()
+        result = solver.solve(problem)
+        if not result.order or not result.schedule.feasible:
+            raise BatchInfeasibleError(result.schedule.violations)
+
         legs: list[PathResult] = []
-        current = departure if time_dependent else None
-        for origin, destination in itertools.pairwise((courier_node, *node_seq)):
+        previous_node = courier_node
+        for position, index in enumerate(result.order):
+            offset = result.schedule.visits[position - 1].finish if position else 0.0
+            current = departure + offset if departure is not None else None
             leg = path_solver.solve(
                 PathProblem(
                     graph,
-                    origin,
-                    destination,
+                    previous_node,
+                    nodes[index],
                     "time",
                     current,
                     profile if time_dependent else None,
                 )
             )
             legs.append(leg)
-            if time_dependent:
-                current = leg.arrival_at
+            previous_node = nodes[index]
 
-        stops: list[RouteStop] = []
-        for position, idx in enumerate(ordered, start=1):
-            delivery = request.deliveries[(idx - 1) % count]
-            kind: StopKind = "pickup" if idx <= count else "dropoff"
-            stops.append(
+        planned: list[RouteStop] = []
+        for position, index in enumerate(result.order, start=1):
+            delivery, kind = specs[index - 1]
+            visit = result.schedule.visits[position - 1]
+            planned.append(
                 RouteStop(
                     kind=kind,
                     ref_id=delivery.delivery_id,
-                    label=delivery.pickup_label if kind == "pickup" else delivery.dropoff_label,
-                    location=graph.nodes[nodes[idx]],
+                    label=delivery.pickup_label
+                    if kind == "pickup"
+                    else delivery.dropoff_label,
+                    location=graph.nodes[nodes[index]],
                     sequence=position,
+                    planned_arrival_at=(
+                        _datetime(departure + visit.start) if departure is not None else None
+                    ),
+                    promised_until=(
+                        delivery.promise_end_at if kind == "dropoff" else None
+                    ),
                 )
             )
         segments = [
             RouteSegment(
-                from_label="entregador" if i == 0 else stops[i - 1].label,
-                to_label=stops[i].label,
+                from_label="entregador" if i == 0 else planned[i - 1].label,
+                to_label=planned[i].label,
                 node_path=leg.node_path,
                 distance_meters=leg.distance_meters,
                 estimated_seconds=leg.estimated_seconds,
@@ -210,13 +273,18 @@ class GraphRoutePlanner:
         all_nodes: list[str] = []
         for leg in legs:
             all_nodes.extend(leg.node_path if not all_nodes else leg.node_path[1:])
+        # Baseline: the order the deliveries were offered in, priced on the same
+        # matrix. Waiting and lateness stay out of it, so the comparison is
+        # travel against travel.
+        offered = evaluate(problem, tuple(range(1, problem.size + 1)), require_complete=False)
+        total_seconds = result.schedule.visits[-1].finish
         return RoutePlan(
             id=route_id,
-            delivery_id=stops[0].ref_id,
+            delivery_id=planned[0].ref_id,
             batch_id=request.batch_id,
             graph_id=graph.graph_id,
             graph_version=graph.version,
-            stops=stops,
+            stops=planned,
             segments=segments,
             geometry={
                 "type": "LineString",
@@ -229,15 +297,22 @@ class GraphRoutePlanner:
             solver_name=f"{solver.solver_name}+{path_solver.solver_name}",
             solver_version=legs[0].solver_version,
             computation_time_ns=sum(leg.computation_time_ns for leg in legs)
-            + tour.execution_time_ns,
+            + result.execution_time_ns,
             nodes_expanded=sum(leg.nodes_expanded for leg in legs),
             warnings=[],
             objective="time",
-            departure_at=_datetime(departure if time_dependent else None),
-            arrival_at=_datetime(legs[-1].arrival_at),
+            departure_at=_datetime(departure),
+            arrival_at=(
+                _datetime(departure + total_seconds) if departure is not None else None
+            ),
             traffic_profile_id=(
                 profile.profile_id if time_dependent and profile is not None else None
             ),
-            baseline_solver_name=baseline.solver_name,
-            baseline_cost=baseline.total_cost,
+            wait_seconds=result.schedule.wait_seconds,
+            lateness_seconds=result.schedule.lateness_seconds,
+            capacity_used=max(
+                (visit.load for visit in result.schedule.visits), default=0
+            ),
+            baseline_solver_name="offered-order",
+            baseline_cost=offered.travel_seconds,
         )

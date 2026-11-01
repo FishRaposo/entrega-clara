@@ -213,6 +213,15 @@ class MemoryDeliveryBatches(MemoryVersionedRepository[DeliveryBatch]):
 class MemoryRoutePlans(MemoryRepository[RoutePlan]):
     resource_name = "rota"
 
+    def replace(self, plan: RoutePlan) -> None:
+        """A batch keeps exactly one live plan; the previous one is superseded."""
+        for key, existing in list(self._data.items()):
+            if existing.id == plan.id or (
+                plan.batch_id is not None and existing.batch_id == plan.batch_id
+            ):
+                del self._data[key]
+        self._data[plan.id] = plan
+
     def find_by_delivery(self, delivery_id: str) -> RoutePlan | None:
         return next((p for p in self._data.values() if p.delivery_id == delivery_id), None)
 

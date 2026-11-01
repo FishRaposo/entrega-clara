@@ -118,6 +118,8 @@ class DeliveryBatchRepository(Protocol):
 class RoutePlanRepository(Protocol):
     def get(self, plan_id: str) -> RoutePlan: ...
     def add(self, plan: RoutePlan) -> None: ...
+    #: Swap the plan stored for a batch (dynamic re-planning).
+    def replace(self, plan: RoutePlan) -> None: ...
     def find_by_delivery(self, delivery_id: str) -> RoutePlan | None: ...
     def find_by_batch(self, batch_id: str) -> RoutePlan | None: ...
 
@@ -235,6 +237,13 @@ class BatchStopRequest:
     pickup_label: str
     dropoff_point: GeoPoint
     dropoff_label: str
+    #: Capacity units carried from pickup to drop-off (bags, boxes).
+    volume: int = 1
+    #: Already on board (dynamic re-plan): only the drop-off is scheduled.
+    picked_up: bool = False
+    #: Promise window on the drop-off; honoured only when the batch has a departure.
+    promise_start_at: datetime | None = None
+    promise_end_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -246,6 +255,10 @@ class BatchRouteRequest:
     deliveries: tuple[BatchStopRequest, ...]
     #: When set, matrix cells and legs are priced with the traffic profile.
     departure_at: datetime | None = None
+    #: Hard capacity (sum of volumes on board at any time).
+    capacity: int = 3
+    #: Lateness the dispatcher is willing to accept; 0 makes windows hard.
+    max_lateness_seconds: float = 0.0
 
 
 class DeliveryRoutePlanner(Protocol):

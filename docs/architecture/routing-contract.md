@@ -54,6 +54,15 @@ oracle on cost — `tests/routing/test_informed_solvers.py` and
 `tests/routing/test_osm_graph.py` assert it, and the weighted variant is the
 only one allowed to overshoot.
 
+## Multi-stop and constraints
+
+Tours are solved by `routing/tsp.py` (order only) and `routing/vrp.py` (order + capacity + windows +
+precedence). The planner uses the VRP path for batches: stops carry a signed volume, a service time
+and an optional drop-off window, windows are priced softly and enforced by `max_lateness_seconds` at
+acceptance, and `ExactWindowSolver` is used up to 8 stops (insertion + local search above that).
+Dynamic re-plans accept `picked_up` deliveries, which contribute a drop-off only and start the tour
+with their volume already on board.
+
 ## Street graph
 
 Two real extracts share one schema and one set of build rules (`scripts/data/osm_graph.py`):

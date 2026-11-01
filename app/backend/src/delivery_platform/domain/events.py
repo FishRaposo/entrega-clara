@@ -28,6 +28,7 @@ class EventType(StrEnum):
     DELIVERY_EN_ROUTE = "delivery.en_route"
     COURIER_LOCATION_UPDATED = "courier.location_updated"
     DELIVERY_DELIVERED = "delivery.delivered"
+    ROUTE_REPLANNED = "route.replanned"
     NOTIFICATION_CREATED = "notification.created"
     AUDIT_RECORDED = "audit.recorded"
     TRACKING_DELAYED = "tracking.delayed"

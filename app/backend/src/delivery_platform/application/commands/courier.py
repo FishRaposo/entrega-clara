@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from delivery_platform.application.authorization import require_role
@@ -18,6 +19,7 @@ from delivery_platform.domain.entities import (
     DeliveryBatch,
     DeliveryStatus,
     GeoPoint,
+    RoutePlan,
     TrackingEvent,
 )
 from delivery_platform.domain.errors import (
@@ -35,6 +37,34 @@ from delivery_platform.domain.order_states import OrderState, transition_order
 
 if TYPE_CHECKING:
     from delivery_platform.application.container import AppContainer
+
+MAX_BATCH_DELIVERIES = 4
+PROMISE_DELIVERY_MINUTES = 45
+
+
+def _batch_stop(uow: UnitOfWork, delivery: Delivery) -> BatchStopRequest:
+    """Translate a delivery into a solver-neutral stop with its promise."""
+    order = uow.orders.get(delivery.order_id)
+    restaurant = uow.restaurants.get(order.restaurant_id)
+    address = uow.addresses.get(order.address_id)
+    return BatchStopRequest(
+        delivery_id=delivery.id,
+        pickup_point=restaurant.location,
+        pickup_label=restaurant.name,
+        dropoff_point=address.location,
+        dropoff_label=order.address_label,
+        volume=1 if len(order.items) <= 3 else 2,
+        picked_up=delivery.status in ("picked_up", "en_route"),
+        # The promise is a deadline: the order only reaches this point once the
+        # kitchen marked it ready, so there is no release window to wait for.
+        promise_start_at=None,
+        promise_end_at=(
+            order.created_at + timedelta(minutes=PROMISE_DELIVERY_MINUTES)
+            if order.created_at is not None
+            else None
+        ),
+    )
+
 
 class CourierCommands:
     def __init__(self, container: AppContainer) -> None:
@@ -132,24 +162,13 @@ class CourierCommands:
             uow.batches.add(batch)
 
             orders = [uow.orders.get(d.order_id) for d in deliveries]
-            restaurants = {
-                order.restaurant_id: uow.restaurants.get(order.restaurant_id)
-                for order in orders
-            }
             route = self._container.route_planner.plan_batch(
                 BatchRouteRequest(
                     batch_id=batch.id,
                     courier_location=courier.location,
                     departure_at=self._container.clock.now(),
                     deliveries=tuple(
-                        BatchStopRequest(
-                            delivery_id=delivery.id,
-                            pickup_point=restaurants[order.restaurant_id].location,
-                            pickup_label=restaurants[order.restaurant_id].name,
-                            dropoff_point=uow.addresses.get(order.address_id).location,
-                            dropoff_label=order.address_label,
-                        )
-                        for delivery, order in zip(deliveries, orders, strict=True)
+                        _batch_stop(uow, delivery) for delivery in deliveries
                     ),
                 ),
                 route_id=self._container.ids.new_id("rpl"),
@@ -192,6 +211,83 @@ class CourierCommands:
             )
             uow.commit()
             return batch
+
+    def add_to_batch(
+        self, ctx: CommandContext, batch_id: str, delivery_id: str
+    ) -> RoutePlan:
+        """Insert a new order into an active batch and re-plan the remaining stops.
+
+        Only stops still ahead are optimized: a delivery already picked up
+        contributes its drop-off alone and its volume starts on board. The
+        previous plan is replaced, and a ``route.replanned`` event records the
+        delta so the console can show what the change cost.
+        """
+        courier_id = self._courier_id(ctx)
+        with self._container.uow() as uow:
+            batch = uow.batches.get(batch_id)
+            if batch.courier_id != courier_id:
+                raise OwnershipForbiddenError()
+            if batch.status not in ("assigned", "en_route"):
+                raise DomainError("Este lote não aceita novas entregas.")
+            delivery = uow.deliveries.get(delivery_id)
+            self._require_delivery_status(delivery, "offered")
+            existing = [uow.deliveries.get(item) for item in batch.delivery_ids]
+            remaining = [item for item in existing if item.status != "delivered"]
+            if len(remaining) + 1 > MAX_BATCH_DELIVERIES:
+                raise DomainError("O lote já está no limite de entregas.")
+            courier = uow.couriers.get(courier_id)
+            previous = uow.route_plans.find_by_batch(batch.id)
+            route = self._container.route_planner.plan_batch(
+                BatchRouteRequest(
+                    batch_id=batch.id,
+                    courier_location=courier.location,
+                    departure_at=self._container.clock.now(),
+                    deliveries=tuple(
+                        _batch_stop(uow, item) for item in [*remaining, delivery]
+                    ),
+                ),
+                route_id=self._container.ids.new_id("rpl"),
+            )
+            route.scenario_id = batch.scenario_id
+            uow.route_plans.replace(route)
+            batch.delivery_ids = [item.id for item in remaining] + [delivery.id]
+            uow.batches.update(batch)
+            delivery.courier_id = courier_id
+            delivery.status = "assigned"
+            delivery.batch_id = batch.id
+            uow.deliveries.update(delivery)
+            order = uow.orders.get(delivery.order_id)
+            order.state = transition_order(order.state, OrderState.COURIER_ASSIGNED)
+            order.updated_at = self._container.clock.now()
+            uow.orders.update(order)
+            recorder = self._container.recorder(uow, ctx)
+            recorder.event(
+                EventType.ROUTE_REPLANNED,
+                aggregate_type="batch",
+                aggregate_id=batch.id,
+                payload={
+                    "batch_id": batch.id,
+                    "delivery_id": delivery.id,
+                    "stops": len(route.stops),
+                    "previous_estimated_seconds": previous.estimated_seconds
+                    if previous is not None
+                    else None,
+                    "estimated_seconds": route.estimated_seconds,
+                    "delta_seconds": (
+                        route.estimated_seconds - previous.estimated_seconds
+                        if previous is not None
+                        else None
+                    ),
+                },
+            )
+            recorder.audit(
+                "delivery.batch_replanned",
+                target_type="batch",
+                target_id=batch.id,
+                detail=f"entrega {delivery.id} inserida, rota {route.id}",
+            )
+            uow.commit()
+            return route
 
     def pickup(self, ctx: CommandContext, delivery_id: str) -> Delivery:
         # When a batch tour is already en_route, a later pickup stop moves the

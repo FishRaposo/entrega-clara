@@ -10,6 +10,7 @@ from delivery_platform.api import serializers
 from delivery_platform.api.deps import command_context, get_container
 from delivery_platform.api.schemas import (
     BatchAcceptRequest,
+    BatchInsertRequest,
     SetAvailabilityRequest,
     UpdateLocationRequest,
 )
@@ -57,6 +58,15 @@ def get_active(container: Container, ctx: Ctx) -> dict[str, Any]:
 def accept_batch(body: BatchAcceptRequest, container: Container, ctx: Ctx) -> dict[str, Any]:
     batch = CourierCommands(container).batch_accept(ctx, list(body.delivery_ids))
     return {"batch": serializers.batch_view(batch)}
+
+
+@router.post("/batches/{batch_id}/insert")
+def insert_into_batch(
+    batch_id: str, body: BatchInsertRequest, container: Container, ctx: Ctx
+) -> dict[str, Any]:
+    """Insert one offered delivery into an active batch and re-plan the rest."""
+    route = CourierCommands(container).add_to_batch(ctx, batch_id, body.delivery_id)
+    return {"route": serializers.route_view(route)}
 
 
 @router.post("/deliveries/{delivery_id}/accept")

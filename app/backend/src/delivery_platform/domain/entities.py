@@ -198,6 +198,10 @@ class RouteStop:
     label: str
     location: GeoPoint
     sequence: int
+    #: Schedule detail when the plan is windowed: when the courier is due and
+    #: how late the promise may run.
+    planned_arrival_at: datetime | None = None
+    promised_until: datetime | None = None
 
 
 @dataclass
@@ -232,6 +236,11 @@ class RoutePlan:
     departure_at: datetime | None = None
     arrival_at: datetime | None = None
     traffic_profile_id: str | None = None
+    #: Windowed batch planning: time spent waiting for windows, unavoidable
+    #: lateness, and the largest load carried in the tour.
+    wait_seconds: float = 0.0
+    lateness_seconds: float = 0.0
+    capacity_used: int = 0
     # Batch tours also record a cheaper-to-compute baseline over the same cost
     # matrix, so the courier surface can show what the exact solver bought.
     baseline_solver_name: str | None = None

@@ -171,6 +171,8 @@ def route_view(route: RoutePlan | None) -> dict[str, Any] | None:
                 "latitude": stop.location.latitude,
                 "longitude": stop.location.longitude,
                 "sequence": stop.sequence,
+                "planned_arrival_at": _ts(stop.planned_arrival_at),
+                "promised_until": _ts(stop.promised_until),
             }
             for stop in route.stops
         ],
@@ -193,6 +195,9 @@ def route_view(route: RoutePlan | None) -> dict[str, Any] | None:
         "departure_at": _ts(route.departure_at),
         "arrival_at": _ts(route.arrival_at),
         "traffic_profile_id": route.traffic_profile_id,
+        "wait_seconds": route.wait_seconds,
+        "lateness_seconds": route.lateness_seconds,
+        "capacity_used": route.capacity_used,
         "baseline_solver_name": route.baseline_solver_name,
         "baseline_cost": route.baseline_cost,
         "computation_time_ns": route.computation_time_ns,

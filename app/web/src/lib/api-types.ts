@@ -86,6 +86,8 @@ export type RouteStop = {
   latitude: number;
   longitude: number;
   sequence: number;
+  planned_arrival_at?: string | null;
+  promised_until?: string | null;
 };
 
 export type RoutePlan = {
@@ -111,6 +113,12 @@ export type RoutePlan = {
   /** Batch tours only: the same matrix solved by a cheap heuristic, as a baseline. */
   baseline_solver_name?: string | null;
   baseline_cost?: number | null;
+  departure_at?: string | null;
+  arrival_at?: string | null;
+  traffic_profile_id?: string | null;
+  wait_seconds?: number;
+  lateness_seconds?: number;
+  capacity_used?: number;
 };
 
 export type OrderSummary = {
