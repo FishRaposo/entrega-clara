@@ -73,6 +73,18 @@ search understands the network, not how fast it computes a hypotenuse. That reas
 [ADR 0008](docs/adr/0008-real-street-graph-and-landmarks.md); the city graph and contraction
 hierarchies it deferred are [ADR 0009](docs/adr/0009-city-scale-graph-and-contraction-hierarchies.md).
 
+## For freelance clients
+
+**Problem:** a delivery operation needs routes that respect capacity, promised windows and
+pickup-before-dropoff, without standing up a fragile infrastructure stack first.
+**Scope:** a working reference platform — memory mode by default, PostgreSQL optional, measured
+routing and dispatch, tests and runbooks; not a production service.
+**Outcome:** a dispatcher can price a seven-stop city batch in ~2.7 s, answer a city route in 85
+expansions ([city benchmark](docs/benchmarks/routing-city.md)), and inspect the whole loop without
+Docker or a database.
+**Handover:** [reviewer path](docs/for-reviewers.md), [verification record](docs/verification.md),
+and the run section below.
+
 ## Para recrutadores (iFood)
 
 Uma observação de cronologia, porque ela importa: este projeto não foi construído para o iFood. Ele

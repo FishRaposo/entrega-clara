@@ -32,7 +32,7 @@ Keep the first screen under ~40 lines. Long READMEs are fine after that; readers
 | | |
 | --- | --- |
 | **What it is** | A São Paulo food-delivery platform where the courier drives the computed route. |
-| **What it proves** | CH answers in 85 expansions / 2.8 ms where Dijkstra needs 53,885 / 172 ms. |
+| **What it proves** | CH answers in 85 expansions (0.1% of the graph) where Dijkstra needs 53,885 (51.3%); 2.8 ms vs 172 ms on the committed run. |
 | **Engineering** | Python/FastAPI + Next.js; 290 tests, 5 browser journeys, 12 ADRs, 11 gates. |
 | **See it now** | [Static lab](site/index.html) · [35-second tour](docs/media/demo-tour.webm) |
 | **Review it** | [Reviewer guide](docs/for-reviewers.md) — five-minute path, real vs simulated. |
@@ -61,11 +61,25 @@ minutes and no patience for marketing.
 - **Run it** — three commands.
 - **Not built** — explicit list with boundaries.
 
+## Client-facing path
+
+If the primary reader is a freelance client rather than an employer, add a short block after the
+measured evidence. Clients scan for a problem they recognize and a result they can buy:
+
+- **Problem** — the business problem in the client's words, one or two sentences.
+- **Scope** — what was delivered, what was explicitly excluded, and the constraint that shaped it.
+- **Outcome** — the measured result or the capability that now exists; one number if possible.
+- **Proof and handover** — the artifact, the run path, the documentation, and the maintenance terms.
+
+Keep it to one screen and do not repeat the engineering ladder. A client who wants depth will follow
+the reviewer page.
+
 ## Prose rules
 
 - One screen, one idea. If a section has two theses, split it.
 - Active voice, short sentences, concrete nouns.
-- No adjective without a number: "fast" → "2.8 ms median"; "scalable" → "105k nodes".
+- No adjective without a number: "fast" → "85 expansions (0.1% of the graph)"; "scalable" → "105k
+  nodes". Wall time is a parenthetical from a named run.
 - Every claim links to its artifact, in the same sentence or the next one.
 - Say what is simulated next to the thing that is simulated, not in a footnote.
 - Never imply production use: state the non-production boundary once, plainly.
@@ -80,3 +94,4 @@ minutes and no patience for marketing.
 - "Coming soon" sections that have been there for months.
 - A reviewer page that repeats the README instead of giving a path.
 - Claims that live only in the pitch and nowhere in the verification record.
+- An engineering-first page with no outcome a client can recognize.

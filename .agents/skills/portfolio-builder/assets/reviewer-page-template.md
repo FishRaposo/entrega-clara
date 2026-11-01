@@ -51,6 +51,7 @@ If you only read one number: **<number with baseline and cost>.**
 - **<Domain> engineer (<n> min):** <links>.
 - **Backend / platform (<n> min):** <links>.
 - **Frontend (<n> min):** <links>.
+- **Client / project owner (<n> min):** <outcome block, scope, handover, evidence>.
 
 ## How to run it
 
@@ -71,3 +72,4 @@ If you only read one number: **<number with baseline and cost>.**
 - The "one number" is in the benchmark artifact, not only here.
 - Real vs simulated is still true after the last change.
 - The not-built list matches the README's deferred column.
+- The client path points to an outcome block, not only code.

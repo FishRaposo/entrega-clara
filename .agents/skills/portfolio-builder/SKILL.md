@@ -146,19 +146,23 @@ See `references/launch-checklist.md`.
 Run the mechanical checks, then the qualitative ones:
 
 ```bash
-python .agents/skills/portfolio-builder/scripts/portfolio_audit.py .
-python .agents/skills/portfolio-builder/scripts/portfolio_audit.py . --remote   # needs gh auth
+python .agents/skills/portfolio-builder/scripts/portfolio_audit.py . --remote --network --claims
 ```
 
-Then apply `references/audit-rubric.md`: the 60-second test, the 10-minute test, and the severity
-table. Blockers to fix before anything else: red CI, no live/replayable demo, empty repo card, claims
-without artifacts.
+`--remote` reads the repo card and the latest default-branch CI run (needs authenticated `gh`);
+`--network` probes the hosted demo URL and fails on 4xx/5xx; `--claims` lists every numeric claim in
+the README with its line and links, because the script cannot tell whether a number is still current.
+The claim inventory is the bridge to the manual procedure in `references/audit-rubric.md`.
+
+Then apply the 60-second test, the 10-minute test, and the severity table. Blockers to fix before
+anything else: red or unknown CI, no live/replayable demo, a demo URL that does not resolve, empty
+repo card, and claims contradicted by the committed artifacts.
 
 ## Writing rules
 
 - **Numbers**: median + denominator + machine; baseline and trade-off; no precision theatre.
-- **Voice**: active, concrete, short sentences. "The batch matrix costs 2.7 s at city scale" beats
-  "highly performant".
+- **Voice**: active, concrete, short sentences. "The city query expands 85 nodes where Dijkstra needs
+  53,885" beats "highly performant"; wall time is a parenthetical from a named run, not the headline.
 - **Claims**: each one names its evidence. "All exact solvers agree with the Dijkstra oracle
   (`tests/routing/`)".
 - **Honesty**: simulated is simulated; synthetic data is labelled; limitations are listed, not buried.

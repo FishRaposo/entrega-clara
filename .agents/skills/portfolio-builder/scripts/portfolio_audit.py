@@ -1,9 +1,11 @@
 """Mechanical portfolio audit: the checks a reviewer makes in the first minute.
 
-Read-only by default. Standard library only, cross-platform, no network unless
-``--remote`` is passed (and then only via an authenticated ``gh`` CLI).
+Read-only by default. Standard library only, cross-platform. ``--remote`` reads
+the repo card and the default-branch CI status through an authenticated ``gh``;
+``--network`` probes the hosted demo URL; ``--claims`` lists numeric claims for
+manual artifact verification.
 
-    python portfolio_audit.py [path] [--remote]
+    python portfolio_audit.py [path] [--remote] [--network] [--claims]
 
 FAIL means the repository is not ready to be looked at (exit code 1).
 WARN means it will still be looked at, less generously.
@@ -15,8 +17,11 @@ import argparse
 import json
 import re
 import shutil
+import struct
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import unquote
@@ -42,8 +47,16 @@ CI_FILES = (
     ".circleci/config.yml",
     "azure-pipelines.yml",
 )
+DOC_LINK_FILES = (
+    "docs/for-reviewers.md",
+    "docs/verification.md",
+    "docs/origin.md",
+    "docs/README.md",
+)
 MEDIA_DIRS = ("docs/media", "media", "screenshots", "assets")
 MEDIA_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".mp4", ".webm"}
+SOCIAL_PREVIEW_NAMES = ("social-preview.png", "social-preview.jpg", "og-image.png", "og-image.jpg")
+SOCIAL_PREVIEW_DIRS = ("docs/media", "media", "assets", ".")
 DEMO_HINTS = (
     "demo",
     "live",
@@ -58,6 +71,12 @@ DEMO_HINTS = (
     "fly.dev",
 )
 BADGE_HOSTS = ("shields.io", "badge", "img.shields")
+CI_FAILURES = {"failure", "cancelled", "timed_out", "action_required", "startup_failure"}
+CI_PENDING = {"in_progress", "queued", "waiting", "requested", "pending"}
+CLAIM_UNITS = re.compile(
+    r"\d[\d,.]*\s*(?:ms|s\b|%|nodes?|expansions?|tests?|adrs?|gates?|mb|kb|queries|shortcuts|stops?)",
+    re.IGNORECASE,
+)
 
 
 @dataclass
@@ -113,51 +132,113 @@ def check_tests(root: Path) -> Result:
     return Result(FAIL, "tests", "no test suite found; even a small one changes the review")
 
 
-def check_ci(root: Path) -> Result:
+def find_ci_workflow(root: Path) -> Path | None:
     for pattern in CI_FILES:
         matches = sorted(root.glob(pattern))
         if matches:
-            return Result(PASS, "ci", rel(matches[0], root))
+            return matches[0]
+    return None
+
+
+def check_ci(root: Path) -> Result:
+    workflow = find_ci_workflow(root)
+    if workflow is not None:
+        return Result(PASS, "ci", rel(workflow, root))
     return Result(FAIL, "ci", "no CI workflow; green checks are evidence")
 
 
-def check_links(root: Path, readme: Path) -> Result:
-    text = readme.read_text(encoding="utf-8", errors="replace")
-    targets = re.findall(r"\]\(\s*([^)\s]+)", text)
+def strip_fences(text: str) -> str:
+    lines: list[str] = []
+    in_fence = False
+    for line in text.splitlines():
+        stripped = line.lstrip()
+        if stripped.startswith(("```", "~~~")):
+            in_fence = not in_fence
+            lines.append("")
+            continue
+        lines.append("" if in_fence else line)
+    return "\n".join(lines)
+
+
+def check_links(root: Path, files: list[Path]) -> Result:
     broken: list[str] = []
     checked = 0
-    for target in targets:
-        if target.startswith(("http://", "https://", "mailto:", "#", "<")):
+    scanned = 0
+    for file in dict.fromkeys(files):
+        if not file.is_file():
             continue
-        if target.startswith("www.") or "{" in target or "}" in target:
-            continue
-        path_part = target.split("#", 1)[0].split("?", 1)[0]
-        path_part = unquote(path_part)
-        if not path_part:
-            continue
-        candidate = (root / path_part.lstrip("/")) if path_part.startswith("/") else (readme.parent / path_part)
-        checked += 1
-        if not candidate.exists():
-            broken.append(path_part)
+        scanned += 1
+        text = strip_fences(file.read_text(encoding="utf-8", errors="replace"))
+        for target in re.findall(r"\]\(\s*([^)\s]+)", text):
+            if target.startswith(("http://", "https://", "mailto:", "#", "<")):
+                continue
+            if target.startswith("www.") or "{" in target or "}" in target:
+                continue
+            path_part = target.split("#", 1)[0].split("?", 1)[0]
+            path_part = unquote(path_part)
+            if not path_part:
+                continue
+            candidate = (
+                (root / path_part.lstrip("/"))
+                if path_part.startswith("/")
+                else (file.parent / path_part)
+            )
+            checked += 1
+            if not candidate.exists():
+                broken.append(f"{rel(file, root)} -> {path_part}")
     if broken:
         shown = ", ".join(broken[:4]) + (" ..." if len(broken) > 4 else "")
         return Result(FAIL, "links", f"{len(broken)} broken: {shown}")
-    return Result(PASS, "links", f"{checked} relative link(s) resolve")
+    return Result(PASS, "links", f"{checked} relative link(s) across {scanned} file(s) resolve")
 
 
-def check_demo(root: Path, readme: Path) -> Result:
+def _probe_url(url: str) -> int:
+    headers = {"User-Agent": "portfolio-audit/1.0"}
+    request = urllib.request.Request(url, method="HEAD", headers=headers)
+    try:
+        with urllib.request.urlopen(request, timeout=15) as response:
+            return int(response.status)
+    except urllib.error.HTTPError as error:
+        if error.code not in (403, 405):
+            return int(error.code)
+        request = urllib.request.Request(url, headers={**headers, "Range": "bytes=0-0"})
+        with urllib.request.urlopen(request, timeout=15) as response:
+            return int(response.status)
+
+
+def check_demo(root: Path, readme: Path, *, network: bool) -> Result:
     first_screen = "\n".join(
         readme.read_text(encoding="utf-8", errors="replace").splitlines()[:FIRST_SCREEN_LINES]
     )
-    for line in first_screen.splitlines():
-        lowered = line.lower()
-        if any(host in lowered for host in BADGE_HOSTS):
+    candidates: list[tuple[str, str]] = []
+    for text, url in re.findall(r"(?<!!)\[([^\]]+)\]\((https?://[^)\s]+)\)", first_screen):
+        if any(host in url.lower() for host in BADGE_HOSTS):
             continue
-        urls = re.findall(r"https?://[^\s)\"']+", line)
-        if not urls:
-            continue
-        if any(hint in lowered for hint in DEMO_HINTS):
-            return Result(PASS, "demo", f"hosted link in the first screen: {urls[0]}")
+        haystack = f"{text} {url}".lower()
+        if any(hint in haystack for hint in DEMO_HINTS):
+            candidates.append((text, url))
+    if not candidates:
+        for url in re.findall(r"https?://[^\s)\"']+", first_screen):
+            if any(host in url.lower() for host in BADGE_HOSTS):
+                continue
+            if any(hint in url.lower() for hint in DEMO_HINTS):
+                candidates.append(("", url))
+                break
+    if candidates:
+        _, url = candidates[0]
+        if not network:
+            return Result(
+                PASS,
+                "demo",
+                f"hosted link: {url} (reachability not checked; use --network)",
+            )
+        try:
+            status = _probe_url(url)
+        except (urllib.error.URLError, TimeoutError) as error:
+            return Result(WARN, "demo", f"could not reach {url}: {error}")
+        if 200 <= status < 400:
+            return Result(PASS, "demo", f"hosted link: {url} (HTTP {status})")
+        return Result(FAIL, "demo", f"hosted link returned HTTP {status}: {url}")
     for target in re.findall(r"\]\(\s*([^)\s]+\.html)", first_screen):
         candidate = readme.parent / unquote(target.split("#", 1)[0])
         if candidate.exists():
@@ -178,6 +259,30 @@ def check_media(root: Path) -> Result:
         if media:
             return Result(PASS, "media", f"{len(media)} file(s) under {name}/")
     return Result(WARN, "media", "no screenshots or video; one image beats a paragraph")
+
+
+def check_social_preview(root: Path) -> Result:
+    for directory in SOCIAL_PREVIEW_DIRS:
+        base = root if directory == "." else root / directory
+        for name in SOCIAL_PREVIEW_NAMES:
+            path = base / name
+            if not path.is_file():
+                continue
+            if path.suffix.lower() != ".png":
+                return Result(WARN, "social", f"{rel(path, root)} found; verify 1280x640 manually")
+            with path.open("rb") as handle:
+                header = handle.read(24)
+            if len(header) != 24 or header[:8] != b"\x89PNG\r\n\x1a\n":
+                return Result(WARN, "social", f"{rel(path, root)} is not a valid PNG")
+            width, height = struct.unpack(">II", header[16:24])
+            if (width, height) == (1280, 640):
+                return Result(PASS, "social", f"{rel(path, root)} (1280x640)")
+            return Result(WARN, "social", f"{rel(path, root)} is {width}x{height}; use 1280x640")
+    return Result(
+        WARN,
+        "social",
+        "no social-preview image; upload is UI-only, so commit a 1280x640 PNG",
+    )
 
 
 def run_git(root: Path, *args: str) -> subprocess.CompletedProcess[str] | None:
@@ -202,10 +307,80 @@ def check_git(root: Path) -> Result:
     status = run_git(root, "status", "--porcelain")
     if status is None:
         return Result(WARN, "git", "could not read working tree status")
-    if status.stdout.strip():
-        changed = len(status.stdout.strip().splitlines())
-        return Result(WARN, "git", f"{changed} uncommitted change(s); reviewers see the pushed tree")
-    return Result(PASS, "git", "clean working tree")
+    changed = len(status.stdout.strip().splitlines()) if status.stdout.strip() else 0
+    upstream = run_git(root, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
+    has_upstream = upstream is not None and upstream.returncode == 0
+    ahead = 0
+    if has_upstream:
+        count = run_git(root, "rev-list", "--count", "@{u}..HEAD")
+        if count is not None and count.returncode == 0:
+            try:
+                ahead = int(count.stdout.strip() or "0")
+            except ValueError:
+                ahead = 0
+    if changed:
+        detail = f"{changed} uncommitted change(s)"
+        if ahead:
+            detail += f", {ahead} unpushed commit(s)"
+        return Result(WARN, "git", detail + "; reviewers see the pushed tree")
+    if ahead:
+        return Result(WARN, "git", f"{ahead} unpushed commit(s); push before sharing")
+    if not has_upstream:
+        return Result(WARN, "git", "clean, but no upstream configured; cannot confirm the pushed tree")
+    return Result(PASS, "git", "clean working tree, up to date with upstream")
+
+
+def check_ci_status(root: Path, workflow: Path | None, branch: str) -> Result:
+    if workflow is None:
+        return Result(WARN, "ci status", "no workflow file to query")
+    if ".github" not in workflow.parts:
+        return Result(WARN, "ci status", "non-GitHub CI; verify the default branch manually")
+    try:
+        completed = subprocess.run(
+            [
+                "gh",
+                "run",
+                "list",
+                "--workflow",
+                workflow.name,
+                "--branch",
+                branch,
+                "--limit",
+                "1",
+                "--json",
+                "conclusion,status,url",
+            ],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=30,
+            check=False,
+            cwd=root,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return Result(WARN, "ci status", "gh unavailable; skipped")
+    if completed.returncode != 0:
+        return Result(WARN, "ci status", "gh could not query workflow runs")
+    try:
+        runs = json.loads(completed.stdout)
+    except json.JSONDecodeError:
+        return Result(WARN, "ci status", "could not parse gh run output")
+    if not runs:
+        return Result(WARN, "ci status", f"no runs for {workflow.name} on {branch}")
+    run = runs[0]
+    conclusion = str(run.get("conclusion") or "").lower()
+    status = str(run.get("status") or "").lower()
+    url = str(run.get("url") or "")
+    if conclusion == "success":
+        return Result(PASS, "ci status", f"{workflow.name} on {branch}: success")
+    if conclusion in CI_FAILURES:
+        suffix = f" ({url})" if url else ""
+        return Result(FAIL, "ci status", f"{workflow.name} on {branch}: {conclusion}{suffix}")
+    if status in CI_PENDING:
+        suffix = f" ({url})" if url else ""
+        return Result(WARN, "ci status", f"{workflow.name} on {branch}: {status}{suffix}")
+    return Result(WARN, "ci status", f"{workflow.name} on {branch}: {conclusion or status or 'unknown'}")
 
 
 def check_remote(root: Path) -> list[Result]:
@@ -213,7 +388,13 @@ def check_remote(root: Path) -> list[Result]:
         return [Result(WARN, "remote", "gh CLI not installed; skipped repo-card checks")]
     try:
         completed = subprocess.run(
-            ["gh", "repo", "view", "--json", "nameWithOwner,description,repositoryTopics,homepageUrl"],
+            [
+                "gh",
+                "repo",
+                "view",
+                "--json",
+                "nameWithOwner,description,repositoryTopics,homepageUrl,defaultBranchRef",
+            ],
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -265,10 +446,29 @@ def check_remote(root: Path) -> list[Result]:
             if pages.returncode == 0
             else Result(WARN, "pages", "Pages not enabled; a hosted replay is one click")
         )
+    branch = str((data.get("defaultBranchRef") or {}).get("name") or "main")
+    results.append(check_ci_status(root, find_ci_workflow(root), branch))
     return results
 
 
-def audit(root: Path, *, remote: bool) -> list[Result]:
+def collect_claims(readme: Path, limit: int = 60) -> list[str]:
+    text = strip_fences(readme.read_text(encoding="utf-8", errors="replace"))
+    claims: list[str] = []
+    for number, line in enumerate(text.splitlines(), 1):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or set(stripped) <= {"|", "-", " "}:
+            continue
+        if not CLAIM_UNITS.search(stripped):
+            continue
+        links = re.findall(r"\]\(([^)]+)\)", stripped)
+        source = ", ".join(links) if links else "no link on line"
+        claims.append(f"L{number}: {stripped[:150]}  [{source}]")
+    if len(claims) > limit:
+        claims = claims[:limit] + [f"... {len(claims) - limit} more claim-like line(s)"]
+    return claims
+
+
+def audit(root: Path, *, remote: bool, network: bool) -> list[Result]:
     results: list[Result] = []
     readme_result, readme = check_readme(root)
     results.append(readme_result)
@@ -276,9 +476,13 @@ def audit(root: Path, *, remote: bool) -> list[Result]:
     results.append(check_tests(root))
     results.append(check_ci(root))
     if readme is not None:
-        results.append(check_links(root, readme))
-        results.append(check_demo(root, readme))
+        files = [readme] + [
+            root / name for name in DOC_LINK_FILES if (root / name).is_file()
+        ]
+        results.append(check_links(root, files))
+        results.append(check_demo(root, readme, network=network))
     results.append(check_media(root))
+    results.append(check_social_preview(root))
     results.append(check_git(root))
     if remote:
         results.extend(check_remote(root))
@@ -288,7 +492,13 @@ def audit(root: Path, *, remote: bool) -> list[Result]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("path", nargs="?", default=".", help="Repository root (default: .)")
-    parser.add_argument("--remote", action="store_true", help="Also check the repo card via gh")
+    parser.add_argument("--remote", action="store_true", help="Check the repo card and CI status via gh")
+    parser.add_argument("--network", action="store_true", help="Probe the hosted demo URL")
+    parser.add_argument(
+        "--claims",
+        action="store_true",
+        help="List numeric claims in the README for manual artifact verification",
+    )
     args = parser.parse_args()
 
     root = Path(args.path).resolve()
@@ -296,11 +506,23 @@ def main() -> int:
         print(f"error: {root} is not a directory", file=sys.stderr)
         return 2
 
-    results = audit(root, remote=args.remote)
+    results = audit(root, remote=args.remote, network=args.network)
     width = max(len(result.name) for result in results)
     print(f"portfolio audit — {root}")
     for result in results:
         print(f"{result.status:<4}  {result.name:<{width}}  {result.detail}")
+
+    if args.claims:
+        readme = find_readme(root)
+        if readme is None:
+            print("\nno README; no claim inventory")
+        else:
+            print("\nnumeric claims — verify each against its artifact")
+            claims = collect_claims(readme)
+            for claim in claims:
+                print(f"  {claim}")
+            if not claims:
+                print("  none found")
 
     failures = sum(1 for result in results if result.status == FAIL)
     warnings = sum(1 for result in results if result.status == WARN)

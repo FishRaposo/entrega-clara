@@ -34,6 +34,13 @@ dependencies.>*
 
 <If a specific reader matters, say what relevance means and state the chronology honestly.>
 
+## For freelance clients (optional)
+
+**Problem:** <the business problem in the client's words>.
+**Scope:** <what was delivered, what was explicitly excluded>.
+**Outcome:** <measured result or the capability that now exists>.
+**Handover:** <docs, tests, run path, maintenance>.
+
 ## Origin
 
 <Why the project exists. Two short paragraphs. Chronological; no retrofitted motives.>
@@ -70,5 +77,6 @@ dependencies.>*
 - First screen under ~40 lines.
 - Every number links to an artifact.
 - Every relative link resolves.
-- The demo link appears above the fold.
+- The demo link appears above the fold and resolves.
 - The license and attribution are present.
+- If clients are an audience, the problem → scope → outcome → handover block is present.
