@@ -153,13 +153,16 @@ Before serving requests in Postgres mode:
 
 Docker Compose documents that `depends_on` alone does not wait for a database to be ready; use a healthcheck and a healthy dependency condition. See [Compose startup order](https://docs.docker.com/compose/how-tos/startup-order/).
 
-## Future outbox boundary
+## Outbox (implemented for PostgreSQL mode)
 
-M1 may store a domain event/event log record and publish through an in-process hub after commit. Before multiple API processes, external notification providers, or durable replay, add a transactional outbox in the same database transaction:
+Memory mode still publishes through the in-process hub after commit. PostgreSQL mode writes the
+snapshot and one `outbox` row per event in the same transaction, publishes after commit, and marks
+rows delivered only after the publisher accepted them; `scripts/worker.py` drains anything left
+behind by a crash, at-least-once. See [ADR 0012](../adr/0012-postgres-adapter-outbox-and-metrics.md).
 
 ```text
 aggregate + audit + notification intent + outbox row → commit
-outbox worker → claim → publish → mark delivered/retry/dead-letter
+post-commit publish → mark delivered; worker drains unmarked rows
 ```
 
 Outbox consumers must be idempotent. The outbox needs event ID, type, aggregate, payload version, attempt count, next-attempt time, and failure metadata. Redis Streams or Celery are candidate later tools, not M1 requirements.

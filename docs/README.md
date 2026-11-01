@@ -10,6 +10,8 @@ The seed design and the user-approved M1 design under `docs/superpowers/specs/` 
 - [Portfolio improvement plan](roadmap/portfolio-improvements.md) — review findings and a prioritized backlog (routing, benchmarks, reviewer experience, Windows tooling) within the Python + Node toolchain.
 - [M1 development runbook](runbooks/milestone-1-development.md) — local modes, planned commands, acceptance journey, and release checks.
 - [PostgreSQL, outbox and metrics](runbooks/postgres.md) — persistent mode, the worker and the two metric views.
+- [Deploying the demo](runbooks/deploy.md) — Fly.io, Vercel and GitHub Pages artifacts.
+- [Static lab](../site/index.html) — self-contained replay of the committed traces.
 
 ## Architecture
 

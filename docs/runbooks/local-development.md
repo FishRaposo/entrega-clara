@@ -101,7 +101,7 @@ image diff before committing. Regenerate the benchmark artifacts whenever the gr
 - **GNU make**: convenience aliases only; each target maps to the plain commands above.
 - **Playwright**: dev-only e2e tooling; `npx playwright install` downloads a browser once, and the config can also drive an installed Edge/Chrome channel. Not needed to run the app.
 - **MapTiler**: an optional, browser-visible key upgrades the map surface from its deterministic SVG fallback to real tiles once a MapLibre adapter ships. See [M1 runbook §9](milestone-1-development.md); never put a service token in the web bundle.
-- **Docker Compose** (`docker-compose.yml`, `Dockerfile`, `app/web/Dockerfile`): an optional container path defining `db`, `api`, and `web` services. It is not required to run or test the project and becomes relevant when the PostgreSQL adapter lands as a future expansion.
+- **Docker Compose** (`docker-compose.yml`, `Dockerfile`, `app/web/Dockerfile`): an optional container path defining `db`, `api`, `worker` and `web` services. It is not required to run or test the project; it exercises the implemented PostgreSQL adapter (`PERSISTENCE_MODE=postgres`) and is the basis of the deploy artifacts. See the [PostgreSQL runbook](postgres.md).
 
 ## Non-production boundary
 

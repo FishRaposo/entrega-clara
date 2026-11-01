@@ -32,6 +32,7 @@ Events are published only after the command transaction commits. M1 uses an in-p
 - Commands remain easy to authorize, validate, retry, and test.
 - No WebSocket protocol or broker is required for the first vertical slice.
 - The same event envelope can later feed notifications, audit projections, and a durable outbox.
+- The durable outbox exists for PostgreSQL mode ([ADR 0012](0012-postgres-adapter-outbox-and-metrics.md)); the in-process caveat below applies to memory mode.
 - The UI has a clear degraded path: snapshot polling/manual refresh when a stream is unavailable.
 
 ### Costs and risks

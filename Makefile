@@ -1,4 +1,4 @@
-.PHONY: install test lint typecheck check dev demo-reset demo-preview seed-validate requirement-coverage app-boundary bench bench-city bench-smoke worker contract db-check media screens
+.PHONY: install test lint typecheck check dev demo-reset demo-preview seed-validate requirement-coverage app-boundary bench bench-city bench-smoke worker contract db-check media site tour screens
 
 install:
 	cd app/backend && python -m pip install -e '.[dev]'
@@ -59,6 +59,12 @@ db-check:
 
 media:
 	python scripts/media/render_search_gif.py
+
+site:
+	python scripts/media/export_static_lab.py
+
+tour:
+	cd app/web && TOUR=1 npx playwright test e2e/tour.spec.ts
 
 screens:
 	cd app/web && npx playwright test --grep @screens

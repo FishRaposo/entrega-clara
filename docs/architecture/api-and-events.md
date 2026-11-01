@@ -275,7 +275,7 @@ Example event envelope:
 }
 ```
 
-The SSE framing should use `id`, `event`, and `data`. Clients must handle reconnect, `Last-Event-ID`, snapshot reconciliation, heartbeat, and an unavailable stream. M1 does not promise lossless replay from the in-process hub; that promise begins only after a durable outbox/event log is introduced.
+The SSE framing should use `id`, `event`, and `data`. Clients must handle reconnect, `Last-Event-ID`, snapshot reconciliation, heartbeat, and an unavailable stream. In memory mode the hub is in-process and does not promise lossless replay; in PostgreSQL mode events are also written to a transactional outbox and drained by `scripts/worker.py` (at-least-once), so a crash between commit and publication does not lose them (ADR 0012).
 
 ## Compatibility rules
 

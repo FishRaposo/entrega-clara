@@ -1,0 +1,22 @@
+app = "entrega-clara-api"
+primary_region = "gru"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  APP_ENV = "production"
+  DEMO_MODE = "true"
+  # Memory is enough for a demo deploy. Switch to postgres after attaching a
+  # database and setting DATABASE_URL as a secret (docs/runbooks/deploy.md).
+  PERSISTENCE_MODE = "memory"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "stop"
+  min_machines_running = 0
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted for Milestone 1.
+Accepted for Milestone 1. Implemented with both adapters: the PostgreSQL
+adapter, the transactional outbox and the metrics views landed later and are
+recorded in [ADR 0012](0012-postgres-adapter-outbox-and-metrics.md). The caveat
+below about the in-process publisher now applies to memory mode only.
 
 ## Context
 

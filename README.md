@@ -51,8 +51,9 @@ browser-renderable. Its numbers are in `docs/benchmarks/routing.md`.
 
 Why landmarks rather than a bigger straight line: central São Paulo is one-way-dominant (76% of the
 ways in the extract), so the straight-line bound is weak and the KPI that matters is whether the
-search understands the network, not how fast it computes a hypotenuse. The full reasoning, including
-why contraction hierarchies were rejected at this scale, is [ADR 0008](docs/adr/0008-real-street-graph-and-landmarks.md).
+search understands the network, not how fast it computes a hypotenuse. That reasoning is
+[ADR 0008](docs/adr/0008-real-street-graph-and-landmarks.md); the city graph and contraction
+hierarchies it deferred are [ADR 0009](docs/adr/0009-city-scale-graph-and-contraction-hierarchies.md).
 
 ## Para recrutadores (iFood)
 
@@ -93,16 +94,29 @@ exercise's follow-up — `LegacyBruteForceTSPSolver` stays in the code as the ba
 
 | Built | Deferred (documented, not required to run) |
 | --- | --- |
-| Solver ladder: brute force → nearest neighbor → 2-opt → Held-Karp (precedence), and Dijkstra → A\* → ALT → bidirectional → weighted ε-A\* | Contraction hierarchies; time windows and vehicle capacity; dynamic mid-route re-optimization |
-| Real OSM street graph, ODbL, filtered to a strongly connected component | Real traffic data and provider routing (OSRM) |
-| Batch dispatch: cost matrix, exact tour, stop-sequence console, Held-Karp vs nearest-neighbor line | Same-restaurant-only batching (deliberately broader — [ADR 0007](docs/adr/0007-multi-stop-batching.md)) |
-| Customer → restaurant → courier → operations loop over real commands, SSE tracking, GPS that follows the route | PostgreSQL adapter (`PERSISTENCE_MODE=postgres` fails fast by design) |
-| Operations timeline with ETA vs actual, demo replay, JSON snapshot export/import | Real payments, real identity, push/SMS/email, durable outbox/workers |
-| Dependency-free search replay renderer and committed screenshots/charts | Hosting: everything runs locally with Python and Node only |
+| Solver ladder: Dijkstra → A\* → ALT → bidirectional → weighted ε-A\*, plus **contraction hierarchies** on a 105k-node city graph with a published break-even | Real traffic feeds and provider routing (OSRM); class-accurate traffic profiles (the graph stores speed, not highway class) |
+| **Time-dependent routing** from a committed, FIFO-validated speed profile: ETAs and routes change by hour, and plans record departure/arrival | Real payments, real identity, push/SMS/email |
+| **Capacitated VRP with promised windows** and **dynamic re-insertion** of a new order into an active batch, with typed rejection and a recorded ETA delta | Multi-process writes: the PostgreSQL adapter is single-writer (row-per-aggregate is the next step) |
+| Real OSM street graphs (centro + city scale), ODbL, filtered to a strongly connected component | Hosting performed: deploy artifacts exist, nothing is deployed by CI |
+| Batch dispatch: cost matrix, exact tour, stop-sequence console, offered-order baseline, capacity/waiting on screen | Same-restaurant-only batching (deliberately broader — [ADR 0007](docs/adr/0007-multi-stop-batching.md)) |
+| Customer → restaurant → courier → operations loop over real commands, SSE tracking, GPS that follows the route | |
+| **PostgreSQL adapter + transactional outbox worker** (`PERSISTENCE_MODE=postgres`, optional extra) and `/metrics` Prometheus text + operations panel | |
+| Operations timeline with ETA vs actual, demo replay, JSON snapshot export/import | |
+| **Static lab** (self-contained replay, zero network), committed benchmarks, screenshots, replay GIF and a recorded tour | |
 
 | Cliente | Restaurante | Entregador | Operações | Laboratório |
 | --- | --- | --- | --- | --- |
 | ![customer](docs/media/customer.png) | ![restaurant](docs/media/restaurant.png) | ![courier](docs/media/courier.png) | ![ops](docs/media/operations.png) | ![lab](docs/media/lab.png) |
+
+## See it without running it
+
+- **Static lab**: [`site/index.html`](site/index.html) is one self-contained page — open it in a
+  browser, no server and no network. It replays committed traces (Dijkstra 167 expansions vs
+  A\*+ALT 70), draws the day-long ETA curve from the committed traffic profile and prints the
+  published TSP table. `.github/workflows/pages.yml` publishes it; enabling Pages is one click.
+- **Recorded tour** (35 s, 2.3 MB): [`docs/media/demo-tour.webm`](docs/media/demo-tour.webm) — demo
+  scenario, courier console with planned stops and capacity, customer tracking, lab race.
+- [`docs/media/static-lab.png`](docs/media/static-lab.png) is the page's poster frame.
 
 ## Primary demo story
 
@@ -170,8 +184,10 @@ Requires only Python 3.11+ and Node 22+ — no Docker, database, `make`, or prov
 
 5. Open `http://localhost:3000`; the API listens on `http://localhost:8000` (`GET /api/v1/health`).
 
-Docker Compose, PostgreSQL, MapTiler, and external providers are documented future expansions, not
-requirements — see [external dependencies](docs/architecture/external-dependencies.md).
+Docker Compose, PostgreSQL and MapTiler are optional: memory mode needs none of them. The PostgreSQL
+adapter is implemented behind the `[postgres]` extra; see
+[external dependencies](docs/architecture/external-dependencies.md) and the
+[PostgreSQL runbook](docs/runbooks/postgres.md).
 
 See the [local development runbook](docs/runbooks/local-development.md) for local URLs and service
 details, and the [demo-mode runbook](docs/runbooks/demo-mode.md) for deterministic reset,
@@ -191,6 +207,9 @@ Run from the repository root (the Makefile wraps the same commands when `make` i
 | `python scripts/check.py` | Full local gate (fast mode: `--fast`, browser journeys: `--e2e`) |
 | `python scripts/bench/routing_benchmark.py` | Regenerate the benchmark artifacts (`--smoke` for CI, `--export-lab-trace` for the replay) |
 | `python scripts/media/render_search_gif.py` | Render the search replay GIF from the committed trace |
+| `python scripts/media/export_static_lab.py` | Rebuild the self-contained static lab (`site/index.html`) |
+| `DATABASE_URL=... python -m pytest tests/repo -q` | Persistence contract on memory + PostgreSQL |
+| `python scripts/worker.py --once` | Drain the PostgreSQL outbox once |
 | `python scripts/dev.py` | Start API and web shell together |
 | `python scripts/data/validate_seed.py data/scenarios/lunch-rush.json` | Validate the deterministic scenario |
 | `python scripts/quality/check_requirement_coverage.py docs/requirements/traceability.md` | Requirement coverage |
