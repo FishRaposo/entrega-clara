@@ -6,6 +6,7 @@ headers, raw and zlib payloads, dense and plain nodes, delta-coded ways.
 """
 
 import importlib.util
+import sys
 import zlib
 from itertools import pairwise
 from pathlib import Path
@@ -15,6 +16,10 @@ import pytest
 MODULE_PATH = Path(__file__).resolve().parents[2] / "scripts" / "data" / "osm_pbf.py"
 spec = importlib.util.spec_from_file_location("osm_pbf", MODULE_PATH)
 osm_pbf = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
+# Register before executing: on Python 3.11 dataclasses resolves annotations via
+# sys.modules[cls.__module__], so an unregistered module fails at the first
+# @dataclass with "'NoneType' object has no attribute '__dict__'".
+sys.modules[spec.name] = osm_pbf  # type: ignore[union-attr]
 spec.loader.exec_module(osm_pbf)  # type: ignore[union-attr]
 
 BBOX = (-23.60, -46.70, -23.50, -46.60)  # south, west, north, east

@@ -17,13 +17,15 @@ import sys
 import time
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "app" / "backend" / "src"))
 
-from delivery_platform.adapters.postgres.store import PostgresStore
 from delivery_platform.core.config import settings
+
+if TYPE_CHECKING:
+    from delivery_platform.adapters.postgres.store import PostgresStore
 
 Publisher = Callable[[list[dict[str, Any]]], None]
 
@@ -53,6 +55,13 @@ def main() -> None:
     parser.add_argument("--interval", type=float, default=5.0, help="Seconds between drains")
     parser.add_argument("--limit", type=int, default=100)
     args = parser.parse_args()
+    try:
+        from delivery_platform.adapters.postgres.store import PostgresStore
+    except ImportError as error:
+        raise SystemExit(
+            "The outbox worker needs the PostgreSQL extra: "
+            "pip install -e 'app/backend[postgres]'"
+        ) from error
     store = PostgresStore.from_url(settings.database_url)
     store.migrate()
     while True:
