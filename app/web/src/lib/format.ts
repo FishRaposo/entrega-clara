@@ -33,3 +33,13 @@ export function orderStateLabel(state: string): string {
 export function deliveryStatusLabel(status: string): string {
   return DELIVERY_STATUS_LABELS[status] ?? status;
 }
+
+/** Travel seconds as "4 min 12 s" (or "48 s" below a minute). */
+export function formatDuration(seconds: number): string {
+  const total = Math.max(0, Math.round(seconds));
+  const minutes = Math.floor(total / 60);
+  if (minutes === 0) {
+    return `${total} s`;
+  }
+  return `${minutes} min ${total % 60} s`;
+}

@@ -7,6 +7,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.gzip import GZipMiddleware
 
 from delivery_platform.adapters.seed.loader import load_reference_seed_file
 from delivery_platform.api.errors import register_error_handlers
@@ -33,6 +34,8 @@ _SCENARIO_PATH = _REPO_ROOT / "data" / "scenarios" / "lunch-rush.json"
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Entrega Clara API", version=settings.app_version)
+    # The lab serves a full street graph; compression keeps that payload small.
+    app.add_middleware(GZipMiddleware, minimum_size=1024)
 
     container = build_container(settings)
     if _SEED_PATH.exists():

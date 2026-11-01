@@ -1,4 +1,5 @@
 import type { RoutePlan } from "../lib/api-types";
+import { createProjection } from "../lib/projection";
 
 type DeliveryMapProps = {
   route: RoutePlan | null;
@@ -33,19 +34,21 @@ export function DeliveryMap({ route, lastKnown }: DeliveryMapProps) {
 
   const lngs = points.map((p) => p[0]);
   const lats = points.map((p) => p[1]);
-  const minLng = Math.min(...lngs);
-  const maxLng = Math.max(...lngs);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const padLng = Math.max((maxLng - minLng) * 0.08, 0.001);
-  const padLat = Math.max((maxLat - minLat) * 0.08, 0.001);
   const W = 640;
   const H = 400;
 
-  const project = ([lng, lat]: [number, number]): [number, number] => [
-    ((lng - (minLng - padLng)) / (maxLng - minLng + 2 * padLng)) * W,
-    H - ((lat - (minLat - padLat)) / (maxLat - minLat + 2 * padLat)) * H,
-  ];
+  const projection = createProjection(
+    {
+      minLatitude: Math.min(...lats),
+      maxLatitude: Math.max(...lats),
+      minLongitude: Math.min(...lngs),
+      maxLongitude: Math.max(...lngs),
+    },
+    { width: W, height: H },
+  );
+
+  const project = ([lng, lat]: [number, number]): [number, number] =>
+    projection.project(lat, lng);
 
   const pathData = coordinates
     .map((coord, i) => {

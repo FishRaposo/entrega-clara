@@ -56,17 +56,23 @@ test("jornada completa: pedido do cliente até a entrega", async ({ page }) => {
   await expect(page.getByText(/avaliado/i).first()).toBeVisible();
 });
 
-test("laboratório de algoritmos renderiza o grafo e roda solvers", async ({
+test("laboratório de algoritmos anima a busca sobre ruas reais", async ({
   page,
 }) => {
   await page.goto("/lab");
   await expect(
     page.getByRole("heading", { name: /laborat/i }),
   ).toBeVisible();
-  await page.getByRole("button", { name: /comparar|resolver|executar|A\*/i })
-    .first()
-    .click();
-  await expect(page.locator("svg circle, svg rect").first()).toBeVisible({
+  // Real street graph loads, then the demo route runs both searches and the
+  // canvas reports the work each solver did.
+  const canvas = page.locator("canvas").first();
+  await expect(canvas).toBeVisible({ timeout: 20_000 });
+  await page.getByRole("button", { name: /Rota da demo/i }).click();
+  await expect(page.getByText(/expandidos/i).first()).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page.getByRole("button", { name: /Mostrar fim/i })).toBeVisible();
+  await expect(page.getByText(/Held-Karp|ótimo/i).first()).toBeVisible({
     timeout: 15_000,
   });
 });

@@ -311,22 +311,44 @@ export function advanceDemoClock(minutes: number): Promise<DemoSnapshot> {
 
 // --- algorithm lab ---
 
+export type LabGraphName = "default" | "osm" | "synthetic";
+
 export type LabGraph = {
   graph_id: string;
   version: string;
+  source: string;
+  attribution: string;
   max_speed_mps: number;
-  nodes: { id: string; latitude: number; longitude: number }[];
-  edges: { from: string; to: string; speed_kmh: number }[];
+  node_count: number;
+  edge_count: number;
+  /** Node ids, aligned with `nodes` and `edges` indices. */
+  ids: string[];
+  /** `[latitude, longitude]` per node. */
+  nodes: [number, number][];
+  /** `[fromIndex, toIndex, speedKmh]` per directed edge. */
+  edges: [number, number, number][];
 };
+
+export type LabSolverName =
+  | "astar"
+  | "dijkstra"
+  | "alt"
+  | "bidirectional"
+  | "weighted-astar";
 
 export type LabPathResult = {
   node_path: string[];
   expanded_order: string[];
+  frontier_sizes: number[];
+  expansion_costs: number[];
   distance_meters: number;
   estimated_seconds: number;
+  cost: number;
   solver_name: string;
+  solver_version: string;
   nodes_expanded: number;
   computation_time_ns: number;
+  preprocessing_time_ns: number;
   objective: string;
   geometry: [number, number][];
 };
@@ -340,8 +362,20 @@ export type LabTspResult = {
   objective: string;
 };
 
-export function getLabGraph(identity: DemoIdentity): Promise<LabGraph> {
-  return request<LabGraph>("/api/v1/lab/graph", { identity });
+export type LabBenchmarks = {
+  generated_at?: string;
+  /** TSP ladder over cost matrices built from the committed street graph. */
+  tsp_graph?: Record<string, unknown>[];
+  /** TSP ladder over seeded random matrices. */
+  tsp_random?: Record<string, unknown>[];
+  path?: Record<string, unknown>;
+};
+
+export function getLabGraph(
+  identity: DemoIdentity,
+  graph: LabGraphName = "default",
+): Promise<LabGraph> {
+  return request<LabGraph>(`/api/v1/lab/graph?graph=${graph}`, { identity });
 }
 
 export function runLabPath(
@@ -349,9 +383,12 @@ export function runLabPath(
   body: {
     origin: string;
     destination: string;
-    solver: "astar" | "dijkstra";
+    solver: LabSolverName;
     objective: "time" | "distance";
     trace: boolean;
+    graph?: LabGraphName;
+    epsilon?: number;
+    landmarks?: number;
   },
 ): Promise<LabPathResult> {
   return request<LabPathResult>("/api/v1/lab/path", {
@@ -368,6 +405,7 @@ export function runLabTsp(
     solver: "held-karp" | "nearest-neighbor" | "two-opt";
     objective: "time" | "distance";
     origin_index: number;
+    graph?: LabGraphName;
   },
 ): Promise<LabTspResult> {
   return request<LabTspResult>("/api/v1/lab/tsp", {
@@ -375,6 +413,10 @@ export function runLabTsp(
     identity,
     body,
   });
+}
+
+export function getLabBenchmarks(identity: DemoIdentity): Promise<LabBenchmarks> {
+  return request<LabBenchmarks>("/api/v1/lab/benchmarks", { identity });
 }
 
 export function rateOrder(
