@@ -1,4 +1,4 @@
-.PHONY: install test lint typecheck check dev demo-reset demo-preview seed-validate requirement-coverage app-boundary bench bench-smoke media screens
+.PHONY: install test lint typecheck check dev demo-reset demo-preview seed-validate requirement-coverage app-boundary bench bench-city bench-smoke media screens
 
 install:
 	cd app/backend && python -m pip install -e '.[dev]'
@@ -41,7 +41,9 @@ app-boundary:
 
 bench:
 	python scripts/bench/routing_benchmark.py --export-lab-trace
-	python scripts/media/render_search_gif.py
+
+bench-city:
+	python scripts/bench/routing_benchmark.py --graph city
 
 bench-smoke:
 	python scripts/bench/routing_benchmark.py --smoke

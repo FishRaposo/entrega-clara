@@ -24,6 +24,7 @@ self-contained because only the touched nodes and edges are kept.
 Standard library only. Runs in seconds; factorial sizes stay bounded.
 """
 
+import argparse
 import json
 import math
 import platform
@@ -38,6 +39,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "app" / "backend" / "src"))
 
 from delivery_platform.domain.entities import GeoPoint
+from delivery_platform.routing.ch import ChPathSolver, contraction_hierarchy
 from delivery_platform.routing.graph import StreetGraph, load_graph
 from delivery_platform.routing.informed import (
     AltPathSolver,
@@ -62,10 +64,10 @@ from delivery_platform.routing.tsp import (
 )
 
 OUT_DIR = ROOT / "docs" / "benchmarks"
-GRAPH_CANDIDATES = (
-    ROOT / "data" / "graph" / "sao-paulo-centro-osm.json",
-    ROOT / "data" / "graph" / "sao-paulo-centro.json",
-)
+GRAPHS = {
+    "centro": ROOT / "data" / "graph" / "sao-paulo-centro-osm.json",
+    "city": ROOT / "data" / "graph" / "sao-paulo-city.json.gz",
+}
 PAIR_COUNT = 200
 WEIGHTED_EPSILONS = (1.5, 2.5, 5.0)
 TSP_SIZES = (5, 7, 9, 11, 13)
@@ -75,11 +77,14 @@ TRACE_ORIGIN = GeoPoint(latitude=-23.5482, longitude=-46.6371)
 TRACE_DESTINATION = GeoPoint(latitude=-23.5515, longitude=-46.632)
 
 
-def _graph_path() -> Path:
-    for candidate in GRAPH_CANDIDATES:
-        if candidate.exists():
-            return candidate
-    raise SystemExit("No committed graph found under data/graph/")
+def _graph_path(name: str = "centro") -> Path:
+    candidate = GRAPHS[name]
+    if not candidate.exists():
+        raise SystemExit(
+            f"Graph '{name}' not found at {candidate}. Build it with "
+            "scripts/data/build_city_graph.py (or fetch_osm_graph.py for centro)."
+        )
+    return candidate
 
 
 def _matrix(n: int, seed: int) -> RouteProblem:
@@ -150,7 +155,7 @@ def _smoke() -> None:
     assert abs(bf.total_cost - hk.total_cost) < 1e-9, (
         f"held-karp {hk.total_cost} != brute-force {bf.total_cost}"
     )
-    graph = load_graph(_graph_path())
+    graph = load_graph(_graph_path("centro"))
     assert graph.nodes, "graph failed to load"
     origin, destination = min(graph.nodes), max(graph.nodes)
     oracle = DijkstraPathSolver().solve(PathProblem(graph, origin, destination, "time"))
@@ -219,9 +224,16 @@ def _path_section(graph: StreetGraph, pairs: list[tuple[str, str]]) -> dict:
         "astar": AStarPathSolver(),
         "alt": AltPathSolver(),
         "bidirectional": BidirectionalPathSolver(),
+        "ch": ChPathSolver(),
     }
     for epsilon in WEIGHTED_EPSILONS:
         solvers[f"weighted_eps{epsilon:g}"] = WeightedAStarSolver(epsilon=epsilon)
+
+    # CH pays for itself only after many queries, so the build is measured on
+    # its own and reported apart from query time. No tracemalloc here: its
+    # overhead distorts the very number being measured.
+    hierarchy = contraction_hierarchy(graph, objective="time")
+    preprocessing_ns = hierarchy.stats.preprocessing_time_ns
 
     oracle = DijkstraPathSolver()
     optimums = [
@@ -253,6 +265,16 @@ def _path_section(graph: StreetGraph, pairs: list[tuple[str, str]]) -> dict:
     table = landmark_table(graph, objective="time")
     rows["alt"]["landmarks"] = list(table.landmarks)
     rows["alt"]["preprocessing_time_ns"] = table.preprocessing_time_ns
+
+    rows["ch"]["preprocessing_time_ns"] = preprocessing_ns
+    rows["ch"]["shortcuts"] = hierarchy.stats.shortcuts
+    rows["ch"]["witness_hops"] = hierarchy.stats.witness_hops
+    rows["ch"]["settle_limit"] = hierarchy.stats.settle_limit
+    for baseline in ("astar", "alt"):
+        gain = rows[baseline]["median_solver_time_ns"] - rows["ch"]["median_solver_time_ns"]
+        rows["ch"][f"break_even_queries_vs_{baseline}"] = (
+            round(preprocessing_ns / gain, 1) if gain > 0 else None
+        )
     return rows
 
 
@@ -585,6 +607,25 @@ def _markdown(results: dict) -> str:
             f"{alt['preprocessing_time_ns'] / 1e6:.0f} ms — reported separately from query time, "
             "amortized across every query on this graph and objective."),
         ]
+    ch = results["path"].get("ch", {})
+    if ch.get("preprocessing_time_ns") is not None:
+        def break_even(value: float | None) -> str:
+            return "no crossing" if value is None else f"{value:,.0f}"
+
+        md += [
+            "",
+            (f"CH preprocessing: {ch['preprocessing_time_ns'] / 1e9:.1f} s, "
+            f"{ch.get('shortcuts', 0):,} shortcuts from "
+            f"{ch.get('witness_hops')}-hop witness searches."),
+            "",
+            "| CH break-even vs. a no-preprocessing baseline | Queries |",
+            "| --- | --- |",
+            f"| A* | {break_even(ch.get('break_even_queries_vs_astar'))} |",
+            f"| ALT | {break_even(ch.get('break_even_queries_vs_alt'))} |",
+            "",
+            ("A delivery dispatcher answering thousands of routes pays CH's build once; a single "
+             "route per process does not. That is the selection rule the guide records."),
+        ]
     md += [
         "",
         ("Every exact solver (Dijkstra, A*, ALT, bidirectional) agrees on optimal cost; only the "
@@ -611,11 +652,20 @@ def _markdown(results: dict) -> str:
 
 
 def main() -> None:
-    if "--smoke" in sys.argv:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--graph", choices=sorted(GRAPHS), default="centro")
+    parser.add_argument("--smoke", action="store_true", help="Fast CI gate: solvers agree")
+    parser.add_argument(
+        "--export-lab-trace",
+        action="store_true",
+        help="Also write the replayable trace for the centro delivery route",
+    )
+    args = parser.parse_args()
+    if args.smoke:
         _smoke()
         return
 
-    graph_path = _graph_path()
+    graph_path = _graph_path(args.graph)
     graph = load_graph(graph_path)
     nodes = sorted(graph.nodes)
     edge_count = sum(len(edges) for edges in graph.adjacency.values())
@@ -639,8 +689,17 @@ def main() -> None:
     results["tsp_graph"] = _tsp_section(graph)
     print("TSP (street graph): done")
 
+    # Sample origin/destination pairs directly: materialising the full product
+    # of node ids is impossible at city scale (105k nodes = 11 billion pairs).
     rng = random.Random(20260901)
-    pairs = rng.sample([(a, b) for a in nodes for b in nodes if a != b], PAIR_COUNT)
+    pairs: list[tuple[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    while len(pairs) < PAIR_COUNT:
+        origin, destination = rng.sample(nodes, 2)
+        if (origin, destination) in seen:
+            continue
+        seen.add((origin, destination))
+        pairs.append((origin, destination))
     results["path"] = _path_section(graph, pairs)
     print("Path ladder: done")
 
@@ -648,18 +707,24 @@ def main() -> None:
     print("Batch realism: done")
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    (OUT_DIR / "routing.json").write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")
-    (OUT_DIR / "routing.md").write_text(_markdown(results), encoding="utf-8")
+    suffix = "" if args.graph == "centro" else f"-{args.graph}"
+    (OUT_DIR / f"routing{suffix}.json").write_text(
+        json.dumps(results, indent=2) + "\n", encoding="utf-8"
+    )
+    (OUT_DIR / f"routing{suffix}.md").write_text(_markdown(results), encoding="utf-8")
 
     largest = next(
         row for row in reversed(results["tsp_random"]) if not row["brute_force"].get("skipped")
     )
-    _bar_chart(largest, OUT_DIR / "routing.svg")
-    _tradeoff_chart(results["path"], OUT_DIR / "routing-tradeoff.svg")
+    _bar_chart(largest, OUT_DIR / f"routing{suffix}.svg")
+    _tradeoff_chart(results["path"], OUT_DIR / f"routing{suffix}-tradeoff.svg")
     print(f"Wrote benchmark artifacts to {OUT_DIR.as_posix()}")
 
-    if "--export-lab-trace" in sys.argv:
-        _export_lab_trace(graph)
+    if args.export_lab_trace:
+        if args.graph != "centro":
+            print("Skipping --export-lab-trace: the replay is pinned to the centro demo route")
+        else:
+            _export_lab_trace(graph)
 
 
 if __name__ == "__main__":
