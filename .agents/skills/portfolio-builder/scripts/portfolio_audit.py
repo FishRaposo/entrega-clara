@@ -47,6 +47,16 @@ CI_FILES = (
     ".circleci/config.yml",
     "azure-pipelines.yml",
 )
+PREFERRED_CI_WORKFLOWS = (
+    "ci.yml",
+    "ci.yaml",
+    "test.yml",
+    "test.yaml",
+    "tests.yml",
+    "tests.yaml",
+    "build.yml",
+    "build.yaml",
+)
 DOC_LINK_FILES = (
     "docs/for-reviewers.md",
     "docs/verification.md",
@@ -133,6 +143,12 @@ def check_tests(root: Path) -> Result:
 
 
 def find_ci_workflow(root: Path) -> Path | None:
+    workflows = root / ".github" / "workflows"
+    if workflows.is_dir():
+        for name in PREFERRED_CI_WORKFLOWS:
+            candidate = workflows / name
+            if candidate.is_file():
+                return candidate
     for pattern in CI_FILES:
         matches = sorted(root.glob(pattern))
         if matches:
@@ -454,14 +470,18 @@ def check_remote(root: Path) -> list[Result]:
 def collect_claims(readme: Path, limit: int = 60) -> list[str]:
     text = strip_fences(readme.read_text(encoding="utf-8", errors="replace"))
     claims: list[str] = []
+    section = "top"
     for number, line in enumerate(text.splitlines(), 1):
         stripped = line.strip()
-        if not stripped or stripped.startswith("#") or set(stripped) <= {"|", "-", " "}:
+        if stripped.startswith("#"):
+            section = stripped.lstrip("#").strip() or "top"
+            continue
+        if not stripped or set(stripped) <= {"|", "-", " "}:
             continue
         if not CLAIM_UNITS.search(stripped):
             continue
         links = re.findall(r"\]\(([^)]+)\)", stripped)
-        source = ", ".join(links) if links else "no link on line"
+        source = ", ".join(links) if links else f"section: {section}"
         claims.append(f"L{number}: {stripped[:150]}  [{source}]")
     if len(claims) > limit:
         claims = claims[:limit] + [f"... {len(claims) - limit} more claim-like line(s)"]
@@ -497,7 +517,7 @@ def main() -> int:
     parser.add_argument(
         "--claims",
         action="store_true",
-        help="List numeric claims in the README for manual artifact verification",
+        help="List claim-like numeric lines with section/link context",
     )
     args = parser.parse_args()
 

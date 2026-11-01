@@ -20,8 +20,9 @@ evaluation path before adding another feature.
 
 This skill uses the standard Agent Skills format only. It requires no host-specific features, tools or
 slash commands: any Agent-Skills implementation can load it, and the bundled audit script is Python
-standard library, cross-platform and read-only. Host-specific verification commands appear only as
-optional examples.
+standard library, cross-platform and read-only. The local audit is host-agnostic; `--remote` assumes
+GitHub (`gh`, Pages, repository metadata), and `--network` only needs HTTP. Host-specific verification
+commands appear only as optional examples.
 
 ## Three readers, three budgets
 
@@ -150,8 +151,8 @@ python .agents/skills/portfolio-builder/scripts/portfolio_audit.py . --remote --
 ```
 
 `--remote` reads the repo card and the latest default-branch CI run (needs authenticated `gh`);
-`--network` probes the hosted demo URL and fails on 4xx/5xx; `--claims` lists every numeric claim in
-the README with its line and links, because the script cannot tell whether a number is still current.
+`--network` probes the hosted demo URL and fails on 4xx/5xx; `--claims` lists claim-like numeric lines
+with their section and any links, because the script cannot tell whether a number is still current.
 The claim inventory is the bridge to the manual procedure in `references/audit-rubric.md`.
 
 Then apply the 60-second test, the 10-minute test, and the severity table. Blockers to fix before

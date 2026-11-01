@@ -12,7 +12,7 @@ Open the repository in a private window, as a recruiter would.
 - [ ] The repository card has a description that says what it is, topics, and a homepage/live URL.
 - [ ] The README first screen says what it is, why it exists, what it proves, how to see it.
 - [ ] One visual is visible without scrolling far.
-- [ ] The default branch is green (or the badge is absent, not red).
+- [ ] The latest default-branch CI run is green; the badge, if present, matches it.
 - [ ] A live/replayable demo link is in the first screen and resolves.
 - [ ] A license is present.
 
