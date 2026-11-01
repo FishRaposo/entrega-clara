@@ -50,12 +50,31 @@ test("jornada completa: pedido do cliente até a entrega", async ({ page }) => {
     timeout: 15_000,
   });
   await expect(page.getByText(/entregue/i).first()).toBeVisible();
+
+  // 5. Customer rates the delivered order.
+  await page.getByRole("button", { name: "5★" }).click();
+  await expect(page.getByText(/avaliado/i).first()).toBeVisible();
+});
+
+test("laboratório de algoritmos renderiza o grafo e roda solvers", async ({
+  page,
+}) => {
+  await page.goto("/lab");
+  await expect(
+    page.getByRole("heading", { name: /laborat/i }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /comparar|resolver|executar|A\*/i })
+    .first()
+    .click();
+  await expect(page.locator("svg circle, svg rect").first()).toBeVisible({
+    timeout: 15_000,
+  });
 });
 
 test("páginas de papel não têm violações de acessibilidade automáticas", async ({
   page,
 }) => {
-  for (const route of ["/", "/customer", "/restaurant", "/courier", "/admin", "/demo"]) {
+  for (const route of ["/", "/customer", "/restaurant", "/courier", "/admin", "/demo", "/lab"]) {
     await page.goto(route);
     const results = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa"])

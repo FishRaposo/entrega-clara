@@ -11,7 +11,7 @@ import dataclasses
 import json
 from datetime import datetime
 from enum import Enum
-from typing import Any, TypeVar, get_args, get_origin, get_type_hints
+from typing import Any, TypeVar, cast, get_args, get_origin, get_type_hints
 
 from delivery_platform.adapters.memory.store import MemoryStore
 
@@ -77,7 +77,7 @@ def _build(data: dict[str, Any], cls: type[T]) -> T:
     return cls(
         **{
             field.name: _convert(data[field.name], hints.get(field.name, Any))
-            for field in dataclasses.fields(cls)
+            for field in dataclasses.fields(cast(Any, cls))
             if field.name in data
         }
     )

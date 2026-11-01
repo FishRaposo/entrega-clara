@@ -15,6 +15,12 @@ Este repositório demonstra, de ponta a ponta e sem dependências externas, o me
 
 Comece pelo [guia de desenvolvimento local](docs/runbooks/local-development.md) e pelo [modo demonstração](docs/runbooks/demo-mode.md).
 
+![Laboratório de roteirização — grafo sintético do centro de SP](docs/media/lab.png)
+
+| Cliente | Restaurante | Entregador | Operações |
+| --- | --- | --- | --- |
+| ![customer](docs/media/customer.png) | ![restaurant](docs/media/restaurant.png) | ![courier](docs/media/courier.png) | ![ops](docs/media/operations.png) |
+
 ## Primary demo story
 
 Two stories share one code path. Interactively, each role page drives real commands: the customer builds a cart and checks out (idempotent, simulated payment), the restaurant confirms/prepares/marks ready, the courier accepts an offer, picks up, starts the graph-computed route, streams GPS points, and completes the delivery — while the customer watches a live SSE stream and map. The guided lunch-rush scenario replays the same journey step-by-step through those same handlers via Demo Mode, with scoped reset that preserves dynamically created orders.

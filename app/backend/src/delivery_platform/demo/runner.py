@@ -18,6 +18,7 @@ from pydantic import ValidationError
 from delivery_platform.application.commands.cart import CartCommands
 from delivery_platform.application.commands.checkout import CheckoutCommands
 from delivery_platform.application.commands.courier import CourierCommands
+from delivery_platform.application.commands.customer import CustomerCommands
 from delivery_platform.application.commands.restaurant import RestaurantCommands
 from delivery_platform.application.context import CommandContext
 from delivery_platform.demo.models import ScenarioScript, ScenarioStep, validate_scenario_seed
@@ -109,7 +110,12 @@ class ScenarioRunner:
     def _resolve_params(self, params: dict[str, Any]) -> dict[str, Any]:
         resolved: dict[str, Any] = {}
         for key, value in params.items():
-            if isinstance(value, str) and value.startswith("$"):
+            if isinstance(value, list):
+                resolved[key] = [
+                    self._vars[v[1:]] if isinstance(v, str) and v.startswith("$") else v
+                    for v in value
+                ]
+            elif isinstance(value, str) and value.startswith("$"):
                 var_name = value[1:]
                 if var_name not in self._vars:
                     raise DemoScenarioError(f"Variável de cenário ausente: {value}.")
@@ -142,7 +148,7 @@ class ScenarioRunner:
                     payment_method=cast(PaymentMethod, str(params["payment_method"])),
                     simulate_outcome=params.get("simulate_outcome"),
                 )
-                self._vars["order_id"] = result.order.id
+                self._vars[step.result_var or "order_id"] = result.order.id
             elif step.action == "restaurant.confirm":
                 RestaurantCommands(self._container).confirm(ctx, str(params["order_id"]))
             elif step.action == "restaurant.prepare":
@@ -153,7 +159,7 @@ class ScenarioRunner:
                     delivery = uow.deliveries.find_by_order(order.id)
                     uow.rollback()
                 if delivery is not None:
-                    self._vars["delivery_id"] = delivery.id
+                    self._vars[step.result_var or "delivery_id"] = delivery.id
             elif step.action == "courier.accept":
                 CourierCommands(self._container).accept(ctx, str(params["delivery_id"]))
             elif step.action == "courier.pickup":
@@ -168,8 +174,23 @@ class ScenarioRunner:
                     latitude=float(params["latitude"]),
                     longitude=float(params["longitude"]),
                 )
+            elif step.action == "courier.batch_accept":
+                batch = CourierCommands(self._container).batch_accept(
+                    ctx, [str(v) for v in params["delivery_ids"]]
+                )
+                self._vars[step.result_var or "batch_id"] = batch.id
+            elif step.action == "courier.route_step":
+                CourierCommands(self._container).advance_route_location(
+                    ctx, str(params["delivery_id"])
+                )
             elif step.action == "courier.complete":
                 CourierCommands(self._container).complete(ctx, str(params["delivery_id"]))
+            elif step.action == "customer.rate":
+                CustomerCommands(self._container).rate(
+                    ctx, str(params["order_id"]), int(params["stars"])
+                )
+            elif step.action == "customer.cancel":
+                CustomerCommands(self._container).cancel(ctx, str(params["order_id"]))
             else:  # pragma: no cover - schema forbids unknown actions
                 raise DemoScenarioError(f"Ação de cenário desconhecida: {step.action}")
         except DomainError as error:

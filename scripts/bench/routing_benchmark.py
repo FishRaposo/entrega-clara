@@ -68,7 +68,23 @@ def _run(solver, problem) -> dict:
     }
 
 
+def _smoke() -> None:
+    """Fast CI gate: solvers run and agree on a small matrix."""
+    problem = _matrix(6, seed=7)
+    bf = LegacyBruteForceTSPSolver().solve(problem)
+    hk = HeldKarpSolver().solve(problem)
+    assert abs(bf.total_cost - hk.total_cost) < 1e-9, (
+        f"held-karp {hk.total_cost} != brute-force {bf.total_cost}"
+    )
+    graph = load_graph(GRAPH_PATH)
+    assert graph.nodes, "graph failed to load"
+    print("benchmark smoke ok: solvers agree on 6-stop matrix")
+
+
 def main() -> None:
+    if "--smoke" in sys.argv:
+        _smoke()
+        return
     results: dict = {"generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
 
     # --- TSP comparison: brute force vs replacements on identical matrices ---

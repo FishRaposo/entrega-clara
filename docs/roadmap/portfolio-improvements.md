@@ -1,10 +1,34 @@
 # Portfolio improvement plan
 
-**Status:** Proposed backlog, not yet implemented
+**Status:** ✅ Implemented — see ledger below (last updated 2026-10-31)
 **Written:** 2026-10-31, from a review of the local working tree after the M1 vertical slice
 **Related:** [platform evolution roadmap](platform-evolution.md), [routing contract](../architecture/routing-contract.md), [external dependencies](../architecture/external-dependencies.md)
 
 This page lists what would make Entrega Clara a stronger portfolio piece, and how to build each item. It is a backlog, not a commitment: pick items in the suggested order at the end.
+
+## Implementation ledger
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| F1–F3 routing fixes | ✅ done | `domain/geo.py`, objective-aware A*, graph 1.0.1, `tests/routing/test_graph_solvers.py` |
+| P1 time-optimal routing | ✅ done | `objective` param end-to-end, admissibility/consistency proofs |
+| P2 multi-stop solvers | ✅ done | `routing/tsp.py` (Held-Karp/NN/2-opt), `matrix.py`, precedence-aware |
+| P3 benchmark harness | ✅ done | `docs/benchmarks/routing.{json,md,svg}`, `--smoke` CI gate |
+| P4 algorithm lab | ✅ done | `/api/v1/lab/*` + `/lab` page, e2e-covered |
+| P5 graph CLI | ✅ done | `build_graph.py --rows/--cols/--seed/--out` |
+| R1 screenshots | ✅ done | `docs/media/*.png` via `e2e/screenshots.spec.ts` |
+| R2 README first screen | ✅ done | recruiter section + media embeds |
+| R3 verification record | ✅ done | `docs/verification.md` exact counts |
+| W1 check.py / W2 dev.py | ✅ done | `scripts/check.py`, `scripts/dev.py` |
+| W3 Makefile | ✅ done | `dev` de-Dockered |
+| W4 CI matrix | ✅ done | ubuntu+windows backend, e2e job, benchmark smoke |
+| O1 ops timeline/ETA | ✅ done | `GET /operations/timeline` + panel table |
+| O2 route-following GPS | ✅ done | `courier.route_step`, polyline-constrained pings |
+| O3 snapshots | ✅ done | named in-memory + JSON export/import roundtrip |
+| O4 courier batching | ✅ done | `POST /courier/deliveries/batch`, ADR 0007, cross-restaurant |
+| Rate + cancel | ✅ done | `/me/orders/{id}/rate|cancel`, e2e covers rating |
+| R4 origin story | ⏳ open | README has recruiter section; narrative polish optional |
+| W5 housekeeping leftovers | ⏳ partial | `httpx` TestClient deprecation still shows (upstream) |
 
 ## Constraints every item respects
 

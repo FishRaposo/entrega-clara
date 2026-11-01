@@ -22,10 +22,14 @@ ScenarioAction = Literal[
     "restaurant.prepare",
     "restaurant.ready",
     "courier.accept",
+    "courier.batch_accept",
     "courier.pickup",
     "courier.start",
     "courier.location",
+    "courier.route_step",
     "courier.complete",
+    "customer.rate",
+    "customer.cancel",
     "clock.advance",
 ]
 
@@ -43,6 +47,7 @@ class ScenarioStep(StrictSeedModel):
     actor: NonEmptyString | None = None
     action: ScenarioAction
     params: dict[str, Any] = Field(default_factory=dict)
+    result_var: NonEmptyString | None = None
 
 
 class ScenarioScript(StrictSeedModel):

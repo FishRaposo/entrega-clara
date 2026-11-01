@@ -5,16 +5,18 @@ Measured on the committed tree — rerun with `python scripts/check.py`
 
 | Gate | Command | Last result |
 | --- | --- | --- |
-| Backend tests | `python -m pytest tests -q` | 175 passed |
+| Backend tests | `python -m pytest tests -q` | 186 passed |
 | Ruff | `ruff check app/backend/src tests scripts` | clean |
-| Mypy (strict-ish) | `mypy app/backend/src` | clean, 65 files |
+| Mypy (strict-ish) | `mypy app/backend/src` | clean, 66 files |
 | Web vitest | `npm test -- --run` (app/web) | 7 passed |
 | Web lint / typecheck / build | `npm run lint` / `typecheck` / `build` | clean |
-| Playwright + axe | `npm run e2e` (app/web) | 2/2 pass, 0 violations |
+| Playwright + axe | `npm run e2e` (app/web) | 4/4 pass, 0 violations on 7 pages |
 | Seed validation | `python scripts/data/validate_seed.py data/scenarios/lunch-rush.json` | pass |
 | Requirement coverage | `scripts/quality/check_requirement_coverage.py` | pass |
 | App boundary | `scripts/repo/check_app_boundary.py` | pass |
 | Routing benchmark | `scripts/bench/routing_benchmark.py` | artifacts in `docs/benchmarks/` |
+| Benchmark smoke | `routing_benchmark.py --smoke` | solvers agree on 6-stop matrix |
+| Scenario replay | 40-step `lunch-rush` via `validate_seed.py` | batch + GPS + cancel + rate all pass |
 
 ## Routing evidence highlights (committed, reproducible)
 

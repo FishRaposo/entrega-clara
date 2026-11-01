@@ -3,10 +3,10 @@
 import uuid
 from itertools import pairwise
 
-from fastapi.testclient import TestClient
 from delivery_platform.api.main import create_app
 from delivery_platform.domain.entities import GeoPoint
 from delivery_platform.domain.geo import haversine_m, point_along_polyline
+from fastapi.testclient import TestClient
 
 CUSTOMER = {"x-demo-identity": "demo-customer"}
 REST = {"x-demo-identity": "demo-rest-seu-manoel"}

@@ -1,81 +1,110 @@
 {
   "scenario_id": "lunch-rush",
-  "description": "Almoço de demonstração: cliente pede marmitas, restaurante prepara, entregadora conclui.",
+  "description": "Almoço de demonstração: pedido único completo, lote multi-parada cross-restaurante, cancelamento e avaliação.",
   "steps": [
     {
       "id": "add-marmitas",
       "actor": "demo-customer",
       "action": "cart.add_item",
-      "params": {"menu_item_id": "menu-sm-01", "quantity": 2}
+      "params": {
+        "menu_item_id": "menu-sm-01",
+        "quantity": 2
+      }
     },
     {
       "id": "add-guarana",
       "actor": "demo-customer",
       "action": "cart.add_item",
-      "params": {"menu_item_id": "menu-sm-03", "quantity": 2}
+      "params": {
+        "menu_item_id": "menu-sm-03",
+        "quantity": 2
+      }
     },
     {
       "id": "apply-coupon",
       "actor": "demo-customer",
       "action": "cart.apply_coupon",
-      "params": {"code": "BEM-VINDO-DEMO"}
+      "params": {
+        "code": "BEM-VINDO-DEMO"
+      }
     },
     {
       "id": "checkout",
       "actor": "demo-customer",
       "action": "checkout",
-      "params": {"address_id": "addr-casa", "payment_method": "pix"}
+      "params": {
+        "address_id": "addr-casa",
+        "payment_method": "pix"
+      }
     },
     {
       "id": "confirm-order",
       "actor": "demo-rest-seu-manoel",
       "action": "restaurant.confirm",
-      "params": {"order_id": "$order_id"}
+      "params": {
+        "order_id": "$order_id"
+      }
     },
     {
       "id": "kitchen-wait",
       "action": "clock.advance",
-      "params": {"minutes": 4}
+      "params": {
+        "minutes": 4
+      }
     },
     {
       "id": "start-preparing",
       "actor": "demo-rest-seu-manoel",
       "action": "restaurant.prepare",
-      "params": {"order_id": "$order_id"}
+      "params": {
+        "order_id": "$order_id"
+      }
     },
     {
       "id": "preparation-wait",
       "action": "clock.advance",
-      "params": {"minutes": 7}
+      "params": {
+        "minutes": 7
+      }
     },
     {
       "id": "mark-ready",
       "actor": "demo-rest-seu-manoel",
       "action": "restaurant.ready",
-      "params": {"order_id": "$order_id"}
+      "params": {
+        "order_id": "$order_id"
+      }
     },
     {
       "id": "courier-accepts",
       "actor": "demo-courier",
       "action": "courier.accept",
-      "params": {"delivery_id": "$delivery_id"}
+      "params": {
+        "delivery_id": "$delivery_id"
+      }
     },
     {
       "id": "courier-arrives",
       "action": "clock.advance",
-      "params": {"minutes": 2}
+      "params": {
+        "minutes": 2
+      }
     },
     {
       "id": "pickup",
       "actor": "demo-courier",
       "action": "courier.pickup",
-      "params": {"delivery_id": "$delivery_id"}
+      "params": {
+        "delivery_id": "$delivery_id"
+      }
     },
     {
       "id": "start-route",
       "actor": "demo-courier",
       "action": "courier.start",
-      "params": {"delivery_id": "$delivery_id"}
+      "params": {
+        "delivery_id": "$delivery_id"
+      }
     },
     {
       "id": "location-midway",
@@ -102,13 +131,215 @@
     {
       "id": "final-leg",
       "action": "clock.advance",
-      "params": {"minutes": 3}
+      "params": {
+        "minutes": 3
+      }
     },
     {
       "id": "delivered",
       "actor": "demo-courier",
       "action": "courier.complete",
-      "params": {"delivery_id": "$delivery_id"}
+      "params": {
+        "delivery_id": "$delivery_id"
+      }
+    },
+    {
+      "id": "ana-add-prato",
+      "actor": "demo-customer-2",
+      "action": "cart.add_item",
+      "params": {
+        "menu_item_id": "menu-dn-01",
+        "quantity": 1
+      }
+    },
+    {
+      "id": "ana-checkout",
+      "actor": "demo-customer-2",
+      "action": "checkout",
+      "params": {
+        "address_id": "addr-ana",
+        "payment_method": "pix"
+      },
+      "result_var": "order_id_2"
+    },
+    {
+      "id": "nonna-confirm",
+      "actor": "demo-rest-donna-nonna",
+      "action": "restaurant.confirm",
+      "params": {
+        "order_id": "$order_id_2"
+      }
+    },
+    {
+      "id": "nonna-prepare",
+      "actor": "demo-rest-donna-nonna",
+      "action": "restaurant.prepare",
+      "params": {
+        "order_id": "$order_id_2"
+      }
+    },
+    {
+      "id": "nonna-ready",
+      "actor": "demo-rest-donna-nonna",
+      "action": "restaurant.ready",
+      "params": {
+        "order_id": "$order_id_2"
+      },
+      "result_var": "delivery_id_2"
+    },
+    {
+      "id": "add-marmita-3",
+      "actor": "demo-customer",
+      "action": "cart.add_item",
+      "params": {
+        "menu_item_id": "menu-sm-02",
+        "quantity": 1
+      }
+    },
+    {
+      "id": "checkout-3",
+      "actor": "demo-customer",
+      "action": "checkout",
+      "params": {
+        "address_id": "addr-trabalho",
+        "payment_method": "pix"
+      },
+      "result_var": "order_id_3"
+    },
+    {
+      "id": "manoel-confirm-3",
+      "actor": "demo-rest-seu-manoel",
+      "action": "restaurant.confirm",
+      "params": {
+        "order_id": "$order_id_3"
+      }
+    },
+    {
+      "id": "manoel-prepare-3",
+      "actor": "demo-rest-seu-manoel",
+      "action": "restaurant.prepare",
+      "params": {
+        "order_id": "$order_id_3"
+      }
+    },
+    {
+      "id": "manoel-ready-3",
+      "actor": "demo-rest-seu-manoel",
+      "action": "restaurant.ready",
+      "params": {
+        "order_id": "$order_id_3"
+      },
+      "result_var": "delivery_id_3"
+    },
+    {
+      "id": "batch-accept",
+      "actor": "demo-courier",
+      "action": "courier.batch_accept",
+      "params": {
+        "delivery_ids": [
+          "$delivery_id_2",
+          "$delivery_id_3"
+        ]
+      }
+    },
+    {
+      "id": "batch-pickup-2",
+      "actor": "demo-courier",
+      "action": "courier.pickup",
+      "params": {
+        "delivery_id": "$delivery_id_2"
+      }
+    },
+    {
+      "id": "batch-pickup-3",
+      "actor": "demo-courier",
+      "action": "courier.pickup",
+      "params": {
+        "delivery_id": "$delivery_id_3"
+      }
+    },
+    {
+      "id": "batch-start",
+      "actor": "demo-courier",
+      "action": "courier.start",
+      "params": {
+        "delivery_id": "$delivery_id_2"
+      }
+    },
+    {
+      "id": "batch-gps-1",
+      "actor": "demo-courier",
+      "action": "courier.route_step",
+      "params": {
+        "delivery_id": "$delivery_id_2"
+      }
+    },
+    {
+      "id": "batch-gps-2",
+      "action": "clock.advance",
+      "params": {
+        "minutes": 2
+      }
+    },
+    {
+      "id": "batch-gps-3",
+      "actor": "demo-courier",
+      "action": "courier.route_step",
+      "params": {
+        "delivery_id": "$delivery_id_2"
+      }
+    },
+    {
+      "id": "batch-complete-2",
+      "actor": "demo-courier",
+      "action": "courier.complete",
+      "params": {
+        "delivery_id": "$delivery_id_2"
+      }
+    },
+    {
+      "id": "batch-complete-3",
+      "actor": "demo-courier",
+      "action": "courier.complete",
+      "params": {
+        "delivery_id": "$delivery_id_3"
+      }
+    },
+    {
+      "id": "add-cancel-order",
+      "actor": "demo-customer",
+      "action": "cart.add_item",
+      "params": {
+        "menu_item_id": "menu-sm-01",
+        "quantity": 1
+      }
+    },
+    {
+      "id": "checkout-4",
+      "actor": "demo-customer",
+      "action": "checkout",
+      "params": {
+        "address_id": "addr-casa",
+        "payment_method": "pix"
+      },
+      "result_var": "order_id_4"
+    },
+    {
+      "id": "cancel-4",
+      "actor": "demo-customer",
+      "action": "customer.cancel",
+      "params": {
+        "order_id": "$order_id_4"
+      }
+    },
+    {
+      "id": "rate-first",
+      "actor": "demo-customer",
+      "action": "customer.rate",
+      "params": {
+        "order_id": "$order_id",
+        "stars": 5
+      }
     }
   ]
 }

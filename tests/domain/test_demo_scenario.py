@@ -39,16 +39,16 @@ def _customer_ctx() -> CommandContext:
     )
 
 
-def test_full_script_replay_produces_a_real_delivered_order():
+def test_full_script_replay_produces_a_real_rated_order():
     container = _container()
     runner = _runner(container)
 
     snapshot = runner.advance_events(runner.remaining_event_count)
 
-    assert snapshot["order"]["state"] == "delivered"
+    assert snapshot["order"]["state"] == "rated"
     assert snapshot["delivery"]["status"] == "delivered"
     assert snapshot["route"]["graph_id"] == "sao-paulo-centro"
-    assert snapshot["tracking_points"] == 2
+    assert snapshot["tracking_points"] >= 2
     assert snapshot["remaining_steps"] == 0
 
     order_id = snapshot["order"]["id"]
@@ -132,4 +132,4 @@ def test_reset_is_replayable_across_runs():
         runner.advance_events(runner.remaining_event_count)
         runner.reset()
     runner.advance_events(runner.remaining_event_count)
-    assert runner.snapshot()["order"]["state"] == "delivered"
+    assert runner.snapshot()["order"]["state"] == "rated"

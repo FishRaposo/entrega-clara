@@ -31,10 +31,13 @@ def test_demo_advance_rejects_more_than_twenty_steps(client: TestClient):
 def test_demo_advance_returns_a_safe_error_when_steps_are_exhausted(client: TestClient):
     snapshot = client.get("/api/v1/demo/scenario").json()
     total = snapshot["steps_total"]
-    response = client.post("/api/v1/demo/advance", json={"event_count": total})
-    assert response.status_code == 200
+    while total > 0:
+        chunk = min(total, 20)
+        response = client.post("/api/v1/demo/advance", json={"event_count": chunk})
+        assert response.status_code == 200
+        total -= chunk
     assert response.json()["remaining_steps"] == 0
-    assert response.json()["order"]["state"] == "delivered"
+    assert response.json()["order"]["state"] == "rated"
 
     exhausted = client.post("/api/v1/demo/advance", json={"event_count": 1})
     assert exhausted.status_code == 409
@@ -44,8 +47,16 @@ def test_demo_advance_returns_a_safe_error_when_steps_are_exhausted(client: Test
 def test_demo_advance_rejection_does_not_mutate_the_scenario(client: TestClient):
     client.post("/api/v1/demo/reset")
     client.post("/api/v1/demo/advance", json={"event_count": 2})
-    before = client.get("/api/v1/demo/scenario").json()
+    snapshot = client.get("/api/v1/demo/scenario").json()
 
+    # Land exactly one step short of exhaustion, then over-request.
+    remaining = snapshot["steps_total"] - snapshot["step_index"]
+    while remaining > 1:
+        chunk = min(remaining - 1, 20)
+        client.post("/api/v1/demo/advance", json={"event_count": chunk})
+        remaining -= chunk
+
+    before = client.get("/api/v1/demo/scenario").json()
     rejected = client.post("/api/v1/demo/advance", json={"event_count": 20})
 
     assert rejected.status_code == 409
@@ -103,11 +114,15 @@ def test_scenario_reset_preserves_dynamic_orders(client: TestClient):
 def test_full_scenario_replay_reaches_delivered(client: TestClient):
     snapshot = client.get("/api/v1/demo/scenario").json()
     total = snapshot["steps_total"]
-    response = client.post("/api/v1/demo/advance", json={"event_count": total})
-    assert response.status_code == 200
-    body = response.json()
-    assert body["order"]["state"] == "delivered"
+    body: dict = {}
+    while total > 0:
+        chunk = min(total, 20)
+        response = client.post("/api/v1/demo/advance", json={"event_count": chunk})
+        assert response.status_code == 200
+        body = response.json()
+        total -= chunk
+    assert body["order"]["state"] == "rated"
     assert body["delivery"]["status"] == "delivered"
     assert body["route"]["graph_id"] == "sao-paulo-centro"
-    assert body["tracking_points"] == 2
+    assert body["tracking_points"] >= 2
     assert any("entregue" in n for n in body["notifications"])

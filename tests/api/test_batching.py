@@ -2,8 +2,8 @@
 
 import uuid
 
-from fastapi.testclient import TestClient
 from delivery_platform.api.main import create_app
+from fastapi.testclient import TestClient
 
 CUSTOMER = {"x-demo-identity": "demo-customer"}
 CUSTOMER2 = {"x-demo-identity": "demo-customer-2"}
