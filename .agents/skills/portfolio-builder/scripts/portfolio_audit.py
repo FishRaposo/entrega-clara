@@ -76,7 +76,7 @@ HUB_ROOT_MARKERS = (
     "app",
 )
 HUB_README_PATTERN = re.compile(
-    r"\b(hub|collection|workspace|playbook|registry|monorepo|assignments|exercises)\b",
+    r"\b(hub|collection|monorepo|assignments|exercises)\b",
     re.IGNORECASE,
 )
 SUBPROJECT_MARKERS = (
@@ -532,7 +532,14 @@ def repo_metadata(root: Path) -> dict | None:
 def check_remote(root: Path, data: dict | None = None) -> list[Result]:
     data = data if data is not None else repo_metadata(root)
     if data is None:
-        return [Result(WARN, "remote", "gh unavailable, not authenticated, or no remote; skipped")]
+        return [
+            Result(
+                WARN,
+                "remote",
+                "gh unavailable, not authenticated, or no remote; "
+                "privacy and repo-card checks skipped",
+            )
+        ]
     results: list[Result] = []
     description = str(data.get("description") or "").strip()
     results.append(
@@ -624,6 +631,14 @@ def audit(root: Path, *, remote: bool, network: bool) -> list[Result]:
         ]
 
     results: list[Result] = []
+    if not remote:
+        results.append(
+            Result(
+                WARN,
+                "scope",
+                "privacy not checked; use --remote to confirm this is a public repository",
+            )
+        )
     readme_result, readme = check_readme(root)
     results.append(readme_result)
     results.append(check_license(root))
@@ -652,6 +667,11 @@ def main() -> int:
         "--claims",
         action="store_true",
         help="List claim-like numeric lines with section/link context",
+    )
+    parser.add_argument(
+        "--fail-on-skip",
+        action="store_true",
+        help="Exit 1 when the repository is out of scope",
     )
     args = parser.parse_args()
 
@@ -687,7 +707,7 @@ def main() -> int:
     skipped = sum(1 for result in results if result.status == SKIP)
     suffix = f", {skipped} skipped" if skipped else ""
     print(f"\n{failures} failure(s), {warnings} warning(s){suffix}")
-    return 1 if failures else 0
+    return 1 if failures or (args.fail_on_skip and skipped) else 0
 
 
 if __name__ == "__main__":

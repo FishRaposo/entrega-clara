@@ -3,7 +3,7 @@ name: portfolio-builder
 description: Tailor public, recruiter-facing repositories into credible portfolio pieces for recruiters, hiring managers and freelance clients. Use when asked to make a public repository portfolio-ready, audit why it is not landing, rewrite the README or add a reviewer path, build an evidence spine or live demo, or answer "is this ready as a portfolio piece?". Private repositories and hub/collection repositories are out of scope; the audit reports SKIP and stops.
 license: MIT
 metadata:
-  version: "1.4.0"
+  version: "1.4.1"
 ---
 
 # Portfolio Builder
@@ -58,8 +58,11 @@ Pick one primary reader and one secondary. Do not average all three into a docum
 Only public, recruiter-facing piece repositories. The audit returns `SKIP` and stops when:
 
 - the repository is private (`--remote` checks with `gh`), or
-- it is a hub/collection: a README that identifies a hub/workspace, or at least two subprojects with
+- it is a hub/collection: a README that identifies a hub/collection, or at least two subprojects with
   no root application code.
+
+Without `--remote`, privacy cannot be checked; the audit warns instead of assuming the repository is
+public.
 
 Copy the skill into an individual public piece repository. Private working repositories and
 collections are not portfolio pieces; missing demos, licenses or social cards are not defects there.
@@ -173,7 +176,8 @@ with their section and any links, because the script cannot tell whether a numbe
 The claim inventory is the bridge to the manual procedure in `references/audit-rubric.md`.
 
 A `SKIP` result means the repository is private or a hub: stop, do not apply the piece tests, and move
-to the individual public piece repository.
+to the individual public piece repository. For CI, add `--fail-on-skip` so an out-of-scope repository
+does not pass silently.
 
 Then apply the 60-second test, the 10-minute test, and the severity table. Blockers to fix before
 anything else: red or unknown CI, no live/replayable demo, a demo URL that does not resolve, empty

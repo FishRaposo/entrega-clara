@@ -7,6 +7,8 @@ true.
 
 **Scope:** public, recruiter-facing repositories only. Private repositories and hubs/collections are
 out of scope; the mechanical audit returns `SKIP` and stops. Do not apply these tests to them.
+Without `--remote`, privacy is unverified and the audit warns. Use `--fail-on-skip` in CI so an
+out-of-scope repository does not pass silently.
 
 ## The 60-second test
 
