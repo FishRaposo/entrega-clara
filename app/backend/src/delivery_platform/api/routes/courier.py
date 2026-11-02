@@ -25,6 +25,11 @@ Container = Annotated[AppContainer, Depends(get_container)]
 Ctx = Annotated[CommandContext, Depends(command_context)]
 
 
+@router.get("/profile")
+def get_profile(container: Container, ctx: Ctx) -> dict[str, Any]:
+    return serializers.courier_view(CourierQueries(container).profile(ctx))
+
+
 @router.put("/availability")
 def set_availability(
     body: SetAvailabilityRequest, container: Container, ctx: Ctx

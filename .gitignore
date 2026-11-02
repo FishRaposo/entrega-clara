@@ -19,3 +19,4 @@ coverage/
 .DS_Store
 .superpowers/
 docs/superpowers/plans/
+.commandcode/design/

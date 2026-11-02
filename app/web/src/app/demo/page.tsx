@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import { DemoStatusCard } from "../../components/demo-status-card";
 import { PlatformShell } from "../../components/platform-shell";
 import { RoleSwitcher } from "../../components/role-switcher";
 import { brazilMarket } from "../../lib/market-config";
+
+export const metadata: Metadata = { title: "Demonstração" };
 
 export default function DemoPage() {
   return (

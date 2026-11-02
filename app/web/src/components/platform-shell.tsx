@@ -17,6 +17,7 @@ export function PlatformShell({ children, market }: PlatformShellProps) {
         <div className="market-badge" aria-label={`Mercado: ${market.id}`}>{market.locale} · {market.currency} · {market.location.label}</div>
         <Link className="demo-link" href="/lab">Laboratório</Link>
         <Link className="demo-link" href="/demo">Abrir modo demonstração</Link>
+        <RoleSwitcher variant="header" />
       </header>
       <main id="main-content">{children}</main>
       <footer className="site-footer">

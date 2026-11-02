@@ -40,7 +40,9 @@ export function OperationsPanel() {
       setMetrics(metricsView);
       setTimeline(timelineView.orders);
     } catch {
-      setError("Não foi possível carregar a visão operacional. A API local está ativa?");
+      setError(
+        "Não foi possível carregar a visão operacional. Verifique se a API local está ativa e tente novamente.",
+      );
     }
   }, []);
 
@@ -124,14 +126,14 @@ export function OperationsPanel() {
 
         <div className="panel timeline-panel">
           <h2>Cronologia por pedido</h2>
-          <table className="ops-table">
+          <table className="data-table">
             <thead>
               <tr>
-                <th>Pedido</th>
-                <th>Estágios</th>
-                <th>ETA (s)</th>
-                <th>Real (s)</th>
-                <th>Erro (s)</th>
+                <th scope="col">Pedido</th>
+                <th scope="col">Estágios</th>
+                <th scope="col">ETA (s)</th>
+                <th scope="col">Real (s)</th>
+                <th scope="col">Erro (s)</th>
               </tr>
             </thead>
             <tbody>
@@ -152,20 +154,24 @@ export function OperationsPanel() {
           </table>
         </div>
 
-        <div className="panel">
+        <div className="panel ops-events">
           <h2>Eventos recentes</h2>
-          <ol className="event-feed" tabIndex={0} aria-label="Eventos recentes, região rolável">
-            {events.map((event) => (
-              <li key={event.id}>
-                <code>{event.type}</code> · {event.actor_role} ·{" "}
-                {event.occurred_at?.slice(11, 19) ?? ""}
-              </li>
-            ))}
-          </ol>
+          {events.length > 0 ? (
+            <ol className="event-feed" tabIndex={0} aria-label="Eventos recentes, região rolável">
+              {events.map((event) => (
+                <li key={event.id}>
+                  <code>{event.type}</code> · {event.actor_role} ·{" "}
+                  {event.occurred_at?.slice(11, 19) ?? ""}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="quiet">Nenhum evento recente.</p>
+          )}
         </div>
       </div>
       <button type="button" className="secondary-button" onClick={() => void refresh()}>
-        Atualizar
+        Atualizar painel
       </button>
     </section>
   );

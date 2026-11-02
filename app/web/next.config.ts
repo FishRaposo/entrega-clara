@@ -13,6 +13,7 @@ export function apiProxyDestination(
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  devIndicators: false,
   async rewrites() {
     return [
       {

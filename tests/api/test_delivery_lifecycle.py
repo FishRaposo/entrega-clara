@@ -53,6 +53,24 @@ def _accept(client: TestClient, delivery_id: str, headers: dict = COURIER) -> No
     assert response.status_code == 200, response.json()
 
 
+# --- courier profile ---
+
+
+def test_courier_profile_reports_current_availability(client: TestClient):
+    profile = client.get("/api/v1/courier/profile", headers=COURIER)
+    assert profile.status_code == 200
+    body = profile.json()
+    assert body["id"] == "courier-ana"
+    assert body["name"] == "Ana Entregas"
+    assert body["status"] == "available"
+
+    update = client.put(
+        "/api/v1/courier/availability", json={"available": False}, headers=COURIER
+    )
+    assert update.status_code == 200
+    assert client.get("/api/v1/courier/profile", headers=COURIER).json()["status"] == "offline"
+
+
 # --- restaurant ---
 
 

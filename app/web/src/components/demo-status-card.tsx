@@ -31,7 +31,9 @@ export function DemoStatusCard({ locationLabel }: DemoStatusCardProps) {
       },
       () => {
         if (active) {
-          setErrorMessage("O cenário não está disponível. Confirme se a API local está ativa.");
+          setErrorMessage(
+            "Não foi possível carregar o cenário. Verifique se a API local está ativa e tente novamente.",
+          );
           setPending(false);
         }
       },
@@ -56,16 +58,23 @@ export function DemoStatusCard({ locationLabel }: DemoStatusCardProps) {
   return (
     <section aria-labelledby="demo-status-title" className="demo-status-card">
       <div className="status-label" role="status">Cenário guiado · API local</div>
-      <h2 id="demo-status-title">Hora do almoço: {scenario?.scenario_id ?? "…"}</h2>
+      <h2 id="demo-status-title">
+        {scenario ? `Hora do almoço: ${scenario.scenario_id}` : "Carregando cenário…"}
+      </h2>
+      {pending ? (
+        <p className="quiet" role="status">
+          {scenario ? "Atualizando cenário…" : "Carregando cenário da demonstração…"}
+        </p>
+      ) : null}
       {scenario?.order ? (
         <p>
-          Pedido #{scenario.order.id} —{" "}
+          Pedido #{scenario.order.id} ·{" "}
           <strong>{orderStateLabel(scenario.order.state)}</strong> ·{" "}
           {formatBRL(scenario.order.total_minor)}
         </p>
-      ) : (
+      ) : scenario ? (
         <p>Pedido ainda não iniciado.</p>
-      )}
+      ) : null}
       {scenario?.delivery ? (
         <p>
           Entrega {scenario.delivery.id}: {deliveryStatusLabel(scenario.delivery.status)}

@@ -69,6 +69,22 @@ function solverLabel(name: LabSolverName): string {
   return SOLVERS.find((solver) => solver.value === name)?.label ?? name;
 }
 
+function parseCoordinates(value: string): { latitude: number; longitude: number } | null {
+  const parts = value.split(",").map((part) => part.trim());
+  if (parts.length !== 2 || !parts[0] || !parts[1]) {
+    return null;
+  }
+  const latitude = Number(parts[0]);
+  const longitude = Number(parts[1]);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null;
+  }
+  if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
+    return null;
+  }
+  return { latitude, longitude };
+}
+
 export function AlgorithmLab() {
   const [graphName, setGraphName] = useState<LabGraphName>("default");
   const [graph, setGraph] = useState<LabGraph | null>(null);
@@ -85,6 +101,10 @@ export function AlgorithmLab() {
   const [speed, setSpeed] = useState(400);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [originCoords, setOriginCoords] = useState("");
+  const [destinationCoords, setDestinationCoords] = useState("");
+  const [stopCoords, setStopCoords] = useState("");
+  const [coordinateMessage, setCoordinateMessage] = useState<string | null>(null);
   const [stops, setStops] = useState<number[]>([]);
   const [tspSolver, setTspSolver] = useState<"held-karp" | "two-opt" | "nearest-neighbor">(
     "two-opt",
@@ -373,6 +393,56 @@ export function AlgorithmLab() {
     setTspReference(null);
   };
 
+  const applyCoordinates = () => {
+    if (!graph) {
+      return;
+    }
+    const origin = parseCoordinates(originCoords);
+    const destination = parseCoordinates(destinationCoords);
+    if (!origin || !destination) {
+      setError("Informe origem e destino no formato latitude, longitude.");
+      return;
+    }
+    const nextOrigin = nearestNodeIndex(graph.nodes, origin.latitude, origin.longitude);
+    const nextDestination = nearestNodeIndex(
+      graph.nodes,
+      destination.latitude,
+      destination.longitude,
+    );
+    if (nextOrigin === nextDestination) {
+      setError("Escolha uma origem e um destino diferentes.");
+      return;
+    }
+    setOriginIndex(nextOrigin);
+    setDestinationIndex(nextDestination);
+    setPickMode("origin");
+    setError(null);
+    setCoordinateMessage("Origem e destino definidos por coordenadas.");
+    void run({ origin: nextOrigin, destination: nextDestination });
+  };
+
+  const addStopCoordinates = () => {
+    if (!graph) {
+      return;
+    }
+    if (stops.length >= 10) {
+      setError("O limite é 10 paradas.");
+      return;
+    }
+    const stop = parseCoordinates(stopCoords);
+    if (!stop) {
+      setError("Informe a parada no formato latitude, longitude.");
+      return;
+    }
+    const index = nearestNodeIndex(graph.nodes, stop.latitude, stop.longitude);
+    setStops((current) => [...current, index]);
+    setPickMode("stops");
+    setError(null);
+    setCoordinateMessage("Parada adicionada por coordenadas.");
+    setTspResult(null);
+    setTspReference(null);
+  };
+
   const runTsp = async () => {
     if (!graph || stops.length < 3) {
       setError("Adicione pelo menos três paradas no mapa (modo “Paradas”).");
@@ -442,6 +512,14 @@ export function AlgorithmLab() {
     );
   };
 
+  const coordinateLabel = (index: number | null) => {
+    if (!graph || index === null) {
+      return "não definida";
+    }
+    const [latitude, longitude] = graph.nodes[index];
+    return `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+  };
+
   return (
     <section className="panel stack">
       <h2>Laboratório de roteirização</h2>
@@ -499,7 +577,12 @@ export function AlgorithmLab() {
             <option value="distance">menor distância</option>
           </select>
         </label>
-        <button type="button" onClick={() => void run()} disabled={busy || !graph}>
+        <button
+          type="button"
+          className="primary-button"
+          onClick={() => void run()}
+          disabled={busy || !graph}
+        >
           Executar as duas buscas
         </button>
         <button
@@ -513,24 +596,27 @@ export function AlgorithmLab() {
       </div>
 
       <div className="lab-controls">
-        <span className="muted">Clique no mapa para definir:</span>
+        <span className="muted">Clique no mapa ou use as coordenadas abaixo:</span>
         <button
           type="button"
-          className={pickMode === "origin" ? "" : "secondary-button"}
+          className={pickMode === "origin" ? "selected-button" : "secondary-button"}
+          aria-pressed={pickMode === "origin"}
           onClick={() => setPickMode("origin")}
         >
           Origem
         </button>
         <button
           type="button"
-          className={pickMode === "destination" ? "" : "secondary-button"}
+          className={pickMode === "destination" ? "selected-button" : "secondary-button"}
+          aria-pressed={pickMode === "destination"}
           onClick={() => setPickMode("destination")}
         >
           Destino
         </button>
         <button
           type="button"
-          className={pickMode === "stops" ? "" : "secondary-button"}
+          className={pickMode === "stops" ? "selected-button" : "secondary-button"}
+          aria-pressed={pickMode === "stops"}
           onClick={() => setPickMode("stops")}
         >
           Paradas ({stops.length})
@@ -539,6 +625,54 @@ export function AlgorithmLab() {
           Limpar paradas
         </button>
       </div>
+
+      <fieldset className="coordinate-picker">
+        <legend>Definir pontos por coordenadas</legend>
+        <p id="coordinate-hint" className="muted">
+          Formato: latitude, longitude. Exemplo: -23.5482, -46.6371.
+        </p>
+        <div className="coordinate-row">
+          <label>
+            Origem
+            <input
+              value={originCoords}
+              onChange={(event) => setOriginCoords(event.target.value)}
+              placeholder="-23.5482, -46.6371"
+              inputMode="decimal"
+              aria-describedby="coordinate-hint"
+            />
+          </label>
+          <label>
+            Destino
+            <input
+              value={destinationCoords}
+              onChange={(event) => setDestinationCoords(event.target.value)}
+              placeholder="-23.5515, -46.6320"
+              inputMode="decimal"
+              aria-describedby="coordinate-hint"
+            />
+          </label>
+          <button type="button" onClick={applyCoordinates} disabled={busy || !graph}>
+            Aplicar origem e destino
+          </button>
+        </div>
+        <div className="coordinate-row">
+          <label>
+            Nova parada
+            <input
+              value={stopCoords}
+              onChange={(event) => setStopCoords(event.target.value)}
+              placeholder="-23.5500, -46.6340"
+              inputMode="decimal"
+              aria-describedby="coordinate-hint"
+            />
+          </label>
+          <button type="button" onClick={addStopCoordinates} disabled={busy || !graph}>
+            Adicionar parada
+          </button>
+        </div>
+        <p role="status" className="muted">{coordinateMessage ?? ""}</p>
+      </fieldset>
 
       <div className="lab-controls">
         <button
@@ -593,6 +727,13 @@ export function AlgorithmLab() {
         </label>
         <span className="muted">usada por “com trânsito”</span>
       </div>
+
+      <ul className="lab-legend" aria-label="Legenda do laboratório">
+        <li><span className="swatch origin" aria-hidden="true" /> Origem</li>
+        <li><span className="swatch destination" aria-hidden="true" /> Destino</li>
+        <li><span className="swatch expanded" aria-hidden="true" /> Nós expandidos</li>
+        <li><span className="swatch path" aria-hidden="true" /> Caminho final</li>
+      </ul>
 
       <div className="lab-panels">
         {([0, 1] as const).map((index) => (
@@ -659,7 +800,7 @@ export function AlgorithmLab() {
                 destinationIndex={destinationIndex}
                 onPick={pick}
                 overlay={index === 0 ? tourIndices : undefined}
-                label={`${solverLabel(panels[index].solver)}: ${frames[index].length} nós expandidos, ${panels[index].result?.node_path.length ?? 0} nós no caminho`}
+                label={`${solverLabel(panels[index].solver)}: ${frames[index].length} nós expandidos, ${panels[index].result?.node_path.length ?? 0} nós no caminho; origem ${coordinateLabel(originIndex)}; destino ${coordinateLabel(destinationIndex)}`}
               />
             ) : null}
             {counters(index)}
@@ -670,11 +811,10 @@ export function AlgorithmLab() {
       {summary ? (
         <p className="lab-summary" role="status">
           <strong>{summary.fewer}</strong> expandiu {summary.ratio.toFixed(1)}× menos nós que{" "}
-          <strong>{summary.more}</strong> —{" "}
+          <strong>{summary.more}</strong>.{" "}
           {summary.sameCost
-            ? `mesmo custo (${formatCost(summary.fewerCost, objective)})`
-            : `custo ${formatCost(summary.fewerCost, objective)} vs ${formatCost(summary.moreCost, objective)}`}
-          .
+            ? `O custo é o mesmo: ${formatCost(summary.fewerCost, objective)}.`
+            : `O custo menor é ${formatCost(summary.fewerCost, objective)}; o outro é ${formatCost(summary.moreCost, objective)}.`}
         </p>
       ) : null}
 
@@ -698,7 +838,12 @@ export function AlgorithmLab() {
               <option value="held-karp">Held-Karp (exato)</option>
             </select>
           </label>
-          <button type="button" onClick={() => void runTsp()} disabled={busy || !graph}>
+          <button
+            type="button"
+            className="primary-button"
+            onClick={() => void runTsp()}
+            disabled={busy || !graph}
+          >
             Resolver paradas
           </button>
           <button
@@ -780,7 +925,8 @@ export function AlgorithmLab() {
       {benchmarkRows.length ? (
         <div className="panel stack">
           <h3>Benchmarks publicados</h3>
-          <table>
+          <div className="table-scroll">
+            <table className="data-table">
             <caption className="muted">
               paradas · custo e tempo por solver (docs/benchmarks/routing.json)
             </caption>
@@ -805,7 +951,8 @@ export function AlgorithmLab() {
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
       ) : null}
     </section>

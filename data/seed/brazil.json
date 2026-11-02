@@ -108,7 +108,7 @@
       "id": "rest-madrugada",
       "name": "Lanches da Madrugada",
       "cuisine": "lanches",
-      "description": "Lanches noturnos — fecha cedo.",
+      "description": "Lanches noturnos. Fecha cedo.",
       "available": false,
       "latitude": -23.5455,
       "longitude": -46.6445,
@@ -263,7 +263,7 @@
       "id": "addr-casa",
       "customer_id": "demo-customer",
       "label": "Casa",
-      "formatted": "Apto de demonstração — Sé, São Paulo/SP",
+      "formatted": "Apto de demonstração, Sé, São Paulo/SP",
       "latitude": -23.5515,
       "longitude": -46.632
     },
@@ -271,7 +271,7 @@
       "id": "addr-trabalho",
       "customer_id": "demo-customer",
       "label": "Trabalho",
-      "formatted": "Escritório de demonstração — República, São Paulo/SP",
+      "formatted": "Escritório de demonstração, República, São Paulo/SP",
       "latitude": -23.546,
       "longitude": -46.641
     },
@@ -279,7 +279,7 @@
       "id": "addr-ana",
       "customer_id": "demo-customer-2",
       "label": "Casa da Ana",
-      "formatted": "Casa de demonstração — Liberdade, São Paulo/SP",
+      "formatted": "Casa de demonstração, Liberdade, São Paulo/SP",
       "latitude": -23.558,
       "longitude": -46.634
     }

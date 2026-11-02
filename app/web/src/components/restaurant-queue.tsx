@@ -24,7 +24,9 @@ export function RestaurantQueue() {
     try {
       setOrders((await listRestaurantQueue(ID)).orders);
     } catch {
-      setError("Não foi possível carregar a fila. A API local está ativa?");
+      setError(
+        "Não foi possível carregar a fila. Verifique se a API local está ativa e tente novamente.",
+      );
     }
   }, []);
 
@@ -41,7 +43,7 @@ export function RestaurantQueue() {
       await restaurantCommand(ID, orderId, action);
       await refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.detail : "A ação falhou.");
+      setError(err instanceof ApiError ? err.detail : "A ação não foi concluída. Tente novamente.");
     } finally {
       setPending(false);
     }
@@ -56,7 +58,7 @@ export function RestaurantQueue() {
       <h1 id="restaurant-title">Fila de produção</h1>
       {error ? <p role="alert">{error}</p> : null}
       {active.length === 0 ? <p>Nenhum pedido na fila no momento.</p> : null}
-      <ul className="stacked-list">
+      <ul className="queue-grid">
         {active.map((order) => {
           const next = NEXT_ACTION[order.state];
           return (

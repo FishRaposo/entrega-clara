@@ -3,46 +3,76 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Entrega Clara — laboratório de algoritmos</title>
+<meta name="description" content="Replay de uma corrida Dijkstra e A* + ALT sobre o centro de São Paulo, com traces commitados e benchmark de roteirização.">
+<meta name="theme-color" content="#fffdf8">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23fffdf8'/%3E%3Cpath d='M16 46 32 18l16 28' fill='none' stroke='%23b94a22' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='16' cy='46' r='5' fill='%2312231b'/%3E%3Ccircle cx='48' cy='46' r='5' fill='%2312231b'/%3E%3C/svg%3E">
+<title>Entrega Clara · laboratório de algoritmos</title>
 <style>
   :root { --ink:#12231b; --muted:#52665b; --paper:#fffdf8; --surface:#f1f5ed;
-          --accent:#b94a22; --accent-dark:#8f3618; --line:#c9d4c9; }
+          --accent:#b94a22; --accent-dark:#8f3618; --line:#c9d4c9; --focus:#0b66c3; }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--paper); color:var(--ink);
          font-family:Arial, Helvetica, sans-serif; line-height:1.55; }
+  .skip { position:absolute; left:1rem; top:-4rem; background:var(--ink); color:#fff;
+          padding:.6rem .9rem; z-index:10; }
+  .skip:focus { top:1rem; }
+  a:focus-visible, button:focus-visible, select:focus-visible {
+    outline:3px solid var(--focus); outline-offset:3px;
+  }
   header { max-width:1100px; margin:0 auto; padding:2.2rem 1.2rem .6rem; }
-  h1 { font-size:clamp(1.9rem,4vw,2.8rem); margin:.2rem 0 .4rem; letter-spacing:-.02em; }
-  h2 { font-size:1.05rem; margin:0 0 .5rem; }
-  h3 { font-size:.95rem; margin:.8rem 0 .3rem; }
-  .eyebrow { color:var(--accent); font-size:.72rem; letter-spacing:.14em; text-transform:uppercase; font-weight:700; }
-  .muted { color:var(--muted); font-size:.85rem; }
+  h1 { font-size:clamp(1.9rem,4vw,2.8rem); line-height:1.05; margin:.2rem 0 .4rem;
+       letter-spacing:-.02em; text-wrap:balance; overflow-wrap:break-word; }
+  h2 { font-size:1.15rem; line-height:1.25; margin:0 0 .5rem; }
+  h3 { font-size:1.05rem; line-height:1.3; margin:.8rem 0 .3rem; }
+  .eyebrow { color:var(--accent); font-size:.875rem; line-height:1.2; letter-spacing:.14em;
+             text-transform:uppercase; font-weight:700; }
+  .muted { color:var(--muted); font-size:.875rem; line-height:1.55; max-width:65ch; }
   main { max-width:1100px; margin:0 auto; padding:0 1.2rem 3rem; }
   .panel { background:var(--surface); border:1px solid var(--line); border-radius:.6rem; padding:1rem 1.1rem; margin:1rem 0; }
   .controls { display:flex; flex-wrap:wrap; gap:.7rem; align-items:flex-end; margin:.4rem 0 .8rem; }
-  .controls label { display:flex; flex-direction:column; gap:.2rem; font-size:.78rem; }
-  select, button { font:inherit; font-size:.85rem; padding:.35rem .6rem; border:1px solid var(--line);
-                   border-radius:.35rem; background:var(--paper); color:inherit; }
-  button { cursor:pointer; }
-  button:hover { background:#e8efe3; }
+  .controls label { display:flex; flex-direction:column; gap:.2rem; font-size:.875rem; line-height:1.4; }
+  select, button { font:inherit; font-size:.875rem; padding:.35rem .6rem; border:1px solid var(--line);
+                   border-radius:.35rem; background:var(--paper); color:inherit; min-height:44px; }
+  button { cursor:pointer; transition:background-color 160ms ease, transform 160ms ease; }
+  @media (hover:hover) { button:hover { background:#e8efe3; } }
+  button:active { transform:translateY(1px); }
   .panels { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+  .legend { display:flex; flex-wrap:wrap; align-items:center; gap:.35rem .9rem; margin:.6rem 0 0;
+            color:var(--muted); font-size:.875rem; line-height:1.4; }
+  .legend .dot { width:.65rem; height:.65rem; border-radius:50%; display:inline-block;
+                 border:1px solid var(--line); }
+  .legend .dot.origin { background:#ffffff; }
+  .legend .dot.destination { background:#b94a22; }
+  .legend .dot.expanded { background:linear-gradient(90deg,#d9a441,#e2603b); }
+  .legend .dot.path { background:#8ee08a; }
   @media (max-width:820px) { .panels { grid-template-columns:1fr; } }
   .card { border:1px solid var(--line); border-radius:.6rem; padding:.7rem; background:var(--paper); }
   canvas { width:100%; height:auto; display:block; border-radius:.4rem; background:#0f1720; }
-  .counters { display:flex; flex-wrap:wrap; gap:.4rem 1rem; margin:.6rem 0 0; font-size:.75rem; }
-  .counters dt { color:var(--muted); text-transform:uppercase; letter-spacing:.06em; font-size:.62rem; }
+  .counters { display:flex; flex-wrap:wrap; gap:.4rem 1rem; margin:.6rem 0 0; font-size:.875rem; line-height:1.4; }
+  .counters dt { color:var(--muted); text-transform:uppercase; letter-spacing:.06em; font-size:.875rem; line-height:1.2; }
   .counters dd { margin:0; font-weight:700; font-variant-numeric:tabular-nums; }
   .strip { display:flex; align-items:flex-end; gap:2px; height:84px; border-bottom:1px solid var(--line); margin:.4rem 0 .2rem; }
   .strip span { flex:1; min-height:3px; background:#a9bd9f; border-top:2px solid #7d9670; border-radius:2px 2px 0 0; }
   .strip span.peak { background:var(--accent); border-top-color:var(--accent-dark); }
   .strip span.night { background:#4f6b45; border-top-color:#3c5334; }
-  .strip-labels { display:flex; justify-content:space-between; color:var(--muted); font-size:.7rem; }
-  table { width:100%; border-collapse:collapse; font-size:.8rem; }
+  .strip-labels { display:flex; justify-content:space-between; color:var(--muted); font-size:.875rem; }
+  table { width:100%; border-collapse:collapse; font-size:.875rem; line-height:1.4; }
   th, td { text-align:left; padding:.3rem .4rem; border-bottom:1px solid var(--line); }
-  th { color:var(--muted); font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; }
-  footer { max-width:1100px; margin:0 auto; padding:0 1.2rem 2rem; color:var(--muted); font-size:.75rem; }
+  th { color:var(--muted); font-size:.875rem; line-height:1.2; text-transform:uppercase; letter-spacing:.05em; }
+  .table-wrap { overflow-x:auto; }
+  .table-wrap table { min-width:560px; }
+  caption { text-align:left; color:var(--muted); font-size:.875rem; line-height:1.4; padding:.2rem 0; }
+  @media (max-width:640px) {
+    select, button { font-size:1rem; min-height:44px; }
+    table { font-size:.9rem; }
+    th { font-size:.875rem; }
+  }
+  footer { max-width:1100px; margin:0 auto; padding:0 1.2rem 2rem; color:var(--muted);
+           font-size:.875rem; line-height:1.45; }
 </style>
 </head>
 <body>
+<a class="skip" href="#main">Pular para o conteúdo</a>
 <header>
   <p class="eyebrow">Laboratório estático · replay de traces commitados</p>
   <h1>Duas buscas, as mesmas ruas</h1>
@@ -50,7 +80,7 @@
   Sem servidor, sem rede: os nós expandidos e o caminho vêm de <code>docs/benchmarks/lab-trace.json</code>.
   Dijkstra precisa de 167 expansões; A* + ALT precisa de 70.</p>
 </header>
-<main>
+<main id="main">
   <section class="panel">
     <div class="controls">
       <button id="play" type="button">Reproduzir</button>
@@ -82,28 +112,39 @@
     </div>
     <div class="panels">
       <div class="card"><h2 id="left-title">Dijkstra</h2>
-        <canvas id="left-canvas" width="520" height="420"></canvas>
+        <canvas id="left-canvas" width="520" height="420" role="img" aria-label="Replay da busca Dijkstra no grafo de São Paulo"></canvas>
         <dl class="counters" id="left-counters"></dl>
       </div>
       <div class="card"><h2 id="right-title">A* + ALT</h2>
-        <canvas id="right-canvas" width="520" height="420"></canvas>
+        <canvas id="right-canvas" width="520" height="420" role="img" aria-label="Replay da busca A* + ALT no grafo de São Paulo"></canvas>
         <dl class="counters" id="right-counters"></dl>
       </div>
     </div>
+    <p class="legend">
+      <span class="dot origin" aria-hidden="true"></span> Origem
+      <span class="dot destination" aria-hidden="true"></span> Destino
+      <span class="dot expanded" aria-hidden="true"></span> Nós expandidos (cor do solver)
+      <span class="dot path" aria-hidden="true"></span> Caminho final
+    </p>
   </section>
 
   <section class="panel" id="traffic-panel" hidden>
     <h2>ETA ao longo do dia</h2>
     <p class="muted" id="traffic-caption"></p>
-    <div class="strip" id="traffic-strip" role="img"></div>
+    <div class="strip" id="traffic-strip" role="img" aria-label="ETA por hora do dia"></div>
     <div class="strip-labels"><span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>23h</span></div>
     <p class="muted" id="traffic-source"></p>
   </section>
 
   <section class="panel" id="bench-panel" hidden>
-    <h2>Benchmarks publicados — matrizes de rua</h2>
-    <table><thead><tr><th>paradas</th><th>Held-Karp</th><th>2-opt</th><th>vizinho</th><th>força bruta</th></tr></thead>
-    <tbody id="bench-body"></tbody></table>
+    <h2>Benchmarks publicados: matrizes de rua</h2>
+    <div class="table-wrap">
+      <table>
+        <caption>paradas · custo e tempo por solver</caption>
+        <thead><tr><th scope="col">paradas</th><th scope="col">Held-Karp</th><th scope="col">2-opt</th><th scope="col">vizinho</th><th scope="col">força bruta</th></tr></thead>
+        <tbody id="bench-body"></tbody>
+      </table>
+    </div>
     <p class="muted">Custo = segundos de viagem na matriz real; contagens em parênteses são unidades de trabalho do solver.</p>
   </section>
 </main>
@@ -191,6 +232,11 @@ function drawPanel(panel) {
   }
 
   panel.title.textContent = trace.solver_name;
+  panel.canvas.setAttribute(
+    "aria-label",
+    "Replay da busca " + trace.solver_name + " no grafo de São Paulo; " +
+      shown + " de " + expanded.length + " nós expandidos",
+  );
   const seconds = shown >= expanded.length ? trace.estimated_seconds : (trace.expansion_costs[Math.max(0,shown-1)] || 0);
   panel.counters.innerHTML =
     "<div><dt>expandidos</dt><dd>" + shown + " / " + expanded.length + "</dd></div>" +

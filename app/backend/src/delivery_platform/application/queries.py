@@ -169,6 +169,15 @@ class CourierQueries:
     def __init__(self, container: AppContainer) -> None:
         self._container = container
 
+    def profile(self, ctx: CommandContext) -> CourierProfile:
+        require_role(ctx.identity, "courier")
+        if not ctx.identity.courier_id:
+            raise OwnershipForbiddenError()
+        with self._container.uow() as uow:
+            courier = uow.couriers.get(ctx.identity.courier_id)
+            uow.rollback()
+            return courier
+
     def offers(self, ctx: CommandContext) -> list[Delivery]:
         require_role(ctx.identity, "courier")
         with self._container.uow() as uow:

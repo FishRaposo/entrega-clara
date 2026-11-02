@@ -193,6 +193,10 @@ export function restaurantCommand(
 
 // --- courier ---
 
+export function getCourierProfile(identity: DemoIdentity): Promise<CourierProfile> {
+  return request("/api/v1/courier/profile", { identity });
+}
+
 export function setCourierAvailability(
   identity: DemoIdentity,
   available: boolean,

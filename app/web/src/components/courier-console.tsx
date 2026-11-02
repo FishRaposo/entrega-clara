@@ -7,6 +7,7 @@ import {
   ApiError,
   courierCommand,
   getActiveDelivery,
+  getCourierProfile,
   getTracking,
   listDeliveryOffers,
   advanceRouteLocation,
@@ -27,6 +28,8 @@ const NEXT_STEP: Record<string, { action: "pickup" | "start" | "complete"; label
 
 export function CourierConsole() {
   const [available, setAvailable] = useState<boolean | null>(null);
+  const [courierStatus, setCourierStatus] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [offers, setOffers] = useState<Delivery[]>([]);
   const [actives, setActives] = useState<Delivery[]>([]);
   const [activeRoute, setActiveRoute] = useState<TrackingView["route"] | null>(null);
@@ -38,10 +41,13 @@ export function CourierConsole() {
 
   const refresh = useCallback(async () => {
     try {
-      const [offerList, activeResult] = await Promise.all([
+      const [offerList, activeResult, profile] = await Promise.all([
         listDeliveryOffers(ID),
         getActiveDelivery(ID),
+        getCourierProfile(ID),
       ]);
+      setCourierStatus(profile.status);
+      setAvailable(profile.status === "available");
       setOffers(offerList.deliveries.filter((d): d is Delivery => d !== null));
       setActives(activeResult.deliveries);
       setBatchId(activeResult.batch?.id ?? null);
@@ -53,7 +59,11 @@ export function CourierConsole() {
         setTracking(null);
       }
     } catch {
-      setError("Não foi possível carregar as entregas. A API local está ativa?");
+      setError(
+        "Não foi possível carregar as entregas. Verifique se a API local está ativa e tente novamente.",
+      );
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -68,7 +78,7 @@ export function CourierConsole() {
       await action();
       await refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.detail : "A ação falhou.");
+      setError(err instanceof ApiError ? err.detail : "A ação não foi concluída. Tente novamente.");
     } finally {
       setPending(false);
     }
@@ -78,6 +88,7 @@ export function CourierConsole() {
     run(async () => {
       const next = !(available ?? false);
       const result = await setCourierAvailability(ID, next);
+      setCourierStatus(result.status);
       setAvailable(result.status === "available");
     });
 
@@ -86,27 +97,36 @@ export function CourierConsole() {
       await advanceRouteLocation(ID, delivery.id);
     });
 
+  const availabilityKnown = courierStatus !== null;
+  const canToggleAvailability =
+    courierStatus === "available" || courierStatus === "offline";
+  const availabilityLabel =
+    courierStatus === "available"
+      ? "disponível"
+      : courierStatus === "offline"
+        ? "indisponível"
+        : courierStatus === "assigned" || courierStatus === "delivering"
+          ? "em entrega"
+          : "carregando";
+
   return (
     <section className="role-page" aria-labelledby="courier-title">
       <p className="eyebrow">Entregadora · Ana Entregas</p>
       <h1 id="courier-title">Console de entregas</h1>
       {error ? <p role="alert">{error}</p> : null}
 
-      <div className="panel">
-        <p>
-          Disponibilidade:{" "}
-          <strong>{available ? "disponível" : available === false ? "indisponível" : "…"}</strong>
-        </p>
-        <button type="button" disabled={pending} onClick={() => void toggleAvailability()}>
-          {available ? "Ficar indisponível" : "Ficar disponível"}
-        </button>
-      </div>
-
-      {actives.length > 0 ? (
+      <div className="courier-workspace">
+        <div className="courier-main">
+          {actives.length > 0 ? (
         <div className="panel">
           <h2>
             {batchId ? `Lote ativo ${batchId}` : `Entrega ativa ${actives[0].id}`}
           </h2>
+          <DeliveryMap
+            route={tracking?.route ?? activeRoute}
+            lastKnown={tracking?.last_known_location}
+            showSolver
+          />
           {activeRoute?.stops ? (
             <ol className="stacked-list" aria-label="Sequência do percurso">
               {activeRoute.stops.map((stop) => {
@@ -146,7 +166,6 @@ export function CourierConsole() {
                 : ""}
             </p>
           ) : null}
-          <DeliveryMap route={tracking?.route ?? activeRoute} lastKnown={tracking?.last_known_location} />
           {actives.map((delivery) => (
             <div key={delivery.id} className="demo-actions">
               <span>
@@ -164,17 +183,50 @@ export function CourierConsole() {
                   disabled={pending}
                   onClick={() => void run(() => courierCommand(ID, delivery.id, NEXT_STEP[delivery.status].action))}
                 >
-                  {NEXT_STEP[delivery.status].label} — {delivery.id}
+                  {NEXT_STEP[delivery.status].label} · {delivery.id}
                 </button>
               ) : null}
             </div>
           ))}
         </div>
-      ) : null}
+          ) : (
+            <div className="panel courier-empty">
+              <h2>Nenhuma rota ativa</h2>
+              <p>Aceite uma oferta ao lado para começar uma rota.</p>
+            </div>
+          )}
+        </div>
+        <aside className="courier-side">
+          <div className="panel">
+            <p>
+              Disponibilidade: <strong>{availabilityLabel}</strong>
+            </p>
+            {!availabilityKnown ? (
+              <p className="quiet" role="status">Carregando disponibilidade…</p>
+            ) : null}
+            {availabilityKnown && !canToggleAvailability ? (
+              <p className="quiet">Conclua a entrega ativa para mudar a disponibilidade.</p>
+            ) : null}
+            <button
+              type="button"
+              disabled={pending || !canToggleAvailability}
+              onClick={() => void toggleAvailability()}
+            >
+              {!availabilityKnown
+                ? "Aguardando disponibilidade"
+                : available
+                  ? "Ficar indisponível"
+                  : "Ficar disponível"}
+            </button>
+          </div>
 
-      <div className="panel">
-        <h2>Ofertas abertas</h2>
-        {offers.length === 0 ? <p>Nenhuma oferta no momento.</p> : null}
+          <div className="panel">
+            <h2>Ofertas abertas</h2>
+        {loading ? (
+          <p className="quiet" role="status">Carregando ofertas…</p>
+        ) : offers.length === 0 ? (
+          <p>Nenhuma oferta no momento.</p>
+        ) : null}
         <ul className="stacked-list">
           {offers.map((delivery) => (
             <li key={delivery.id}>
@@ -212,6 +264,7 @@ export function CourierConsole() {
         {offers.length >= 2 ? (
           <button
             type="button"
+            className="primary-button"
             disabled={pending || actives.length > 0 || selected.size < 2}
             onClick={() =>
               run(async () => {
@@ -224,9 +277,16 @@ export function CourierConsole() {
           </button>
         ) : null}
       </div>
-      <button type="button" className="secondary-button" onClick={() => void refresh()}>
-        Atualizar
-      </button>
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={pending || loading}
+            onClick={() => void refresh()}
+          >
+            Atualizar ofertas
+          </button>
+        </aside>
+      </div>
     </section>
   );
 }
