@@ -5,6 +5,9 @@ Two time-boxed tests and a severity table. Run the mechanical audit first
 reachability and CI status; `--claims` lists the numbers, but only you can decide whether each is still
 true.
 
+**Scope:** public, recruiter-facing repositories only. Private repositories and hubs/collections are
+out of scope; the mechanical audit returns `SKIP` and stops. Do not apply these tests to them.
+
 ## The 60-second test
 
 Open the repository in a private window, as a recruiter would.

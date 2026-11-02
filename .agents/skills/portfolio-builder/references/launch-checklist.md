@@ -2,6 +2,7 @@
 
 ## Pre-flight
 
+- [ ] Public repository; private repositories are out of scope for this checklist.
 - [ ] Fresh clone in a clean directory; the documented commands work without external infrastructure.
 - [ ] Latest CI run on the default branch is green (not just a workflow file); the badge matches reality.
 - [ ] Tests, lint, types and generated-artifact checks pass locally.

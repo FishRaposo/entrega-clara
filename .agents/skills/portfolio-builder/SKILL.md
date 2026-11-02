@@ -1,9 +1,9 @@
 ---
 name: portfolio-builder
-description: Turn the current repository into a credible portfolio piece for recruiters, hiring managers and freelance clients, with context-aware audits. Use when asked to make a repository portfolio-ready, audit why it is not landing, rewrite the README or add a reviewer path, build an evidence spine or live demo, or answer "is this ready as a portfolio piece?". Detects hub/collection and private repositories and skips piece-specific checks instead of flagging them as broken.
+description: Tailor public, recruiter-facing repositories into credible portfolio pieces for recruiters, hiring managers and freelance clients. Use when asked to make a public repository portfolio-ready, audit why it is not landing, rewrite the README or add a reviewer path, build an evidence spine or live demo, or answer "is this ready as a portfolio piece?". Private repositories and hub/collection repositories are out of scope; the audit reports SKIP and stops.
 license: MIT
 metadata:
-  version: "1.3.0"
+  version: "1.4.0"
 ---
 
 # Portfolio Builder
@@ -15,6 +15,10 @@ nothing more.
 The default failure mode is a repository that is *good* but unreadable: no live demo, an essay of a
 README, claims without artifacts, red checks, and a reviewer who leaves after ninety seconds. Fix the
 evaluation path before adding another feature.
+
+**Scope:** public, recruiter-facing piece repositories. Private repositories and hub/collection
+repositories are out of scope: the audit reports `SKIP` and stops. Copy the skill into the individual
+public piece repository instead.
 
 ## Portability
 
@@ -49,29 +53,23 @@ Pick one primary reader and one secondary. Do not average all three into a docum
 6. **A fast first screen.** What it is, why it exists, what it proves, how to see it, how to review it.
 7. **A complete repo card.** Description, topics, homepage/live URL, license.
 
-## Repository context
+## Scope
 
-The audit checks only the repository it is pointed at, and classifies it before applying piece
-expectations:
+Only public, recruiter-facing piece repositories. The audit returns `SKIP` and stops when:
 
-- **Piece** — root application code or a package manifest: full checks (README, license, CI, demo,
-  media, social, links, git).
-- **Hub / collection** — a README that identifies a hub/workspace, or at least two subprojects and no
-  root application code: report the hub, check an index README if present and the git state, and skip
-  demo/media/social/CI/repo-card expectations. Copy the skill into a subproject to audit that piece.
-- **Private** — GitHub reports the repository as private (`--remote`): a private repository is not a
-  public portfolio surface; report it and skip piece checks.
-- **Override** — a `.portfolio-context` file containing `piece`, `hub` or `private` wins over the
-  heuristic.
+- the repository is private (`--remote` checks with `gh`), or
+- it is a hub/collection: a README that identifies a hub/workspace, or at least two subprojects with
+  no root application code.
 
-This is deliberate: a collection of assignments and a private working repository are not broken
-portfolio pieces.
+Copy the skill into an individual public piece repository. Private working repositories and
+collections are not portfolio pieces; missing demos, licenses or social cards are not defects there.
 
 ## Workflow
 
 ### 0. Inventory (read-only)
 
-Read before writing. Run the project if it runs.
+Read before writing. Run the project if it runs. If the audit returns `SKIP`, stop: the repository is
+private or a hub, not a public piece.
 
 ```bash
 git status && git log --oneline -10
@@ -173,6 +171,9 @@ authenticated `gh`);
 `--network` probes the hosted demo URL and fails on 4xx/5xx; `--claims` lists claim-like numeric lines
 with their section and any links, because the script cannot tell whether a number is still current.
 The claim inventory is the bridge to the manual procedure in `references/audit-rubric.md`.
+
+A `SKIP` result means the repository is private or a hub: stop, do not apply the piece tests, and move
+to the individual public piece repository.
 
 Then apply the 60-second test, the 10-minute test, and the severity table. Blockers to fix before
 anything else: red or unknown CI, no live/replayable demo, a demo URL that does not resolve, empty

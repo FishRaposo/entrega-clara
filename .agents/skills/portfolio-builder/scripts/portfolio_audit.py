@@ -1,7 +1,7 @@
-"""Mechanical portfolio audit: the checks a reviewer makes in the first minute.
+"""Mechanical portfolio audit for a public, recruiter-facing repository.
 
-It classifies the current checkout first: a piece gets the full checks, while a
-hub/collection gets index and git checks and skips piece-specific expectations.
+Private repositories and hubs/collections are out of scope: the audit reports
+them with SKIP and stops. The full checks are for public piece repositories.
 
 Read-only by default. Standard library only, cross-platform. ``--remote`` reads
 the repo card and the default-branch CI status through an authenticated ``gh``;
@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import unquote
 
-PASS, WARN, FAIL = "PASS", "WARN", "FAIL"
+PASS, WARN, FAIL, SKIP = "PASS", "WARN", "FAIL", "SKIP"
 FIRST_SCREEN_LINES = 80
 
 README_NAMES = ("README.md", "README.markdown", "README.rst", "readme.md")
@@ -79,7 +79,6 @@ HUB_README_PATTERN = re.compile(
     r"\b(hub|collection|workspace|playbook|registry|monorepo|assignments|exercises)\b",
     re.IGNORECASE,
 )
-CONTEXT_FILE = ".portfolio-context"
 SUBPROJECT_MARKERS = (
     "README.md",
     "pyproject.toml",
@@ -595,79 +594,34 @@ def collect_claims(readme: Path, limit: int = 60) -> list[str]:
     return claims
 
 
-def read_context(root: Path) -> str | None:
-    path = root / CONTEXT_FILE
-    if not path.is_file():
-        return None
-    try:
-        first = path.read_text(encoding="utf-8", errors="replace").strip().splitlines()[0]
-    except (OSError, IndexError):
-        return None
-    value = first.strip().lower()
-    return value if value in {"piece", "hub", "private"} else None
-
-
-def _hub_audit(
-    root: Path,
-    subprojects: list[Path],
-    *,
-    declared: bool = False,
-    private: bool = False,
-) -> list[Result]:
-    if declared:
-        detail = "hub declared (.portfolio-context)"
-    elif subprojects:
-        names = ", ".join(path.name for path in subprojects[:4])
-        if len(subprojects) > 4:
-            names += ", ..."
-        detail = f"hub detected ({len(subprojects)} subprojects: {names})"
-    else:
-        detail = "hub detected (README identifies a hub)"
-    if private:
-        detail += "; private repository"
-    detail += "; piece checks skipped"
-    results = [Result(PASS, "context", detail)]
-    readme = find_readme(root)
-    if readme is None:
-        results.append(
-            Result(WARN, "readme", "hub has no index README (optional; add one if pinned)")
-        )
-    else:
-        readme_result, _ = check_readme(root)
-        results.append(readme_result)
-        results.append(check_links(root, [readme]))
-    results.append(check_git(root))
-    return results
-
-
-def _private_audit(root: Path) -> list[Result]:
-    return [
-        Result(PASS, "context", "private repository; public portfolio checks skipped"),
-        check_git(root),
-    ]
-
-
 def audit(root: Path, *, remote: bool, network: bool) -> list[Result]:
-    override = read_context(root)
-    if override == "piece":
-        pass
-    elif override == "hub":
-        _, subprojects = detect_hub(root)
-        metadata = repo_metadata(root) if remote else None
-        private = bool(metadata and metadata.get("isPrivate"))
-        return _hub_audit(root, subprojects, declared=True, private=private)
-    elif override == "private":
-        return _private_audit(root)
-    else:
-        is_hub, subprojects = detect_hub(root)
-        if is_hub:
-            metadata = repo_metadata(root) if remote else None
-            private = bool(metadata and metadata.get("isPrivate"))
-            return _hub_audit(root, subprojects, private=private)
+    is_hub, subprojects = detect_hub(root)
+    if is_hub:
+        if subprojects:
+            names = ", ".join(path.name for path in subprojects[:4])
+            if len(subprojects) > 4:
+                names += ", ..."
+            detail = (
+                f"out of scope: hub/collection repository ({len(subprojects)} subprojects: "
+                f"{names}); audit a public piece repository instead"
+            )
+        else:
+            detail = (
+                "out of scope: hub/collection repository (README identifies a hub); "
+                "audit a public piece repository instead"
+            )
+        return [Result(SKIP, "scope", detail)]
 
     metadata = repo_metadata(root) if remote else None
-    if metadata is not None and metadata.get("isPrivate") and override != "piece":
-        return _private_audit(root)
+    if metadata is not None and metadata.get("isPrivate"):
+        return [
+            Result(
+                SKIP,
+                "scope",
+                "out of scope: private repository; only public, recruiter-facing "
+                "repositories are audited",
+            )
+        ]
 
     results: list[Result] = []
     readme_result, readme = check_readme(root)
@@ -713,12 +667,9 @@ def main() -> int:
         print(f"{result.status:<4}  {result.name:<{width}}  {result.detail}")
 
     if args.claims:
-        non_piece = any(
-            result.name == "context" and "skipped" in result.detail
-            for result in results
-        )
-        if non_piece:
-            print("\nclaim inventory skipped: not a portfolio piece")
+        out_of_scope = any(result.status == SKIP for result in results)
+        if out_of_scope:
+            print("\nclaim inventory skipped: out of scope")
         else:
             readme = find_readme(root)
             if readme is None:
@@ -733,7 +684,9 @@ def main() -> int:
 
     failures = sum(1 for result in results if result.status == FAIL)
     warnings = sum(1 for result in results if result.status == WARN)
-    print(f"\n{failures} failure(s), {warnings} warning(s)")
+    skipped = sum(1 for result in results if result.status == SKIP)
+    suffix = f", {skipped} skipped" if skipped else ""
+    print(f"\n{failures} failure(s), {warnings} warning(s){suffix}")
     return 1 if failures else 0
 
 
