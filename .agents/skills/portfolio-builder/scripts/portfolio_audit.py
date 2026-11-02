@@ -74,9 +74,12 @@ HUB_ROOT_MARKERS = (
     "setup.py",
     "src",
     "app",
-    "tests",
-    "test",
 )
+HUB_README_PATTERN = re.compile(
+    r"\b(hub|collection|workspace|playbook|registry|monorepo|assignments|exercises)\b",
+    re.IGNORECASE,
+)
+CONTEXT_FILE = ".portfolio-context"
 SUBPROJECT_MARKERS = (
     "README.md",
     "pyproject.toml",
@@ -223,24 +226,32 @@ def _looks_like_subproject(path: Path) -> bool:
         return False
 
 
-def detect_hub(root: Path) -> list[Path]:
+def _readme_identifies_hub(root: Path) -> bool:
+    readme = find_readme(root)
+    if readme is None:
+        return False
+    text = readme.read_text(encoding="utf-8", errors="replace")[:4000]
+    return bool(HUB_README_PATTERN.search(text))
+
+
+def detect_hub(root: Path) -> tuple[bool, list[Path]]:
     if any((root / marker).exists() for marker in HUB_ROOT_MARKERS):
-        return []
+        return False, []
     try:
         children = sorted(root.iterdir())
     except OSError:
-        return []
-    subprojects: list[Path] = []
-    for child in children:
-        if (
-            not child.is_dir()
-            or child.name.startswith(".")
-            or child.name in HUB_SKIP_DIRS
-        ):
-            continue
-        if _looks_like_subproject(child):
-            subprojects.append(child)
-    return subprojects if len(subprojects) >= 2 else []
+        return False, []
+    visible = [
+        child
+        for child in children
+        if child.is_dir()
+        and not child.name.startswith(".")
+        and child.name not in HUB_SKIP_DIRS
+    ]
+    subprojects = [child for child in visible if _looks_like_subproject(child)]
+    if _readme_identifies_hub(root) and len(visible) >= 3:
+        return True, []
+    return len(subprojects) >= 2, subprojects
 
 
 def check_ci(root: Path) -> Result:
@@ -486,9 +497,9 @@ def check_ci_status(root: Path, workflow: Path | None, branch: str) -> Result:
     return Result(WARN, "ci status", f"{workflow.name} on {branch}: {conclusion or status or 'unknown'}")
 
 
-def check_remote(root: Path) -> list[Result]:
+def repo_metadata(root: Path) -> dict | None:
     if shutil.which("gh") is None:
-        return [Result(WARN, "remote", "gh CLI not installed; skipped repo-card checks")]
+        return None
     try:
         completed = subprocess.run(
             [
@@ -496,7 +507,10 @@ def check_remote(root: Path) -> list[Result]:
                 "repo",
                 "view",
                 "--json",
-                "nameWithOwner,description,repositoryTopics,homepageUrl,defaultBranchRef",
+                (
+                    "nameWithOwner,description,repositoryTopics,homepageUrl,defaultBranchRef,"
+                    "isPrivate,visibility"
+                ),
             ],
             capture_output=True,
             text=True,
@@ -507,13 +521,19 @@ def check_remote(root: Path) -> list[Result]:
             cwd=root,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired):
-        return [Result(WARN, "remote", "gh unavailable; skipped repo-card checks")]
+        return None
     if completed.returncode != 0:
-        return [Result(WARN, "remote", "gh is not authenticated or has no remote; skipped")]
+        return None
     try:
-        data = json.loads(completed.stdout)
+        return json.loads(completed.stdout)
     except json.JSONDecodeError:
-        return [Result(WARN, "remote", "could not parse gh output")]
+        return None
+
+
+def check_remote(root: Path, data: dict | None = None) -> list[Result]:
+    data = data if data is not None else repo_metadata(root)
+    if data is None:
+        return [Result(WARN, "remote", "gh unavailable, not authenticated, or no remote; skipped")]
     results: list[Result] = []
     description = str(data.get("description") or "").strip()
     results.append(
@@ -575,30 +595,79 @@ def collect_claims(readme: Path, limit: int = 60) -> list[str]:
     return claims
 
 
-def audit(root: Path, *, remote: bool, network: bool) -> list[Result]:
-    hub = detect_hub(root)
-    if hub:
-        names = ", ".join(path.name for path in hub[:4])
-        if len(hub) > 4:
+def read_context(root: Path) -> str | None:
+    path = root / CONTEXT_FILE
+    if not path.is_file():
+        return None
+    try:
+        first = path.read_text(encoding="utf-8", errors="replace").strip().splitlines()[0]
+    except (OSError, IndexError):
+        return None
+    value = first.strip().lower()
+    return value if value in {"piece", "hub", "private"} else None
+
+
+def _hub_audit(
+    root: Path,
+    subprojects: list[Path],
+    *,
+    declared: bool = False,
+    private: bool = False,
+) -> list[Result]:
+    if declared:
+        detail = "hub declared (.portfolio-context)"
+    elif subprojects:
+        names = ", ".join(path.name for path in subprojects[:4])
+        if len(subprojects) > 4:
             names += ", ..."
-        results = [
-            Result(
-                PASS,
-                "context",
-                f"hub detected ({len(hub)} subprojects: {names}); piece checks skipped",
-            )
-        ]
-        readme = find_readme(root)
-        if readme is None:
-            results.append(
-                Result(WARN, "readme", "hub has no index README (optional; add one if pinned)")
-            )
-        else:
-            readme_result, _ = check_readme(root)
-            results.append(readme_result)
-            results.append(check_links(root, [readme]))
-        results.append(check_git(root))
-        return results
+        detail = f"hub detected ({len(subprojects)} subprojects: {names})"
+    else:
+        detail = "hub detected (README identifies a hub)"
+    if private:
+        detail += "; private repository"
+    detail += "; piece checks skipped"
+    results = [Result(PASS, "context", detail)]
+    readme = find_readme(root)
+    if readme is None:
+        results.append(
+            Result(WARN, "readme", "hub has no index README (optional; add one if pinned)")
+        )
+    else:
+        readme_result, _ = check_readme(root)
+        results.append(readme_result)
+        results.append(check_links(root, [readme]))
+    results.append(check_git(root))
+    return results
+
+
+def _private_audit(root: Path) -> list[Result]:
+    return [
+        Result(PASS, "context", "private repository; public portfolio checks skipped"),
+        check_git(root),
+    ]
+
+
+def audit(root: Path, *, remote: bool, network: bool) -> list[Result]:
+    override = read_context(root)
+    if override == "piece":
+        pass
+    elif override == "hub":
+        _, subprojects = detect_hub(root)
+        metadata = repo_metadata(root) if remote else None
+        private = bool(metadata and metadata.get("isPrivate"))
+        return _hub_audit(root, subprojects, declared=True, private=private)
+    elif override == "private":
+        return _private_audit(root)
+    else:
+        is_hub, subprojects = detect_hub(root)
+        if is_hub:
+            metadata = repo_metadata(root) if remote else None
+            private = bool(metadata and metadata.get("isPrivate"))
+            return _hub_audit(root, subprojects, private=private)
+
+    metadata = repo_metadata(root) if remote else None
+    if metadata is not None and metadata.get("isPrivate") and override != "piece":
+        return _private_audit(root)
 
     results: list[Result] = []
     readme_result, readme = check_readme(root)
@@ -616,7 +685,7 @@ def audit(root: Path, *, remote: bool, network: bool) -> list[Result]:
     results.append(check_social_preview(root))
     results.append(check_git(root))
     if remote:
-        results.extend(check_remote(root))
+        results.extend(check_remote(root, metadata))
     return results
 
 
@@ -644,16 +713,23 @@ def main() -> int:
         print(f"{result.status:<4}  {result.name:<{width}}  {result.detail}")
 
     if args.claims:
-        readme = find_readme(root)
-        if readme is None:
-            print("\nno README; no claim inventory")
+        non_piece = any(
+            result.name == "context" and "skipped" in result.detail
+            for result in results
+        )
+        if non_piece:
+            print("\nclaim inventory skipped: not a portfolio piece")
         else:
-            print("\nnumeric claims — verify each against its artifact")
-            claims = collect_claims(readme)
-            for claim in claims:
-                print(f"  {claim}")
-            if not claims:
-                print("  none found")
+            readme = find_readme(root)
+            if readme is None:
+                print("\nno README; no claim inventory")
+            else:
+                print("\nnumeric claims — verify each against its artifact")
+                claims = collect_claims(readme)
+                for claim in claims:
+                    print(f"  {claim}")
+                if not claims:
+                    print("  none found")
 
     failures = sum(1 for result in results if result.status == FAIL)
     warnings = sum(1 for result in results if result.status == WARN)

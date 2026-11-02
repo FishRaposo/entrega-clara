@@ -1,9 +1,9 @@
 ---
 name: portfolio-builder
-description: Turn the current repository into a credible portfolio piece for recruiters, hiring managers and freelance clients, with context-aware audits. Use when asked to make a repository portfolio-ready, audit why it is not landing, rewrite the README or add a reviewer path, build an evidence spine or live demo, or answer "is this ready as a portfolio piece?". Detects hub/collection repositories and skips piece-specific checks instead of flagging them as broken.
+description: Turn the current repository into a credible portfolio piece for recruiters, hiring managers and freelance clients, with context-aware audits. Use when asked to make a repository portfolio-ready, audit why it is not landing, rewrite the README or add a reviewer path, build an evidence spine or live demo, or answer "is this ready as a portfolio piece?". Detects hub/collection and private repositories and skips piece-specific checks instead of flagging them as broken.
 license: MIT
 metadata:
-  version: "1.2.0"
+  version: "1.3.0"
 ---
 
 # Portfolio Builder
@@ -54,13 +54,18 @@ Pick one primary reader and one secondary. Do not average all three into a docum
 The audit checks only the repository it is pointed at, and classifies it before applying piece
 expectations:
 
-- **Piece** — root code, tests or a package manifest: full checks (README, license, CI, demo, media,
-  social, links, git).
-- **Hub / collection** — at least two subprojects and no root code: report the hub, check an index
-  README if present and the git state, and skip demo/media/social/CI/repo-card expectations. Copy the
-  skill into a subproject to audit that piece.
+- **Piece** — root application code or a package manifest: full checks (README, license, CI, demo,
+  media, social, links, git).
+- **Hub / collection** — a README that identifies a hub/workspace, or at least two subprojects and no
+  root application code: report the hub, check an index README if present and the git state, and skip
+  demo/media/social/CI/repo-card expectations. Copy the skill into a subproject to audit that piece.
+- **Private** — GitHub reports the repository as private (`--remote`): a private repository is not a
+  public portfolio surface; report it and skip piece checks.
+- **Override** — a `.portfolio-context` file containing `piece`, `hub` or `private` wins over the
+  heuristic.
 
-This is deliberate: a collection of assignments is not a broken portfolio piece.
+This is deliberate: a collection of assignments and a private working repository are not broken
+portfolio pieces.
 
 ## Workflow
 
@@ -163,7 +168,8 @@ Run the mechanical checks, then the qualitative ones:
 python .agents/skills/portfolio-builder/scripts/portfolio_audit.py . --remote --network --claims
 ```
 
-`--remote` reads the repo card and the latest default-branch CI run (needs authenticated `gh`);
+`--remote` reads the repo card, the latest default-branch CI run and repository privacy (needs
+authenticated `gh`);
 `--network` probes the hosted demo URL and fails on 4xx/5xx; `--claims` lists claim-like numeric lines
 with their section and any links, because the script cannot tell whether a number is still current.
 The claim inventory is the bridge to the manual procedure in `references/audit-rubric.md`.
