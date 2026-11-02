@@ -1,9 +1,9 @@
 ---
 name: portfolio-builder
-description: Turn software projects into a credible portfolio for recruiters, hiring managers and freelance clients, and audit multiple repositories as one portfolio. Use when asked to make a repository portfolio-ready, audit why it is not landing, rewrite the README or add a reviewer path, build an evidence spine or live demo, answer "is this ready as a portfolio piece?", or run a portfolio-wide sweep.
+description: Turn the current repository into a credible portfolio piece for recruiters, hiring managers and freelance clients, with context-aware audits. Use when asked to make a repository portfolio-ready, audit why it is not landing, rewrite the README or add a reviewer path, build an evidence spine or live demo, or answer "is this ready as a portfolio piece?". Detects hub/collection repositories and skips piece-specific checks instead of flagging them as broken.
 license: MIT
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # Portfolio Builder
@@ -48,6 +48,19 @@ Pick one primary reader and one secondary. Do not average all three into a docum
    cloud account may be supported, never required for the demo.
 6. **A fast first screen.** What it is, why it exists, what it proves, how to see it, how to review it.
 7. **A complete repo card.** Description, topics, homepage/live URL, license.
+
+## Repository context
+
+The audit checks only the repository it is pointed at, and classifies it before applying piece
+expectations:
+
+- **Piece** — root code, tests or a package manifest: full checks (README, license, CI, demo, media,
+  social, links, git).
+- **Hub / collection** — at least two subprojects and no root code: report the hub, check an index
+  README if present and the git state, and skip demo/media/social/CI/repo-card expectations. Copy the
+  skill into a subproject to audit that piece.
+
+This is deliberate: a collection of assignments is not a broken portfolio piece.
 
 ## Workflow
 
@@ -159,19 +172,6 @@ Then apply the 60-second test, the 10-minute test, and the severity table. Block
 anything else: red or unknown CI, no live/replayable demo, a demo URL that does not resolve, empty
 repo card, and claims contradicted by the committed artifacts.
 
-## Portfolio sweep
-
-When the unit of work is the portfolio rather than one repository, discover and aggregate:
-
-```bash
-python ~/.agents/skills/portfolio-builder/scripts/portfolio_sweep.py ~/Projects \
-  --depth 2 --remote --network --output ~/Projects/portfolio-audit.md
-```
-
-It stops at each repository root, skips build and dependency directories, and writes a report with a
-**Fix first** list. Fix blockers across the pinned set before warnings, pick one flagship, then
-normalize the repo cards. See `references/portfolio-sweep.md`.
-
 ## Writing rules
 
 - **Numbers**: median + denominator + machine; baseline and trade-off; no precision theatre.
@@ -227,9 +227,7 @@ speak through artifacts.
 - `references/readme-and-reviewer-page.md` — surface patterns and prose rules.
 - `references/audit-rubric.md` — 60-second and 10-minute tests, severity table, audit procedure.
 - `references/launch-checklist.md` — repo card, hosting, media, pre-flight.
-- `references/portfolio-sweep.md` — discovery, aggregation and portfolio-level decisions.
 - `assets/readme-skeleton.md` — README skeleton to fill in.
 - `assets/reviewer-page-template.md` — five-minute reviewer page template.
 - `assets/repo-card.md` — description formula, topic sets, homepage rules.
 - `scripts/portfolio_audit.py` — stdlib mechanical audit (links, license, CI, tests, metadata).
-- `scripts/portfolio_sweep.py` — multi-repository sweep and Markdown report.

@@ -1,5 +1,8 @@
 """Mechanical portfolio audit: the checks a reviewer makes in the first minute.
 
+It classifies the current checkout first: a piece gets the full checks, while a
+hub/collection gets index and git checks and skips piece-specific expectations.
+
 Read-only by default. Standard library only, cross-platform. ``--remote`` reads
 the repo card and the default-branch CI status through an authenticated ``gh``;
 ``--network`` probes the hosted demo URL; ``--claims`` lists numeric claims for
@@ -63,6 +66,58 @@ DOC_LINK_FILES = (
     "docs/origin.md",
     "docs/README.md",
 )
+HUB_ROOT_MARKERS = (
+    "pyproject.toml",
+    "package.json",
+    "Cargo.toml",
+    "go.mod",
+    "setup.py",
+    "src",
+    "app",
+    "tests",
+    "test",
+)
+SUBPROJECT_MARKERS = (
+    "README.md",
+    "pyproject.toml",
+    "package.json",
+    "Cargo.toml",
+    "go.mod",
+    "tests",
+    "test",
+)
+SUBPROJECT_SUFFIXES = {
+    ".py",
+    ".ipynb",
+    ".js",
+    ".ts",
+    ".tsx",
+    ".java",
+    ".cs",
+    ".go",
+    ".rs",
+    ".rb",
+    ".php",
+    ".html",
+    ".css",
+}
+HUB_SKIP_DIRS = {
+    "node_modules",
+    ".venv",
+    "venv",
+    "env",
+    "dist",
+    "build",
+    ".next",
+    "target",
+    "vendor",
+    "__pycache__",
+    ".cache",
+    ".tox",
+    ".mypy_cache",
+    ".pytest_cache",
+    "coverage",
+}
 MEDIA_DIRS = ("docs/media", "media", "screenshots", "assets")
 MEDIA_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".mp4", ".webm"}
 SOCIAL_PREVIEW_NAMES = ("social-preview.png", "social-preview.jpg", "og-image.png", "og-image.jpg")
@@ -154,6 +209,38 @@ def find_ci_workflow(root: Path) -> Path | None:
         if matches:
             return matches[0]
     return None
+
+
+def _looks_like_subproject(path: Path) -> bool:
+    if any((path / marker).exists() for marker in SUBPROJECT_MARKERS):
+        return True
+    try:
+        return any(
+            child.is_file() and child.suffix.lower() in SUBPROJECT_SUFFIXES
+            for child in path.iterdir()
+        )
+    except OSError:
+        return False
+
+
+def detect_hub(root: Path) -> list[Path]:
+    if any((root / marker).exists() for marker in HUB_ROOT_MARKERS):
+        return []
+    try:
+        children = sorted(root.iterdir())
+    except OSError:
+        return []
+    subprojects: list[Path] = []
+    for child in children:
+        if (
+            not child.is_dir()
+            or child.name.startswith(".")
+            or child.name in HUB_SKIP_DIRS
+        ):
+            continue
+        if _looks_like_subproject(child):
+            subprojects.append(child)
+    return subprojects if len(subprojects) >= 2 else []
 
 
 def check_ci(root: Path) -> Result:
@@ -489,6 +576,30 @@ def collect_claims(readme: Path, limit: int = 60) -> list[str]:
 
 
 def audit(root: Path, *, remote: bool, network: bool) -> list[Result]:
+    hub = detect_hub(root)
+    if hub:
+        names = ", ".join(path.name for path in hub[:4])
+        if len(hub) > 4:
+            names += ", ..."
+        results = [
+            Result(
+                PASS,
+                "context",
+                f"hub detected ({len(hub)} subprojects: {names}); piece checks skipped",
+            )
+        ]
+        readme = find_readme(root)
+        if readme is None:
+            results.append(
+                Result(WARN, "readme", "hub has no index README (optional; add one if pinned)")
+            )
+        else:
+            readme_result, _ = check_readme(root)
+            results.append(readme_result)
+            results.append(check_links(root, [readme]))
+        results.append(check_git(root))
+        return results
+
     results: list[Result] = []
     readme_result, readme = check_readme(root)
     results.append(readme_result)
