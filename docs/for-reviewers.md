@@ -46,7 +46,7 @@ expansion counts are stable; the times are from the committed run and vary with 
 | OpenStreetMap streets: 2,405-node centro extract in the product and lab, 104,991-node city artifact for benchmarks (ODbL attribution committed) | Payments, identity, GPS, notifications, support |
 | The algorithms: Dijkstra, A\*, ALT, bidirectional, contraction hierarchies, time-dependent Dijkstra/A\*, Held-Karp, 2-opt, capacitated VRP with windows and precedence | The traffic profile: deterministic hourly multipliers, explicitly not measured traffic |
 | The product loop: menus, carts, idempotent checkout, restaurant queue, courier lifecycle, batching, tracking, operations — one command layer for API, UI and demo | Restaurants, addresses and couriers: fictional São Paulo data |
-| Tests: 290 backend (295 with the database contract), 19 frontend, 5 browser journeys with axe | API/web hosting: the static lab is live on Pages; API and web deploy artifacts exist but are not deployed by CI |
+| Tests: 291 backend (296 with the database contract), 19 frontend, 3 browser journeys with axe | API/web hosting: the static lab is live on Pages; API and web deploy artifacts exist but are not deployed by CI |
 | The optional PostgreSQL adapter: transactional snapshot, optimistic version guard, outbox, drained by a worker | Production operations: no backups, no readiness probe, single writer |
 
 ## Five claims and where they are proven

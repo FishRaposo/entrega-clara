@@ -7,8 +7,8 @@ times vary by machine.
 
 | Gate | Command | Last result |
 | --- | --- | --- |
-| Backend tests | `python -m pytest tests -q` | 290 passed, 5 skipped (PostgreSQL cases without `DATABASE_URL`) |
-| Backend tests, persistent mode | same, with `DATABASE_URL` set | 295 passed |
+| Backend tests | `python -m pytest tests -q` | 291 passed, 5 skipped (PostgreSQL cases without `DATABASE_URL`) |
+| Backend tests, persistent mode | same, with `DATABASE_URL` set | 296 passed |
 | Persistence contract | `python -m pytest tests/repo -q` | 9 cases on memory + PostgreSQL; PostgreSQL-only cases skip without `DATABASE_URL` |
 | Ruff | `ruff check app/backend/src tests scripts` | clean |
 | Mypy (strict-ish) | `mypy app/backend/src` | clean, 77 files |

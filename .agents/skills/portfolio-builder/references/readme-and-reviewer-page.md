@@ -33,7 +33,7 @@ Keep the first screen under ~40 lines. Long READMEs are fine after that; readers
 | --- | --- |
 | **What it is** | A São Paulo food-delivery platform where the courier drives the computed route. |
 | **What it proves** | CH answers in 85 expansions (0.1% of the graph) where Dijkstra needs 53,885 (51.3%); 2.8 ms vs 172 ms on the committed run. |
-| **Engineering** | Python/FastAPI + Next.js; 290 tests, 5 browser journeys, 12 ADRs, 11 gates. |
+| **Engineering** | Python/FastAPI + Next.js; 291 backend tests, 3 browser journeys, 12 ADRs, 11 gates. |
 | **See it now** | [Static lab](site/index.html) · [35-second tour](docs/media/demo-tour.webm) |
 | **Review it** | [Reviewer guide](docs/for-reviewers.md) — five-minute path, real vs simulated. |
 ```

@@ -21,7 +21,7 @@ nothing but the Python standard library — no image or charting dependency anyw
 | --- | --- |
 | **What it is** | A São Paulo food-delivery platform where the courier drives the computed route. Built from two undergraduate assignments — a requirements document and a brute-force route optimizer — merged into one product. |
 | **What it proves** | A measured solver ladder on real streets: **CH answers in 85 expansions (0.1% of the graph) / 2.8 ms** where Dijkstra needs 53,885 (51.3%) / 172 ms, inside a product with batching, capacity, promised windows, time-dependent ETAs and a PostgreSQL option. |
-| **Engineering** | Python/FastAPI + Next.js/TypeScript; 290 backend tests (295 with the database contract), 19 frontend, 5 browser journeys with axe; 12 ADRs; 11 quality gates. |
+| **Engineering** | Python/FastAPI + Next.js/TypeScript; 291 backend tests (296 with the database contract), 19 frontend, 3 browser journeys with axe; 12 ADRs; 11 quality gates. |
 | **See it without running it** | [Live lab](https://fishraposo.github.io/entrega-clara/) · [Static lab](site/index.html) (offline replay, no server) · [35-second tour](docs/media/demo-tour.webm) · [screenshots](#see-it-without-running-it) |
 | **Review it** | [Reviewing this repository](docs/for-reviewers.md) — five-minute path, role-specific paths, what is real vs simulated, and where each claim is proven. |
 
@@ -108,8 +108,8 @@ operações.
 - **Arquitetura substituível**: portas de aplicação (UoW, pagamento, roteirização, identidade,
   eventos) isolam os adapters; PostgreSQL é opcional e implementado, e MapLibre/MapTiler, provedores
   de pagamento e autenticação real seguem como expansões documentadas — nunca requisitos.
-- **Qualidade verificável**: 290 testes de backend (295 com o contrato PostgreSQL ativo), 19 de
-  frontend e 5 jornadas Playwright com varreduras de acessibilidade — contagens exatas em
+- **Qualidade verificável**: 291 testes de backend (296 com o contrato PostgreSQL ativo), 19 de
+  frontend e 3 jornadas Playwright com varreduras de acessibilidade — contagens exatas em
   [docs/verification.md](docs/verification.md).
 - **Brasil de verdade**: pt-BR, BRL em centavos, PIX, seed de São Paulo, cópia consciente de LGPD.
 
