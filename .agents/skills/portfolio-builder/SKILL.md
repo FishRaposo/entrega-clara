@@ -3,7 +3,7 @@ name: portfolio-builder
 description: Tailor public, recruiter-facing repositories into credible portfolio pieces for recruiters, hiring managers and freelance clients. Use when asked to make a public repository portfolio-ready, audit why it is not landing, rewrite the README or add a reviewer path, build an evidence spine or live demo, or answer "is this ready as a portfolio piece?". Private repositories and hub/collection repositories are out of scope; the audit reports SKIP and stops.
 license: MIT
 metadata:
-  version: "1.4.1"
+  version: "1.4.2"
 ---
 
 # Portfolio Builder
@@ -169,8 +169,8 @@ Run the mechanical checks, then the qualitative ones:
 python .agents/skills/portfolio-builder/scripts/portfolio_audit.py . --remote --network --claims
 ```
 
-`--remote` reads the repo card, the latest default-branch CI run and repository privacy (needs
-authenticated `gh`);
+`--remote` reads the repo card, the latest default-branch CI run, repository privacy and whether the
+custom social preview is actually set (needs authenticated `gh`);
 `--network` probes the hosted demo URL and fails on 4xx/5xx; `--claims` lists claim-like numeric lines
 with their section and any links, because the script cannot tell whether a number is still current.
 The claim inventory is the bridge to the manual procedure in `references/audit-rubric.md`.

@@ -374,28 +374,34 @@ def check_media(root: Path) -> Result:
     return Result(WARN, "media", "no screenshots or video; one image beats a paragraph")
 
 
-def check_social_preview(root: Path) -> Result:
+def find_social_preview_asset(root: Path) -> Path | None:
     for directory in SOCIAL_PREVIEW_DIRS:
         base = root if directory == "." else root / directory
         for name in SOCIAL_PREVIEW_NAMES:
             path = base / name
-            if not path.is_file():
-                continue
-            if path.suffix.lower() != ".png":
-                return Result(WARN, "social", f"{rel(path, root)} found; verify 1280x640 manually")
-            with path.open("rb") as handle:
-                header = handle.read(24)
-            if len(header) != 24 or header[:8] != b"\x89PNG\r\n\x1a\n":
-                return Result(WARN, "social", f"{rel(path, root)} is not a valid PNG")
-            width, height = struct.unpack(">II", header[16:24])
-            if (width, height) == (1280, 640):
-                return Result(PASS, "social", f"{rel(path, root)} (1280x640)")
-            return Result(WARN, "social", f"{rel(path, root)} is {width}x{height}; use 1280x640")
-    return Result(
-        WARN,
-        "social",
-        "no social-preview image; upload is UI-only, so commit a 1280x640 PNG",
-    )
+            if path.is_file():
+                return path
+    return None
+
+
+def check_social_preview(root: Path) -> Result:
+    path = find_social_preview_asset(root)
+    if path is None:
+        return Result(
+            WARN,
+            "social",
+            "no social-preview image; upload is UI-only, so commit a 1280x640 PNG",
+        )
+    if path.suffix.lower() != ".png":
+        return Result(WARN, "social", f"{rel(path, root)} found; verify 1280x640 manually")
+    with path.open("rb") as handle:
+        header = handle.read(24)
+    if len(header) != 24 or header[:8] != b"\x89PNG\r\n\x1a\n":
+        return Result(WARN, "social", f"{rel(path, root)} is not a valid PNG")
+    width, height = struct.unpack(">II", header[16:24])
+    if (width, height) == (1280, 640):
+        return Result(PASS, "social", f"{rel(path, root)} (1280x640)")
+    return Result(WARN, "social", f"{rel(path, root)} is {width}x{height}; use 1280x640")
 
 
 def run_git(root: Path, *args: str) -> subprocess.CompletedProcess[str] | None:
@@ -508,7 +514,7 @@ def repo_metadata(root: Path) -> dict | None:
                 "--json",
                 (
                     "nameWithOwner,description,repositoryTopics,homepageUrl,defaultBranchRef,"
-                    "isPrivate,visibility"
+                    "isPrivate,visibility,usesCustomOpenGraphImage"
                 ),
             ],
             capture_output=True,
@@ -574,6 +580,31 @@ def check_remote(root: Path, data: dict | None = None) -> list[Result]:
             Result(PASS, "pages", "GitHub Pages enabled")
             if pages.returncode == 0
             else Result(WARN, "pages", "Pages not enabled; a hosted replay is one click")
+        )
+    custom_preview = data.get("usesCustomOpenGraphImage")
+    asset = find_social_preview_asset(root)
+    if custom_preview is True:
+        results.append(Result(PASS, "social upload", "custom social preview is set"))
+    elif custom_preview is False and asset is not None:
+        results.append(
+            Result(
+                WARN,
+                "social upload",
+                f"{rel(asset, root)} is committed but not uploaded; "
+                "use Settings → Social preview",
+            )
+        )
+    elif custom_preview is False:
+        results.append(
+            Result(
+                WARN,
+                "social upload",
+                "no custom social preview; commit a 1280x640 card and upload it in Settings",
+            )
+        )
+    else:
+        results.append(
+            Result(WARN, "social upload", "could not confirm the custom social preview")
         )
     branch = str((data.get("defaultBranchRef") or {}).get("name") or "main")
     results.append(check_ci_status(root, find_ci_workflow(root), branch))
@@ -661,7 +692,11 @@ def audit(root: Path, *, remote: bool, network: bool) -> list[Result]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("path", nargs="?", default=".", help="Repository root (default: .)")
-    parser.add_argument("--remote", action="store_true", help="Check the repo card and CI status via gh")
+    parser.add_argument(
+        "--remote",
+        action="store_true",
+        help="Check the repo card, CI status, privacy and social preview via gh",
+    )
     parser.add_argument("--network", action="store_true", help="Probe the hosted demo URL")
     parser.add_argument(
         "--claims",

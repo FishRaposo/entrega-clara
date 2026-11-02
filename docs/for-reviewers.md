@@ -12,6 +12,8 @@ merged into one product, then became a portfolio piece for employers and freelan
 
 ## How it is built
 
+- **System shape:** [one-page overview](architecture/overview.md) of the modular monolith, the command
+  layer and the adapters.
 - **Modular monolith:** FastAPI backend, Next.js web shell. Application ports in
   `application/ports.py`; adapters for memory, PostgreSQL, routing, payments and identity.
 - **One command layer:** HTTP routes, the role screens and the deterministic demo all call the same
@@ -73,6 +75,8 @@ expansion counts are stable; the times are from the committed run and vary with 
   [ADR 0012](adr/0012-postgres-adapter-outbox-and-metrics.md), then `tests/repo/`.
 - **Frontend (10 min):** `app/web/src/components/algorithm-lab.tsx` and `lab-canvas.tsx`, the
   [static lab](../site/index.html), then `npm run build` and the Playwright journeys.
+- **Client / project owner (3 min):** the [client block](../README.md#for-freelance-clients) — problem,
+  scope, outcome and handover.
 
 ## How to run it
 

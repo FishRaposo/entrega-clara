@@ -17,6 +17,7 @@ The seed design and the user-approved M1 design under `docs/superpowers/specs/` 
 
 ## Architecture
 
+- [System overview](architecture/overview.md) — one-page map of the command layer, domain, ports and adapters.
 - [System boundaries](architecture/system-boundaries.md)
 - [Provider and integration boundaries](architecture/provider-and-integration-boundaries.md)
 - [M1 API and event contract](architecture/api-and-events.md)

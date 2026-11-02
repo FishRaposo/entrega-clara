@@ -41,7 +41,8 @@ gh repo edit --add-topic pathfinding --add-topic routing --add-topic ...
 
 GitHub has no REST or GraphQL endpoint for the social preview: upload
 `docs/media/social-preview.png` in Settings → Social preview. Commit the 1280×640 asset so it is
-reproducible; the mechanical audit checks its dimensions.
+reproducible; the mechanical audit checks its dimensions, and `--remote` checks
+`usesCustomOpenGraphImage`, so a committed asset alone is a warning until it is uploaded.
 
 ## Hosting
 

@@ -97,7 +97,7 @@ The four classes found in practice, all fixable without weakening the gate:
 | Description | One sentence: what it is + who it is for + one proof point; under ~160 characters |
 | Topics | 6–10: domain, stack, techniques, data source; no jokes |
 | Homepage | Live demo or docs URL; never empty when a demo exists |
-| Social preview | 1280×640 image with the project name and one number; commit the asset, upload is Settings-only |
+| Social preview | 1280×640 image; commit the asset and upload it; `--remote` warns until GitHub reports a custom preview |
 | License | Present and correct |
 | Pinned | The repository is pinned on the profile |
 
