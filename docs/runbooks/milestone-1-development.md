@@ -268,7 +268,7 @@ The final report must distinguish:
 
 - [Docker Compose startup order](https://docs.docker.com/compose/how-tos/startup-order/)
 - [MapTiler API-key security](https://docs.maptiler.com/cloud/api/authentication-key/)
-- [MapTiler key protection](https://docs.maptiler.com/guides/maps-apis/maps-platform/how-to-protect-your-map-key)
+- [MapTiler key protection](https://docs.maptiler.com/guides/developer/credentials/api-key/)
 - [MapTiler attribution](https://docs.maptiler.com/guides/map-design/attribution/add-attribution/)
 - [FastAPI SSE](https://fastapi.tiangolo.com/tutorial/server-sent-events/)
 - [MDN EventSource](https://developer.mozilla.org/en-US/docs/Web/API/EventSource)

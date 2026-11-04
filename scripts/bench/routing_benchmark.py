@@ -593,6 +593,8 @@ def _markdown(results: dict) -> str:
         "",
         "Costs are tour totals (seconds); counts in parentheses are solver work units.",
         "Matrices use one-to-all Dijkstra per stop on the time objective.",
+        ("Each stop count draws its own seeded matrix, so compare solvers within a row, "
+         "not tour costs across rows."),
         "",
         f"## Point-to-point solvers — {PAIR_COUNT} sampled pairs, time objective",
         "",

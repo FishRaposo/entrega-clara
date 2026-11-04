@@ -238,7 +238,8 @@ TEMPLATE = """<!doctype html>
         <tbody id="bench-body"></tbody>
       </table>
     </div>
-    <p class="muted">Custo = segundos de viagem na matriz real; contagens em parênteses são unidades de trabalho do solver.</p>
+    <p class="muted">Custo = segundos de viagem na matriz real; contagens em parênteses são unidades de trabalho do solver.
+    Cada linha usa uma matriz semeada independente: compare solvers dentro da linha, não o custo entre linhas.</p>
   </section>
 </main>
 <footer>

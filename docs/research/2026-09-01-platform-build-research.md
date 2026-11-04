@@ -413,7 +413,7 @@ Later:
 
 ### 9.4 Map provider safety
 
-MapTiler states that unprotected public keys can be stolen and used against the account quota; its [API key documentation](https://docs.maptiler.com/cloud/api/authentication-key/) recommends protecting keys. Its [key-protection guide](https://docs.maptiler.com/guides/maps-apis/maps-platform/how-to-protect-your-map-key) documents allowed HTTP origins and user-agent restrictions. A browser map key is not a secret: restrict it through the provider's protection controls, monitor quota, and never use a service token in browser code. MapTiler distinguishes service tokens for hidden backend use in its [authentication guide](https://docs.maptiler.com/cloud/api/authentication/).
+MapTiler states that unprotected public keys can be stolen and used against the account quota; its [API key documentation](https://docs.maptiler.com/cloud/api/authentication-key/) recommends protecting keys. Its [key-protection guide](https://docs.maptiler.com/guides/developer/credentials/api-key/) documents allowed HTTP origins and user-agent restrictions. A browser map key is not a secret: restrict it through the provider's protection controls, monitor quota, and never use a service token in browser code. MapTiler distinguishes service tokens for hidden backend use in its [authentication guide](https://docs.maptiler.com/cloud/api/authentication/).
 
 The UI must show required attribution. See [MapTiler attribution guidance](https://docs.maptiler.com/guides/map-design/attribution/add-attribution/). If OpenStreetMap-derived data is bundled or transformed, review the [OpenStreetMap Foundation attribution guidelines](https://osmfoundation.org/wiki/Licence/Attribution_Guidelines) and ODbL obligations before publishing it. The safest M1 public fixture is a custom synthetic graph plus a properly attributed external basemap.
 
@@ -734,13 +734,13 @@ If code and these documents disagree, stop and reconcile the contract before add
 
 - [Next.js Server and Client Components](https://nextjs.org/docs/app/getting-started/server-and-client-components)
 - [Next.js August 2026 security release](https://nextjs.org/blog/august-2026-security-release)
-- [Next.js deployment guide](https://nextjs.org/docs/app/guides/deploying)
+- [Next.js deployment guide](https://nextjs.org/docs/app/getting-started/deploying)
 - [Node.js release schedule](https://nodejs.org/en/about/previous-releases)
 - [MapLibre GL JS](https://www.maplibre.org/maplibre-gl-js/docs/)
 - [MapLibre GeoJSON source](https://www.maplibre.org/maplibre-gl-js/docs/API/classes/GeoJSONSource/)
 - [MapTiler MapLibre integration](https://docs.maptiler.com/maplibre/)
 - [MapTiler API key security](https://docs.maptiler.com/cloud/api/authentication-key/)
-- [MapTiler key protection](https://docs.maptiler.com/guides/maps-apis/maps-platform/how-to-protect-your-map-key)
+- [MapTiler key protection](https://docs.maptiler.com/guides/developer/credentials/api-key/)
 - [MapTiler authentication](https://docs.maptiler.com/cloud/api/authentication/)
 - [MapTiler attribution](https://docs.maptiler.com/guides/map-design/attribution/add-attribution/)
 - [MDN EventSource](https://developer.mozilla.org/en-US/docs/Web/API/EventSource)

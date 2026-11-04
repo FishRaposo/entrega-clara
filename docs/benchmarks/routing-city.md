@@ -26,6 +26,7 @@ Machine: Windows-11-10.0.26300-SP0 · Python 3.15.2 · commit 25168b8
 
 Costs are tour totals (seconds); counts in parentheses are solver work units.
 Matrices use one-to-all Dijkstra per stop on the time objective.
+Each stop count draws its own seeded matrix, so compare solvers within a row, not tour costs across rows.
 
 ## Point-to-point solvers — 200 sampled pairs, time objective
 

@@ -74,7 +74,7 @@ The backend never imports MapLibre, MapTiler, or another map SDK. The web applic
 - [MapLibre GeoJSON sources](https://www.maplibre.org/maplibre-gl-js/docs/API/classes/GeoJSONSource/)
 - [MapTiler MapLibre integration](https://docs.maptiler.com/maplibre/)
 - [MapTiler API-key security](https://docs.maptiler.com/cloud/api/authentication-key/)
-- [MapTiler key protection](https://docs.maptiler.com/guides/maps-apis/maps-platform/how-to-protect-your-map-key)
+- [MapTiler key protection](https://docs.maptiler.com/guides/developer/credentials/api-key/)
 - [MapTiler authentication](https://docs.maptiler.com/cloud/api/authentication/)
 - [MapTiler attribution](https://docs.maptiler.com/guides/map-design/attribution/add-attribution/)
 - [OSM Foundation attribution guidelines](https://osmfoundation.org/wiki/Licence/Attribution_Guidelines)
