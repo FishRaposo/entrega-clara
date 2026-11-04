@@ -35,7 +35,12 @@ Lowercase, hyphenated, no vanity tags.
 
 ## Homepage
 
-- Point to the live demo first; docs second. Never leave it empty when a demo exists.
+- Point to the live demo or static concept demo first; docs second. Never leave it empty when a demo
+  exists.
+- For a backend, CLI, library or full-stack piece that cannot run on Pages, the homepage is the concept
+  demo; the page must say it is a simulation and link the real implementation.
+- Every demo links back to the portfolio/profile. The profile README is the shared hub; the per-repo
+  card does not replace it.
 - If the demo needs a login, link a public read-only view instead.
 
 ## Social preview

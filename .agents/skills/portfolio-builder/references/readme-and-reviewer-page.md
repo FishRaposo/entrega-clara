@@ -9,7 +9,7 @@ Order matters. A reader who stops after one screen should still know what the pr
 exists, what it proves, and how to see it.
 
 1. **Title and one-line thesis.** What it is, whose problem it solves, one proof point. No stack list.
-2. **Hero visual.** A screenshot, GIF or demo link that shows the thing working.
+2. **Hero visual.** A screenshot, GIF or demo/concept-demo link that shows the thing working.
 3. **At-a-glance table.** What it is · what it proves (one or two numbers) · engineering counts ·
    see-it-without-running · how to review. Five rows, scannable.
 4. **Measured evidence.** The shortest table that carries the thesis, with a link to the full artifact.
@@ -18,7 +18,8 @@ exists, what it proves, and how to see it.
 6. **Origin.** Why it exists, in order. One screen.
 7. **Built vs deferred.** Two columns. The deferred column is a feature, not a confession — it shows
    judgment.
-8. **See it without running it.** Static replay, video, screenshots, hosted demo.
+8. **See it without running it.** Live demo, static replay, concept demo, video, screenshots, and a
+   portfolio/profile link. A concept demo is labeled as a simulation and links the real implementation.
 9. **Run it.** Three commands, default path free of optional infrastructure.
 10. **Limits and attribution.** Simulated vs real, license, data attribution.
 
@@ -34,7 +35,7 @@ Keep the first screen under ~40 lines. Long READMEs are fine after that; readers
 | **What it is** | A São Paulo food-delivery platform where the courier drives the computed route. |
 | **What it proves** | CH answers in 85 expansions (0.1% of the graph) where Dijkstra needs 53,885 (51.3%); 2.8 ms vs 172 ms on the committed run. |
 | **Engineering** | Python/FastAPI + Next.js; 291 backend tests, 3 browser journeys, 12 ADRs, 11 gates. |
-| **See it now** | [Static lab](site/index.html) · [35-second tour](docs/media/demo-tour.webm) |
+| **See it now** | [Static lab](site/index.html) · [35-second tour](docs/media/demo-tour.webm) · [Portfolio](<profile URL>) |
 | **Review it** | [Reviewer guide](docs/for-reviewers.md) — five-minute path, real vs simulated. |
 ```
 

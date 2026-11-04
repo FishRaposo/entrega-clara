@@ -8,7 +8,8 @@ the repo card and the default-branch CI status through an authenticated ``gh``;
 ``--network`` probes the hosted demo URL; ``--claims`` lists numeric claims for
 manual artifact verification.
 
-    python portfolio_audit.py [path] [--remote] [--network] [--claims]
+    python portfolio_audit.py [path] [--remote] [--network] [--demo-contract]
+                              [--portfolio-url URL] [--claims]
 
 FAIL means the repository is not ready to be looked at (exit code 1).
 WARN means it will still be looked at, less generously.
@@ -17,6 +18,7 @@ WARN means it will still be looked at, less generously.
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import re
 import shutil
@@ -31,6 +33,23 @@ from urllib.parse import unquote
 
 PASS, WARN, FAIL, SKIP = "PASS", "WARN", "FAIL", "SKIP"
 FIRST_SCREEN_LINES = 80
+DEMO_CONTRACT_LABEL = re.compile(
+    r"\b(?:static|statico|est[aá]tico|concept|conceito|simulation|simula[cç][aã]o|"
+    r"simulated|lab|laborat[oó]rio|replay|demo)\b",
+    re.IGNORECASE,
+)
+DEMO_CONTRACT_PROVENANCE = re.compile(
+    r"\b(?:source|fonte|artifact|artefato|benchmark|commit|trace|data|dados|docs)\b",
+    re.IGNORECASE,
+)
+DEMO_CONTRACT_CONTROL = re.compile(
+    r"<(?:button|input|select|textarea|canvas|video|svg|table)\b",
+    re.IGNORECASE,
+)
+DEMO_CONTRACT_REMOTE_API = re.compile(
+    r"(?:fetch\s*\(\s*['\"]https?://|XMLHttpRequest|axios\s*[.(])",
+    re.IGNORECASE,
+)
 
 README_NAMES = ("README.md", "README.markdown", "README.rst", "readme.md")
 LICENSE_NAMES = (
@@ -305,21 +324,103 @@ def check_links(root: Path, files: list[Path]) -> Result:
     return Result(PASS, "links", f"{checked} relative link(s) across {scanned} file(s) resolve")
 
 
-def _probe_url(url: str) -> int:
-    headers = {"User-Agent": "portfolio-audit/1.0"}
-    request = urllib.request.Request(url, method="HEAD", headers=headers)
+def _readme_title(readme: Path) -> str:
+    for line in readme.read_text(encoding="utf-8", errors="replace").splitlines():
+        match = re.match(r"^#\s+(.+?)\s*$", line)
+        if match:
+            return re.sub(r"[`*_]", "", match.group(1)).strip()
+    return ""
+
+
+def _probe_demo_page(url: str) -> tuple[int, str, str]:
+    headers = {
+        "User-Agent": "portfolio-audit/1.0",
+        "Accept": "text/html,application/xhtml+xml",
+    }
+    request = urllib.request.Request(url, headers=headers)
     try:
         with urllib.request.urlopen(request, timeout=15) as response:
-            return int(response.status)
+            content_type = response.headers.get_content_type()
+            body = response.read(300_000).decode("utf-8", errors="replace")
+            return int(response.status), content_type, body
     except urllib.error.HTTPError as error:
-        if error.code not in (403, 405):
-            return int(error.code)
-        request = urllib.request.Request(url, headers={**headers, "Range": "bytes=0-0"})
-        with urllib.request.urlopen(request, timeout=15) as response:
-            return int(response.status)
+        return int(error.code), "", ""
 
 
-def check_demo(root: Path, readme: Path, *, network: bool) -> Result:
+def _demo_title(body: str) -> str:
+    match = re.search(r"<title[^>]*>(.*?)</title>", body, re.IGNORECASE | re.DOTALL)
+    if not match:
+        return ""
+    title = re.sub(r"<[^>]+>", " ", match.group(1))
+    return re.sub(r"\s+", " ", html.unescape(title)).strip()
+
+
+def _repo_link_present(root: Path, body: str) -> bool:
+    name = re.escape(root.name.lower().replace("_", "-"))
+    return bool(
+        re.search(
+            rf"https?://(?:www\.)?github\.com/[^/\s\"'<>]+/{name}(?:[/?#\"'\s<>]|$)",
+            body,
+            re.IGNORECASE,
+        )
+    )
+
+
+def _portfolio_link_present(portfolio_url: str | None, body: str) -> bool:
+    if portfolio_url:
+        return portfolio_url.rstrip("/").lower() in body.lower()
+    if re.search(
+        r"href=[\"'][^\"']*(?:portfolio|portfólio|profile|perfil)[^\"']*[\"']",
+        body,
+        re.IGNORECASE,
+    ):
+        return True
+    return bool(
+        re.search(
+            r">\s*(?:portfolio|portfólio|profile|perfil)\s*<",
+            body,
+            re.IGNORECASE,
+        )
+    )
+
+
+def _demo_contract(
+    root: Path, body: str, portfolio_url: str | None
+) -> Result:
+    if not _repo_link_present(root, body):
+        return Result(
+            FAIL,
+            "demo contract",
+            "no link back to the source repository (github.com/<owner>/<repo>)",
+        )
+    issues: list[str] = []
+    if not _portfolio_link_present(portfolio_url, body):
+        issues.append("no portfolio/profile return link")
+    if not DEMO_CONTRACT_PROVENANCE.search(body):
+        issues.append("no provenance marker (source, artifact, benchmark, commit or trace)")
+    if not DEMO_CONTRACT_LABEL.search(body):
+        issues.append("no static/concept/simulation label")
+    if not DEMO_CONTRACT_CONTROL.search(body):
+        issues.append("no interactive or visual artifact")
+    if DEMO_CONTRACT_REMOTE_API.search(body):
+        issues.append("contains a direct remote API call")
+    if issues:
+        return Result(WARN, "demo contract", "; ".join(issues))
+    return Result(
+        PASS,
+        "demo contract",
+        "repo link, portfolio link, provenance, label, artifact, no remote API",
+    )
+
+
+def check_demo(
+    root: Path,
+    readme: Path,
+    *,
+    network: bool,
+    demo_contract: bool = False,
+    portfolio_url: str | None = None,
+) -> list[Result]:
     first_screen = "\n".join(
         readme.read_text(encoding="utf-8", errors="replace").splitlines()[:FIRST_SCREEN_LINES]
     )
@@ -340,27 +441,66 @@ def check_demo(root: Path, readme: Path, *, network: bool) -> Result:
     if candidates:
         _, url = candidates[0]
         if not network:
-            return Result(
-                PASS,
-                "demo",
-                f"hosted link: {url} (reachability not checked; use --network)",
-            )
+            results = [
+                Result(
+                    PASS,
+                    "demo",
+                    f"hosted link: {url} (reachability not checked; use --network)",
+                )
+            ]
+            if demo_contract:
+                results.append(
+                    Result(
+                        WARN,
+                        "demo contract",
+                        "not checked; --demo-contract requires --network",
+                    )
+                )
+            return results
         try:
-            status = _probe_url(url)
+            status, content_type, body = _probe_demo_page(url)
         except (urllib.error.URLError, TimeoutError) as error:
-            return Result(WARN, "demo", f"could not reach {url}: {error}")
-        if 200 <= status < 400:
-            return Result(PASS, "demo", f"hosted link: {url} (HTTP {status})")
-        return Result(FAIL, "demo", f"hosted link returned HTTP {status}: {url}")
+            return [Result(WARN, "demo", f"could not reach {url}: {error}")]
+        if not 200 <= status < 400:
+            return [Result(FAIL, "demo", f"hosted link returned HTTP {status}: {url}")]
+        if content_type and content_type not in ("text/html", "application/xhtml+xml"):
+            return [
+                Result(
+                    WARN,
+                    "demo",
+                    f"hosted link is {content_type}, not an HTML demo: {url}",
+                )
+            ]
+        title = _demo_title(body)
+        if not title:
+            return [Result(WARN, "demo", f"hosted page has no HTML title: {url}")]
+        if re.search(r"\b404\b|not found", title, re.IGNORECASE):
+            return [Result(FAIL, "demo", f"hosted page looks like a 404 ({title}): {url}")]
+        project = _readme_title(readme)
+        tokens = [token for token in re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ0-9]{4,}", project) if token]
+        if tokens and not any(token.lower() in body.lower() for token in tokens):
+            return [
+                Result(
+                    WARN,
+                    "demo",
+                    f"hosted page does not name {project}: {url}",
+                )
+            ]
+        results = [Result(PASS, "demo", f"hosted page: {title[:80]} (HTTP {status})")]
+        if demo_contract:
+            results.append(_demo_contract(root, body, portfolio_url))
+        return results
     for target in re.findall(r"\]\(\s*([^)\s]+\.html)", first_screen):
         candidate = readme.parent / unquote(target.split("#", 1)[0])
         if candidate.exists():
-            return Result(
-                WARN,
-                "demo",
-                f"offline replay {target} exists; hosting it makes the 60-second test possible",
-            )
-    return Result(WARN, "demo", "no hosted demo/replay link in the first screen; add one")
+            return [
+                Result(
+                    WARN,
+                    "demo",
+                    f"offline replay {target} exists; hosting it makes the 60-second test possible",
+                )
+            ]
+    return [Result(WARN, "demo", "no hosted demo/replay link in the first screen; add one")]
 
 
 def check_media(root: Path) -> Result:
@@ -632,7 +772,14 @@ def collect_claims(readme: Path, limit: int = 60) -> list[str]:
     return claims
 
 
-def audit(root: Path, *, remote: bool, network: bool) -> list[Result]:
+def audit(
+    root: Path,
+    *,
+    remote: bool,
+    network: bool,
+    demo_contract: bool = False,
+    portfolio_url: str | None = None,
+) -> list[Result]:
     is_hub, subprojects = detect_hub(root)
     if is_hub:
         if subprojects:
@@ -680,7 +827,15 @@ def audit(root: Path, *, remote: bool, network: bool) -> list[Result]:
             root / name for name in DOC_LINK_FILES if (root / name).is_file()
         ]
         results.append(check_links(root, files))
-        results.append(check_demo(root, readme, network=network))
+        results.extend(
+            check_demo(
+                root,
+                readme,
+                network=network,
+                demo_contract=demo_contract,
+                portfolio_url=portfolio_url,
+            )
+        )
     results.append(check_media(root))
     results.append(check_social_preview(root))
     results.append(check_git(root))
@@ -699,6 +854,18 @@ def main() -> int:
     )
     parser.add_argument("--network", action="store_true", help="Probe the hosted demo URL")
     parser.add_argument(
+        "--demo-contract",
+        action="store_true",
+        help=(
+            "With --network, fail on a missing repo link and warn on portfolio, provenance, "
+            "label, artifact or remote API issues"
+        ),
+    )
+    parser.add_argument(
+        "--portfolio-url",
+        help="Expected portfolio/profile URL for --demo-contract",
+    )
+    parser.add_argument(
         "--claims",
         action="store_true",
         help="List claim-like numeric lines with section/link context",
@@ -709,13 +876,21 @@ def main() -> int:
         help="Exit 1 when the repository is out of scope",
     )
     args = parser.parse_args()
+    if args.demo_contract and not args.network:
+        parser.error("--demo-contract requires --network")
 
     root = Path(args.path).resolve()
     if not root.is_dir():
         print(f"error: {root} is not a directory", file=sys.stderr)
         return 2
 
-    results = audit(root, remote=args.remote, network=args.network)
+    results = audit(
+        root,
+        remote=args.remote,
+        network=args.network,
+        demo_contract=args.demo_contract,
+        portfolio_url=args.portfolio_url,
+    )
     width = max(len(result.name) for result in results)
     print(f"portfolio audit — {root}")
     for result in results:

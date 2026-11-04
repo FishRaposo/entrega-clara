@@ -12,6 +12,8 @@
 - [ ] Media regenerated and committed; the screenshots match the current UI.
 - [ ] Links checked in the README and the reviewer page; every relative link resolves, every external
       link is intentional.
+- [ ] The demo opens from a private window; the first screen names the project and shows a real
+      artifact; one control produces a visible result.
 
 ## Repo card
 
@@ -19,7 +21,7 @@
 | --- | --- |
 | Description | One sentence; what + who + proof; not a tagline |
 | Topics | 6–10; domain, stack, technique, data; lowercase/hyphenated |
-| Homepage | Live demo or docs URL |
+| Homepage | Live demo, concept demo or docs URL |
 | Social preview | 1280×640 image; name + one number |
 | Pin | Pin the repo on the profile |
 | Profile README | Links the repo with one line of context |
@@ -29,6 +31,7 @@
 ```bash
 # GitHub Pages, once per repository (POST; use PUT if Pages already exists)
 gh api --method POST repos/<owner>/<repo>/pages -f build_type=workflow
+# The workflow lives at .github/workflows/pages.yml; adapt assets/pages-demo-workflow.yml.
 gh workflow run pages.yml
 gh run watch <run-id> --exit-status
 
@@ -44,14 +47,33 @@ GitHub has no REST or GraphQL endpoint for the social preview: upload
 reproducible; the mechanical audit checks its dimensions, and `--remote` checks
 `usesCustomOpenGraphImage`, so a committed asset alone is a warning until it is uploaded.
 
+## Demo pre-flight
+
+- [ ] The demo is linked in the README first screen and the repo card homepage.
+- [ ] It names the project, states what it demonstrates and shows one real artifact without scrolling
+      far.
+- [ ] One control works; the result is visible; reset is available.
+- [ ] It is static: no login, API, database, Docker, WSL or install.
+- [ ] It links back to the source repository and to the portfolio/profile.
+- [ ] A concept demo says "static concept demo", states what is simulated and links the real repository.
+- [ ] The artifact has a provenance marker: source path, trace, benchmark or commit.
+- [ ] It works at 320 and 1440; keyboard and focus are visible; reduced motion is respected.
+- [ ] The console is clean; there are no missing assets or external API requests.
+- [ ] The page title, a text marker and the contract checks identify the project; `--network
+      --demo-contract` verifies them.
+
 ## Hosting
 
-- **Static replay or docs:** GitHub Pages from a committed `site/` (or `docs/`) directory via Actions.
-  No server, no secrets.
+- **Static replay or concept demo:** GitHub Pages from a committed `site/` (or built `dist/`/`out/`)
+  directory via Actions. No server, no secrets. Adapt
+  `assets/pages-demo-workflow.yml`; see `references/pages-demos.md`.
 - **API:** a container platform (Fly, Render, Railway) with the database optional; environment
   variables set in the platform, never committed.
 - **Web app:** Vercel/Netlify with the API origin set as an environment variable; browser calls stay
   same-origin through a rewrite.
+- **Pages boundary:** GitHub Pages is static file hosting. It cannot run FastAPI, a worker, a database
+  or a server-rendered Next.js route. For a backend, CLI, library or full-stack piece, ship the static
+  concept demo and link the real app if it is hosted elsewhere.
 - **Deployment is an operator action:** the repository ships the artifacts and the runbook; CI does not
   deploy without explicit credentials.
 
@@ -68,10 +90,13 @@ Compress, crop and loop. Large media belongs behind a link, not in the repositor
 
 ## Post-launch verification
 
-- [ ] Run `python .agents/skills/portfolio-builder/scripts/portfolio_audit.py . --remote --network --claims`.
+- [ ] Run `python .agents/skills/portfolio-builder/scripts/portfolio_audit.py . --remote --network --demo-contract --claims`.
 - [ ] Open every link in the README and reviewer page from a private window; no 404s, no login walls.
 - [ ] Upload the social preview in Settings and confirm the repo card renders it.
 - [ ] Open the demo on a phone; the first screen is still readable.
+- [ ] Open the deployed demo from the repo card; verify the title, project marker, repository link and
+      portfolio/profile link, not just a 200.
+- [ ] Confirm a concept demo is labeled and that its link to the real repository resolves.
 - [ ] Ask someone who has never seen the project to take the 60-second test; note where they stop.
 - [ ] Confirm CI is green *after* the launch changes.
 - [ ] Record the launch date and the commit in the verification document.

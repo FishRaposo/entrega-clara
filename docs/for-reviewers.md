@@ -77,6 +77,8 @@ expansion counts are stable; the times are from the committed run and vary with 
   [static lab](../site/index.html), then `npm run build` and the Playwright journeys.
 - **Client / project owner (3 min):** the [client block](../README.md#for-freelance-clients) — problem,
   scope, outcome and handover.
+- **Portfolio / next piece (1 min):** [github.com/fishraposo](https://github.com/fishraposo) — the
+  other public pieces.
 
 ## How to run it
 

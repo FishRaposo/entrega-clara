@@ -26,7 +26,7 @@ not (a clone, a startup pitch, a tutorial).>
 | Minute | Open | What it shows |
 | --- | --- | --- |
 | 1 | <README evidence table> | <the headline measurement> |
-| 2 | <demo / static replay> | <the thing working> |
+| 2 | <demo / static replay / concept demo> | <the thing working; say what is simulated if it is a concept demo> |
 | 3 | <full benchmark artifact> | <raw numbers, baseline, cost> |
 | 4 | <verification record> | <gates, counts, scope notes> |
 | 5 | <the key ADR> | <trade-off and rejected alternatives> |
@@ -52,6 +52,7 @@ If you only read one number: **<number with baseline and cost>.**
 - **Backend / platform (<n> min):** <links>.
 - **Frontend (<n> min):** <links>.
 - **Client / project owner (<n> min):** <outcome block, scope, handover, evidence>.
+- **Portfolio / next piece (<1> min):** <profile or portfolio URL>.
 
 ## How to run it
 
@@ -69,6 +70,8 @@ If you only read one number: **<number with baseline and cost>.**
 ## Checks before committing
 
 - The five-minute table links to files that exist.
+- A concept demo is labeled, states what is simulated and links the real repository.
+- The demo and this page return to the portfolio/profile.
 - The "one number" is in the benchmark artifact, not only here.
 - Real vs simulated is still true after the last change.
 - The not-built list matches the README's deferred column.

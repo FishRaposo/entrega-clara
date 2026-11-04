@@ -1,9 +1,9 @@
 # Audit rubric
 
 Two time-boxed tests and a severity table. Run the mechanical audit first
-(`scripts/portfolio_audit.py . --remote --network --claims`), then this. The script checks presence,
-reachability and CI status; `--claims` lists the numbers, but only you can decide whether each is still
-true.
+(`scripts/portfolio_audit.py . --remote --network --demo-contract --claims`), then this. The script
+checks presence, reachability, the demo contract and CI status; `--claims` lists the numbers, but only
+you can decide whether each is still true.
 
 **Scope:** public, recruiter-facing repositories only. Private repositories and hubs/collections are
 out of scope; the mechanical audit returns `SKIP` and stops. Do not apply these tests to them.
@@ -19,6 +19,9 @@ Open the repository in a private window, as a recruiter would.
 - [ ] One visual is visible without scrolling far.
 - [ ] The latest default-branch CI run is green; the badge, if present, matches it.
 - [ ] A live/replayable demo link is in the first screen and resolves.
+- [ ] The demo is more than a screenshot: it names the project, shows one real artifact and offers one
+      control that produces a visible result.
+- [ ] The demo returns to the source repository and the portfolio/profile.
 - [ ] A license is present.
 
 Any miss is a blocker: a reviewer who leaves at 60 seconds never sees the depth.
@@ -28,6 +31,10 @@ Any miss is a blocker: a reviewer who leaves at 60 seconds never sees the depth.
 As a hiring manager.
 
 - [ ] The demo opens without installing anything, or the clone-and-run path is three commands.
+- [ ] The demo maps to the repository: the input, the process and the output are traceable to real code
+      or committed artifacts.
+- [ ] A concept demo is labeled, says what is simulated, and links the real repository and portfolio.
+- [ ] The demo has a provenance marker and no direct remote API call.
 - [ ] One deep artifact is readable in five minutes (benchmark table, ADR, verification record).
 - [ ] The claims table links to the tests or artifacts that prove them.
 - [ ] Real vs simulated is stated; limits are explicit.
@@ -35,13 +42,31 @@ As a hiring manager.
 - [ ] The commit history is legible (messages describe intent; authorship is deliberate).
 - [ ] If clients are an audience, a problem → scope → outcome → proof block exists.
 
+## The demo contract
+
+The `--demo-contract` check is a floor. It fetches the demo page and requires a source-repository link,
+then checks for a portfolio/profile link, a provenance marker, a static/concept label, an interactive or
+visual artifact, and no direct remote API call. A missing repository link is a failure; the rest are
+warnings that must be fixed or explained before the 60-second test. The contract cannot tell whether
+the artifact is convincing, so the manual test still decides.
+
 ## Severity table
 
 | Severity | Finding | Fix |
 | --- | --- | --- |
 | Blocker | Red, cancelled or missing CI on the default branch | Diagnose the failing job or add the workflow; never skip the gate |
-| Blocker | No live, static or recorded demo | Add the cheapest evaluable artifact (hosted demo, static replay, 30–60 s video) |
+| Blocker | No demo | Add the demo or concept demo; use a recording only when interaction cannot be shown |
 | Blocker | Hosted demo link returns 4xx/5xx | Fix the URL or the deploy; `--network` probes it |
+| Blocker | Demo is a 200 error page, empty shell or login/back-end wall | Fix the page or the deploy; a demo must show the concept |
+| Blocker | Demo has no source-repository return link | Add the repo link; `--demo-contract` fails without it |
+| Major | Demo has no portfolio/profile return link | Add the profile or portfolio path; the index itself remains out of scope |
+| Major | Demo is only a screenshot or static landing page | Add a real artifact and one working control |
+| Major | Concept demo is unlabeled, invents metrics or pretends to be the deployed product | Label the simulation, use committed real data and link the repository |
+| Major | Demo requires a backend, login, Docker or an install | Move the front door to a static concept demo; host the real app separately |
+| Major | Demo makes a direct remote API call while claiming to be static | Remove it or relabel the demo as a hosted app |
+| Major | The same shell with a swapped artifact across unrelated pieces | Change the composition; the contract is shared, the layout is not |
+| Major | Demo is stale or uses data no longer in the repository | Regenerate the demo data with the feature change |
+| Minor | Demo has no provenance marker | Link the source path, trace, benchmark or commit |
 | Blocker | Empty repo description / no topics / no homepage | Fill the repo card (`assets/repo-card.md`) |
 | Blocker | Claims with no artifact | Measure, soften to what is true, or delete |
 | Blocker | Numbers contradicted by the committed artifact | Regenerate, then update every doc that repeats them |

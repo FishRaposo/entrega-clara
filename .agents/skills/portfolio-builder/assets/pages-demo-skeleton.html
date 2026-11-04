@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A static concept demo of PROJECT. The implementation is in the repository.">
+  <title>PROJECT — static concept demo</title>
+  <style>
+    :root {
+      --paper: #fbf7ed;
+      --ink: #14221a;
+      --muted: #52665b;
+      --line: #c9d4c9;
+      --accent: #b94a22;
+      --accent-dark: #8f3618;
+      --stage: #0f1720;
+      --stage-ink: #f5f1e5;
+      --focus: #0b66c3;
+      --radius: .55rem;
+      --measure: 65ch;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--paper); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3 { text-wrap: balance; overflow-wrap: break-word; }
+    p { text-wrap: pretty; }
+    a { color: inherit; }
+    a:focus-visible, button:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 3px;
+    }
+    .skip {
+      position: absolute;
+      left: 1rem;
+      top: -4rem;
+      z-index: 10;
+      padding: .6rem .9rem;
+      background: var(--ink);
+      color: white;
+    }
+    .skip:focus { top: 1rem; }
+    .shell { width: min(100% - 2rem, 68rem); margin: 0 auto; }
+    .masthead { padding: clamp(2.5rem, 7vw, 5rem) 0 2rem; }
+    .eyebrow {
+      margin: 0;
+      color: var(--accent-dark);
+      font-size: .8125rem;
+      font-weight: 800;
+      letter-spacing: .09em;
+      line-height: 1.2;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 22ch;
+      margin: .5rem 0 1rem;
+      font-size: clamp(2.2rem, 5vw, 4rem);
+      line-height: 1.02;
+      letter-spacing: -.045em;
+    }
+    .lede {
+      max-width: var(--measure);
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.15rem;
+      line-height: 1.55;
+    }
+    .meta {
+      max-width: var(--measure);
+      margin: 1rem 0 0;
+      color: var(--muted);
+      font-size: .875rem;
+    }
+    .meta strong { color: var(--ink); }
+    main { padding-bottom: 4rem; }
+    section { padding: 2rem 0; border-top: 1px solid var(--line); }
+    section h2 {
+      margin: 0 0 .5rem;
+      font-size: clamp(1.35rem, 2.4vw, 1.75rem);
+      line-height: 1.2;
+    }
+    section > p { max-width: var(--measure); margin: 0 0 1rem; }
+    .stage {
+      position: relative;
+      margin-top: 1rem;
+      padding: clamp(1rem, 3vw, 1.5rem);
+      border-radius: var(--radius);
+      background: var(--stage);
+      color: var(--stage-ink);
+    }
+    .stage-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .6rem 1rem;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      font-size: .75rem;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #b8c6bb;
+    }
+    .stage-bar span:last-child { color: #f0c9a8; }
+    .artifact {
+      display: grid;
+      place-items: center;
+      min-height: 15rem;
+      padding: 1rem;
+      border: 1px dashed #3f5148;
+      border-radius: .4rem;
+      text-align: center;
+    }
+    .artifact p { max-width: 38ch; margin: 0; color: #c8d4cb; }
+    .artifact strong { display: block; color: var(--stage-ink); font-size: 1.1rem; }
+    .stage-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .75rem;
+      align-items: center;
+      margin-top: 1rem;
+    }
+    button {
+      min-height: 44px;
+      padding: .55rem .85rem;
+      border: 1px solid var(--line);
+      border-radius: .4rem;
+      background: var(--paper);
+      color: var(--ink);
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:hover { background: #e8efe3; }
+    button:active { transform: translateY(1px); }
+    button.secondary { background: transparent; color: var(--stage-ink); border-color: #53665a; }
+    button.secondary:hover { background: #1b2922; }
+    .readout {
+      min-width: 8rem;
+      font-variant-numeric: tabular-nums;
+      color: #f0c9a8;
+    }
+    .proof {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      font-size: .875rem;
+    }
+    .proof th, .proof td {
+      padding: .55rem .4rem;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    .proof th {
+      width: 11rem;
+      color: var(--muted);
+      font-size: .75rem;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+    .limits { max-width: var(--measure); padding-left: 1.2rem; }
+    .limits li { margin: .35rem 0; }
+    .next { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; margin-top: 1rem; }
+    .next a { color: var(--accent-dark); font-weight: 700; }
+    footer {
+      padding: 1.5rem 0 2.5rem;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: .8125rem;
+    }
+    @media (max-width: 40rem) {
+      .proof th { width: 8rem; }
+      .artifact { min-height: 12rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        transition-duration: .01ms !important;
+        animation-duration: .01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!--
+    This shell is the demo contract, not the layout. Keep the links, labels and access rules.
+    Replace the stage with the project's real artifact and let that artifact determine the
+    composition. Do not ship this exact layout across unrelated pieces.
+  -->
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="shell masthead">
+    <p class="eyebrow">PROJECT · static concept demo</p>
+    <h1>One sentence that names the concept and the result.</h1>
+    <p class="lede">A short explanation of what this page demonstrates and what the visitor can do in the next minute.</p>
+    <p class="meta">
+      <strong>Static concept demo.</strong> This page uses committed sample data and runs entirely in the
+      browser. The implementation is in <a href="REPLACE_REPO_URL">the repository</a>; the real app is
+      linked below if it is hosted.
+    </p>
+  </header>
+
+  <main id="main" class="shell">
+    <section aria-labelledby="demo-title">
+      <h2 id="demo-title">Try the concept</h2>
+      <p>Replace this paragraph with the one input the visitor can change and the real output they will see.</p>
+      <div class="stage">
+        <div class="stage-bar">
+          <span>Replace with the artifact name</span>
+          <span id="step-label">Step 1 of 4</span>
+        </div>
+        <div class="artifact" aria-live="polite">
+          <!-- Replace this with the real artifact: SVG, canvas, table, code output, diagram. -->
+          <p><strong id="artifact-title">Replace with the actual output</strong><span id="artifact-detail">A route, a result, a state, a trace or a rendered document.</span></p>
+        </div>
+        <div class="stage-controls">
+          <button type="button" id="advance">Next step</button>
+          <button type="button" class="secondary" id="reset">Reset</button>
+          <output class="readout" id="readout">Replace with a unit and a value</output>
+        </div>
+      </div>
+      <noscript><p>This demo needs JavaScript for the step controls. The repository contains the full implementation.</p></noscript>
+    </section>
+
+    <section aria-labelledby="proof-title">
+      <h2 id="proof-title">What this shows</h2>
+      <p>Name the real artifact behind the demo. Do not invent a metric.</p>
+      <table class="proof">
+        <tbody>
+          <tr><th scope="row">Input</th><td>Committed sample input, with its file path.</td></tr>
+          <tr><th scope="row">Process</th><td>The real function, command or stage, linked to its source.</td></tr>
+          <tr><th scope="row">Output</th><td>The recorded result, with units and provenance.</td></tr>
+          <tr><th scope="row">Source</th><td><a href="REPLACE_ARTIFACT_URL">Committed artifact</a> · <a href="REPLACE_TEST_URL">Test or verification record</a></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section aria-labelledby="limits-title">
+      <h2 id="limits-title">What is simulated</h2>
+      <ul class="limits">
+        <li>This page is a static concept demo, not the deployed product.</li>
+        <li>Replace this with the sample data range, the omitted features and any synthetic inputs.</li>
+        <li>The real implementation is in the repository; the real app is linked below when hosted.</li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="next-title">
+      <h2 id="next-title">Where to look next</h2>
+      <div class="next">
+        <a href="REPLACE_REPO_URL">Repository</a>
+        <a href="REPLACE_PORTFOLIO_URL">Portfolio</a>
+        <a href="REPLACE_REVIEWER_URL">Reviewer guide</a>
+        <a href="REPLACE_REAL_APP_URL">Real app (if hosted)</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="shell">
+    <p>Static concept demo of PROJECT. The implementation and the evidence are in the repository.
+    <a href="REPLACE_PORTFOLIO_URL">Back to the portfolio</a>.</p>
+  </footer>
+
+  <script>
+    // Replace this sample stepper with the real deterministic demo.
+    // Keep all data committed; never fetch an API or invent values.
+    const steps = [
+      { title: "Input", detail: "The committed sample the visitor starts from.", readout: "1 / 4" },
+      { title: "Process", detail: "The real stage, command or function that runs.", readout: "2 / 4" },
+      { title: "Result", detail: "The recorded output, with units and provenance.", readout: "3 / 4" },
+      { title: "Evidence", detail: "The artifact and test that make the result reviewable.", readout: "4 / 4" }
+    ];
+    let cursor = 0;
+    const title = document.querySelector("#artifact-title");
+    const detail = document.querySelector("#artifact-detail");
+    const readout = document.querySelector("#readout");
+    const label = document.querySelector("#step-label");
+
+    function render() {
+      title.textContent = steps[cursor].title;
+      detail.textContent = steps[cursor].detail;
+      readout.textContent = steps[cursor].readout;
+      label.textContent = `Step ${cursor + 1} of ${steps.length}`;
+    }
+
+    document.querySelector("#advance").addEventListener("click", () => {
+      cursor = (cursor + 1) % steps.length;
+      render();
+    });
+    document.querySelector("#reset").addEventListener("click", () => {
+      cursor = 0;
+      render();
+    });
+    render();
+  </script>
+</body>
+</html>

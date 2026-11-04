@@ -1,0 +1,49 @@
+# Copy this to .github/workflows/pages.yml and adapt the artifact path.
+# Enable Pages once with:
+#   gh api --method POST repos/<owner>/<repo>/pages -f build_type=workflow
+# Use PUT instead of POST if Pages already exists. Do not deploy without consent.
+name: pages
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "site/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      # For a built client-only app, run the build here and set path to dist/ or out/.
+      # Next.js: `npm run build` with output: "export"; Vite: `npm run build`.
+      # - name: Build demo
+      #   run: npm ci && npm run build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

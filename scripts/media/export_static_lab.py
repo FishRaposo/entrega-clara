@@ -242,9 +242,12 @@ TEMPLATE = """<!doctype html>
   </section>
 </main>
 <footer>
-  Dados © OpenStreetMap contributors (ODbL 1.0). Perfil de trânsito sintético e determinístico.
+  <p>Dados © OpenStreetMap contributors (ODbL 1.0). Perfil de trânsito sintético e determinístico.
   Traces, benchmarks e perfil são regenerados pelo repositório; esta página é gerada por
-  <code>scripts/media/export_static_lab.py</code>.
+  <code>scripts/media/export_static_lab.py</code>.</p>
+  <p><a href="https://github.com/fishraposo/entrega-clara">Repositório</a> ·
+     <a href="https://github.com/fishraposo/entrega-clara/blob/main/docs/for-reviewers.md">Guia do revisor</a> ·
+     <a href="https://github.com/fishraposo">Portfólio</a></p>
 </footer>
 <script>
 const DATA = /*__DATA__*/;
