@@ -99,6 +99,10 @@ tests, endpoints or files. For each hit, decide: true today, historical (label i
 Regenerate committed artifacts and compare, including their `commit` stamps: a `-dirty` suffix or a
 hash outside the published history is a provenance warning.
 
+Run a repo-wide link check over every markdown file, not just the five the script scans, and probe the
+external URLs too: `--network` probes the demo URL only, so dead citations survive a green audit.
+Template placeholders (for example a literal `<path>`) and URL-encoded filenames are false positives.
+
 ## CI failure playbook
 
 The four classes found in practice, all fixable without weakening the gate:
