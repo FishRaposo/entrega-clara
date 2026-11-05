@@ -5,8 +5,8 @@ them with SKIP and stops. The full checks are for public piece repositories.
 
 Read-only by default. Standard library only, cross-platform. ``--remote`` reads
 the repo card and the default-branch CI status through an authenticated ``gh``;
-``--network`` probes the hosted demo URL; ``--claims`` lists numeric claims for
-manual artifact verification.
+``--network`` probes every external link in the documentation and the hosted
+demo URL; ``--claims`` lists numeric claims for manual artifact verification.
 
     python portfolio_audit.py [path] [--remote] [--network] [--demo-contract]
                               [--portfolio-url URL] [--claims]
@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import html
+import http.client
 import json
 import re
 import shutil
@@ -27,6 +28,7 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import unquote
@@ -79,12 +81,21 @@ PREFERRED_CI_WORKFLOWS = (
     "build.yml",
     "build.yaml",
 )
-DOC_LINK_FILES = (
-    "docs/for-reviewers.md",
-    "docs/verification.md",
-    "docs/origin.md",
-    "docs/README.md",
-)
+DOC_SKIP_DIRS = {
+    ".git",
+    ".agents",
+    ".claude",
+    ".commandcode",
+    ".cursor",
+    "node_modules",
+    ".venv",
+    "venv",
+    "dist",
+    "build",
+    ".next",
+    "target",
+    "vendor",
+}
 HUB_ROOT_MARKERS = (
     "pyproject.toml",
     "package.json",
@@ -322,6 +333,68 @@ def check_links(root: Path, files: list[Path]) -> Result:
         shown = ", ".join(broken[:4]) + (" ..." if len(broken) > 4 else "")
         return Result(FAIL, "links", f"{len(broken)} broken: {shown}")
     return Result(PASS, "links", f"{checked} relative link(s) across {scanned} file(s) resolve")
+
+
+def markdown_files(root: Path) -> list[Path]:
+    """Every doc a visitor reads. Agent-skill trees and vendor dirs are tooling."""
+    found: list[Path] = []
+    for path in root.rglob("*.md"):
+        if any(part in DOC_SKIP_DIRS for part in path.relative_to(root).parts):
+            continue
+        found.append(path)
+    return sorted(found)
+
+
+def check_external_links(files: list[Path]) -> Result:
+    """Dead citations hide in ADRs and runbooks; the demo probe never sees them."""
+    urls: list[str] = []
+    seen: set[str] = set()
+    for file in dict.fromkeys(files):
+        if not file.is_file():
+            continue
+        text = strip_fences(file.read_text(encoding="utf-8", errors="replace"))
+        for target in re.findall(r"\]\(\s*([^)\s]+)", text):
+            if not target.startswith(("http://", "https://")):
+                continue
+            cleaned = target.rstrip(".,)")
+            if cleaned not in seen:
+                seen.add(cleaned)
+                urls.append(cleaned)
+    if not urls:
+        return Result(WARN, "external links", "no external links found to probe")
+    urls = urls[:120]
+
+    def status(url: str) -> int:
+        for method in ("HEAD", "GET"):
+            request = urllib.request.Request(
+                url, method=method, headers={"User-Agent": "portfolio-audit/1.0"}
+            )
+            try:
+                with urllib.request.urlopen(request, timeout=12) as response:
+                    return int(response.status)
+            except urllib.error.HTTPError as error:
+                if method == "GET":
+                    return int(error.code)
+            except (OSError, http.client.HTTPException, ValueError):
+                return 0
+        return 0
+
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        statuses = list(zip(urls, pool.map(status, urls)))
+    dead = [url for url, code in statuses if code in (404, 410)]
+    blocked = [
+        url for url, code in statuses if code == 0 or code >= 500 or code in (401, 403, 429)
+    ]
+    if dead:
+        shown = ", ".join(dead[:3]) + (" ..." if len(dead) > 3 else "")
+        return Result(FAIL, "external links", f"{len(dead)} dead: {shown}")
+    if blocked:
+        return Result(
+            WARN,
+            "external links",
+            f"{len(urls)} probed, {len(blocked)} unverifiable (auth, rate limit or network)",
+        )
+    return Result(PASS, "external links", f"{len(urls)} URL(s) probed, none 404")
 
 
 def _readme_title(readme: Path) -> str:
@@ -751,6 +824,51 @@ def check_remote(root: Path, data: dict | None = None) -> list[Result]:
     return results
 
 
+def _fetch_text(url: str, timeout: int = 20) -> str:
+    request = urllib.request.Request(url, headers={"User-Agent": "portfolio-audit/1.0"})
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return response.read(400_000).decode("utf-8", errors="replace")
+    except (OSError, http.client.HTTPException, ValueError):
+        return ""
+
+
+def check_return_path(metadata: dict | None) -> Result:
+    """The loop is usually one-way: the piece links to the profile, the profile forgets the piece."""
+    name = str((metadata or {}).get("nameWithOwner") or "")
+    if "/" not in name:
+        return Result(WARN, "return path", "repository owner unknown; cannot read the profile")
+    owner, repo = name.split("/", 1)
+    profile = _fetch_text(f"https://github.com/{owner}")
+    if not profile:
+        return Result(WARN, "return path", f"could not read github.com/{owner}")
+    pinned = {
+        match.lower()
+        for match in re.findall(
+            rf'href="/{re.escape(owner)}/([^"/?#]+)"', profile, re.IGNORECASE
+        )
+    }
+    readme = ""
+    for branch in ("main", "master"):
+        readme = _fetch_text(
+            f"https://raw.githubusercontent.com/{owner}/{owner}/{branch}/README.md"
+        )
+        if readme:
+            break
+    mentioned = repo.lower() in readme.lower()
+    if repo.lower() in pinned and mentioned:
+        return Result(PASS, "return path", f"profile pins and names {repo}")
+    if repo.lower() in pinned:
+        return Result(WARN, "return path", f"{repo} is pinned but absent from the profile README")
+    if mentioned:
+        return Result(WARN, "return path", f"{repo} is named in the profile README but not pinned")
+    return Result(
+        WARN,
+        "return path",
+        f"profile neither pins nor names {repo}; the demo's portfolio link dead-ends",
+    )
+
+
 def collect_claims(readme: Path, limit: int = 60) -> list[str]:
     text = strip_fences(readme.read_text(encoding="utf-8", errors="replace"))
     claims: list[str] = []
@@ -823,10 +941,10 @@ def audit(
     results.append(check_tests(root))
     results.append(check_ci(root))
     if readme is not None:
-        files = [readme] + [
-            root / name for name in DOC_LINK_FILES if (root / name).is_file()
-        ]
+        files = [readme] + [path for path in markdown_files(root) if path != readme]
         results.append(check_links(root, files))
+        if network:
+            results.append(check_external_links(files))
         results.extend(
             check_demo(
                 root,
@@ -841,6 +959,7 @@ def audit(
     results.append(check_git(root))
     if remote:
         results.extend(check_remote(root, metadata))
+        results.append(check_return_path(metadata))
     return results
 
 
@@ -852,7 +971,11 @@ def main() -> int:
         action="store_true",
         help="Check the repo card, CI status, privacy and social preview via gh",
     )
-    parser.add_argument("--network", action="store_true", help="Probe the hosted demo URL")
+    parser.add_argument(
+        "--network",
+        action="store_true",
+        help="Probe external documentation links and the hosted demo URL",
+    )
     parser.add_argument(
         "--demo-contract",
         action="store_true",

@@ -60,6 +60,7 @@ the artifact is convincing, so the manual test still decides.
 | Blocker | Demo is a 200 error page, empty shell or login/back-end wall | Fix the page or the deploy; a demo must show the concept |
 | Blocker | Demo has no source-repository return link | Add the repo link; `--demo-contract` fails without it |
 | Major | Demo has no portfolio/profile return link | Add the profile or portfolio path; the index itself remains out of scope |
+| Major | The profile never pins or names the piece | Pin it or list it; the demo's portfolio link dead-ends |
 | Major | Demo is only a screenshot or static landing page | Add a real artifact and one working control |
 | Major | Concept demo is unlabeled, invents metrics or pretends to be the deployed product | Label the simulation, use committed real data and link the repository |
 | Major | Demo requires a backend, login, Docker or an install | Move the front door to a static concept demo; host the real app separately |
@@ -127,6 +128,7 @@ The four classes found in practice, all fixable without weakening the gate:
 | Topics | 6–10: domain, stack, techniques, data source; no jokes |
 | Homepage | Live demo or docs URL; never empty when a demo exists |
 | Social preview | 1280×640 image; commit the asset and upload it; `--remote` warns until GitHub reports a custom preview |
+| Return path | the profile pins or names the repository; a demo link into a profile that omits the piece is a dead end |
 | License | Present and correct |
 | Pinned | The repository is pinned on the profile |
 

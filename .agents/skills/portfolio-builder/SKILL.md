@@ -3,7 +3,7 @@ name: portfolio-builder
 description: Tailor public, recruiter-facing repositories into credible portfolio pieces for recruiters, hiring managers and freelance clients. Use when asked to make a public repository portfolio-ready, audit why it is not landing, rewrite the README or add a reviewer path, build an evidence spine or GitHub Pages showcase demo, or answer "is this ready as a portfolio piece?". Includes a labeled static concept demo for projects that cannot run on Pages, a portfolio return path, and a machine-checkable demo contract. Private repositories and hub/collection repositories are out of scope; the audit reports SKIP and stops.
 license: MIT
 metadata:
-  version: "1.6.0"
+  version: "1.7.0"
 ---
 
 # Portfolio Builder
@@ -204,9 +204,11 @@ python .agents/skills/portfolio-builder/scripts/portfolio_audit.py . \
   --remote --network --demo-contract --claims
 ```
 
-`--remote` reads the repo card, the latest default-branch CI run, repository privacy and whether the
-custom social preview is actually set (needs authenticated `gh`);
-`--network` probes the hosted demo URL and fails on 4xx/5xx; `--demo-contract` checks the page for the
+`--remote` reads the repo card, the latest default-branch CI run, repository privacy, whether the
+custom social preview is actually set, and whether the profile pins or names the repository (needs
+authenticated `gh`);
+`--network` probes every external link in the documentation, then the hosted demo URL, and fails on
+404/410; `--demo-contract` checks the page for the
 source repository link, portfolio/profile link, provenance, label, artifact and no direct remote API
 call. Pass `--portfolio-url <url>` when the portfolio has a dedicated address; otherwise the owner's
 profile link is accepted. `--claims` lists claim-like numeric lines with their section and any links,
@@ -224,7 +226,9 @@ artifacts.
 
 ## Writing rules
 
-- **Numbers**: median + denominator + machine; baseline and trade-off; no precision theatre.
+- **Numbers**: median + denominator + machine; baseline and trade-off; no precision theatre. When
+  each row of a table is an independently drawn sample, say so beside the table — the comparison is
+  within a row, never across rows.
 - **Voice**: active, concrete, short sentences. "The city query expands 85 nodes where Dijkstra needs
   53,885" beats "highly performant"; wall time is a parenthetical from a named run, not the headline.
 - **Claims**: each one names its evidence. "All exact solvers agree with the Dijkstra oracle
@@ -245,6 +249,9 @@ artifacts.
 - A concept demo that invents metrics or pretends to be the deployed product.
 - A 200 response with no title, artifact or working control.
 - A demo with no way back to the source repository or the portfolio/profile.
+- A one-way loop: the demo links to the profile, and the profile neither pins nor names the project.
+- A benchmark table whose rows draw independent samples, with nothing saying so; the 13-stop row
+  comes out cheaper than the 11-stop one and reads as a bug.
 - The same shell with a swapped artifact across unrelated pieces.
 - A direct remote API call in a page that claims to be static.
 - A screenshot labeled "demo".
@@ -297,4 +304,5 @@ visitor to the portfolio, and let the repository prove the engineering through a
 - `assets/repo-card.md` — description formula, topic sets, homepage rules.
 - `assets/pages-demo-skeleton.html` — accessible static concept-demo starting page.
 - `assets/pages-demo-workflow.yml` — GitHub Pages deployment workflow to adapt.
-- `scripts/portfolio_audit.py` — stdlib mechanical audit (links, license, CI, tests, metadata, demo page and demo contract).
+- `scripts/portfolio_audit.py` — stdlib mechanical audit (repo-wide links including external URLs,
+  license, CI, tests, metadata, profile return path, demo page and demo contract).
