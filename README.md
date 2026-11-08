@@ -9,7 +9,7 @@ keeps it as the baseline and answers it with a measured solver ladder on **real 
 streets**, wired into a delivery product where the courier drives the computed route, batches orders
 under pickup-before-dropoff precedence, and the customer watches it happen.
 
-![A linha do tempo... ALT contra Dijkstra na mesma rota de entrega](docs/media/lab-alt-vs-dijkstra.gif)
+![The race, same delivery route: ALT versus Dijkstra over the search timeline](docs/media/lab-alt-vs-dijkstra.gif)
 
 *One delivery route in central São Paulo, searched twice. ALT landmarks finish in 70 expansions;
 Dijkstra needs 167. The frame is drawn and encoded by `scripts/media/render_search_gif.py` with

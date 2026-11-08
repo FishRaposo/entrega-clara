@@ -38,6 +38,9 @@ jobs:
       - name: Benchmark harness smoke (stdlib only)
         run: python scripts/bench/routing_benchmark.py --smoke
         if: matrix.os == 'ubuntu-latest'
+      - name: Check static lab freshness
+        run: python scripts/media/check_static_lab.py
+        if: matrix.os == 'ubuntu-latest'
 
   frontend:
     runs-on: ubuntu-latest
