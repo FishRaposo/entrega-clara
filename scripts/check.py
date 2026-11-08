@@ -1,7 +1,7 @@
 """Cross-platform quality gate runner — stdlib only (Windows-friendly).
 
-Runs every check the Makefile's `check` target composes, without needing
-`make` or POSIX env syntax. Exit non-zero on the first failing gate.
+Runs the full local gate without needing POSIX env syntax. Exit non-zero on the
+first failing gate.
 """
 
 import subprocess

@@ -62,28 +62,29 @@ The current scaffold supports the first four commands today. PostgreSQL migratio
 
 ```bash
 cp .env.example .env
-make install
-make check
-make demo-preview
+python -m pip install -e 'app/backend[dev]'
+(cd app/web && npm install)
+python scripts/check.py
+python scripts/demo/reset_demo.py --seed-preview
 ```
 
 When M1 implementation lands, add the following verification path:
 
 ```bash
 # Memory mode: no database or provider required
-PERSISTENCE_MODE=memory make dev-memory       # planned target
+PERSISTENCE_MODE=memory python scripts/dev.py
 
 # PostgreSQL mode: Compose healthcheck and migrations required
 docker compose up -d db
-make db-migrate                                # planned target
-PERSISTENCE_MODE=postgres make dev             # planned/updated target
+# Apply the migrations documented in docs/runbooks/postgres.md.
+PERSISTENCE_MODE=postgres python scripts/dev.py
 
 # Full feature evidence
-make test-e2e                                   # planned target
-make test-postgres                              # planned target
+(cd app/web && npx playwright test)
+DATABASE_URL=postgresql+psycopg://user:pass@host:port/db python -m pytest tests/repo -q
 ```
 
-Do not make `make check` depend on MapTiler, payment sandboxes, or a live geocoder.
+Do not make the local check depend on MapTiler, payment sandboxes, or a live geocoder.
 
 ## 5. M1 implementation order
 
@@ -222,23 +223,22 @@ Do not “fix” an SSE symptom by making the browser invent state.
 Current repository gates:
 
 ```bash
-make seed-validate
-make requirement-coverage
-make app-boundary
-make lint
-make typecheck
-make test
-make check
+python scripts/data/validate_seed.py data/scenarios/lunch-rush.json
+python scripts/quality/check_requirement_coverage.py docs/requirements/traceability.md
+python scripts/repo/check_app_boundary.py
+ruff check app/backend/src tests
+mypy app/backend/src
+python -m pytest tests -q
+python scripts/check.py
 ```
 
 M1 additions should include:
 
 ```bash
-make test-postgres       # memory/Postgres repository contract and migrations
-make test-api            # API integration, errors, authorization, SSE
-make test-e2e            # Playwright complete journey
-make test-a11y           # automated accessibility scan
-make benchmark-routing  # bounded, reproducible solver measurements
+DATABASE_URL=postgresql+psycopg://user:pass@host:port/db python -m pytest tests/repo -q
+python -m pytest tests -q
+(cd app/web && npx playwright test)   # includes the automated accessibility scans
+python scripts/bench/routing_benchmark.py --graph city
 ```
 
 The final report must distinguish:

@@ -4,7 +4,7 @@ Demo mode is a deterministic, staged-runtime walkthrough based on `data/scenario
 
 ## Start and inspect
 
-Start the local stack with `make dev`. Confirm the backend is healthy, then inspect the current scenario:
+Start the local stack with `python scripts/dev.py`. Confirm the backend is healthy, then inspect the current scenario:
 
 ```bash
 curl http://localhost:8000/api/v1/health
@@ -22,10 +22,10 @@ curl -X POST http://localhost:8000/api/v1/demo/reset
 Reset the running API from the repository root with:
 
 ```bash
-make demo-reset
+python scripts/demo/reset_demo.py
 ```
 
-If the API is offline and you only need to inspect the seed's initial state, run `make demo-preview`. Preview mode reads the seed without changing the source file and does not claim to reset a running scenario.
+If the API is offline and you only need to inspect the seed's initial state, run `python scripts/demo/reset_demo.py --seed-preview`. Preview mode reads the seed without changing the source file and does not claim to reset a running scenario.
 
 ## Advance and replay
 

@@ -25,7 +25,7 @@ nothing but the Python standard library — no image or charting dependency anyw
 | **See it without running it** | [Live lab](https://fishraposo.github.io/entrega-clara/) · [Static lab](site/index.html) (offline replay, no server) · [35-second tour](docs/media/demo-tour.webm) · [screenshots](#see-it-without-running-it) · [Portfolio](https://github.com/fishraposo) |
 | **Review it** | [Reviewing this repository](docs/for-reviewers.md) — five-minute path, role-specific paths, what is real vs simulated, and where each claim is proven. |
 
-No Docker, database, `make` or provider accounts are required for the default run.
+No Docker, database or provider accounts are required for the default run.
 
 ## The measured ladder
 
@@ -214,7 +214,7 @@ guided scenario at `/demo`. Each surface sends a fixed `X-Demo-Identity` header 
 
 ## Local setup
 
-Requires only Python 3.11+ and Node 24.15+ for the default memory mode — no Docker, database, `make`,
+Requires only Python 3.11+ and Node 24.15+ for the default memory mode — no Docker, database,
 or provider accounts.
 
 1. Copy `.env.example` to `.env` (optional; safe defaults, no credentials needed).
@@ -250,7 +250,7 @@ advancement, replay, and role-navigation instructions.
 
 ## Commands
 
-Run from the repository root (the Makefile wraps the same commands when `make` is available):
+Run from the repository root:
 
 | Command | Purpose |
 | --- | --- |

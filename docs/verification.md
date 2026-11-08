@@ -63,7 +63,7 @@ remains the 2026-11-01 evidence; it was not re-run today because no PostgreSQL s
   `file://` with reduced motion, asserts the finished counters are Dijkstra
   167/167 and ALT 70/70, and captures `docs/media/static-lab.png`.
 - **Recorded tour** `docs/media/demo-tour.webm` (35 s, 2.3 MB) recorded by
-  Playwright from the live app (`make tour`, opt-in because it writes a tracked
+  Playwright from the live app (`cd app/web && TOUR=1 npx playwright test e2e/tour.spec.ts`, opt-in because it writes a tracked
   file).
 - **Deployment:** the static lab is published by `.github/workflows/pages.yml` to
   <https://fishraposo.github.io/entrega-clara/> (run 41349418943). The API and web

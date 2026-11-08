@@ -23,7 +23,7 @@ def test_default_tree_output_shows_project_boundaries_and_hides_generated_direct
 def test_controlled_git_tree_uses_only_safe_tracked_paths(tmp_path: Path):
     tracked_paths = [
         "README.md",
-        "Makefile",
+        "pyproject.toml",
         "app/backend/src/main.py",
         "docs/README.md",
         "scripts/repo/tool.py",
@@ -78,7 +78,7 @@ def test_controlled_git_tree_uses_only_safe_tracked_paths(tmp_path: Path):
 ├── tests/
 │   └── scripts/
 │       └── test_tool.py
-├── Makefile
+├── pyproject.toml
 └── README.md"""
 
 

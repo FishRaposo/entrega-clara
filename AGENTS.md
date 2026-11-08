@@ -34,7 +34,7 @@
 | Static lab freshness | Root: `python scripts/media/check_static_lab.py` (regenerates `site/index.html` and fails if it changed) |
 | Routing benchmark artifacts | Root: `python scripts/bench/routing_benchmark.py --graph city` and `... --export-lab-trace` |
 
-- `python scripts/check.py` runs seed validation, requirement coverage, app-boundary checks, static-lab freshness, a routing benchmark smoke, ruff, mypy, pytest, Vitest, lint and typecheck. `make check` is the shorter alias (seed, coverage, boundary, lint, typecheck, tests); it does **not** run the static lab, benchmark, Next build, Playwright or the PostgreSQL contract. Without make, use the commands above plus these root checks:
+- `python scripts/check.py` runs seed validation, requirement coverage, app-boundary checks, static-lab freshness, a routing benchmark smoke, ruff, mypy, pytest, Vitest, lint and typecheck. It does **not** run the Next build, Playwright or the PostgreSQL contract. The direct commands above remain the contract:
   - `python scripts/data/validate_seed.py data/scenarios/lunch-rush.json`
   - `python scripts/quality/check_requirement_coverage.py docs/requirements/traceability.md`
   - `python scripts/repo/check_app_boundary.py`

@@ -89,7 +89,7 @@ python scripts/dev.py      # API :8000, web :3000
 python scripts/check.py    # the full local gate
 ```
 
-The default is memory mode: no Docker, database, `make` or provider accounts. PostgreSQL persistence
+The default is memory mode: no Docker, database or provider accounts. PostgreSQL persistence
 is opt-in (`PERSISTENCE_MODE=postgres` + `DATABASE_URL`, optional extra), documented in the
 [PostgreSQL runbook](runbooks/postgres.md). Deploy artifacts are in the repository; deployment itself
 is an operator action ([deploy runbook](runbooks/deploy.md)).

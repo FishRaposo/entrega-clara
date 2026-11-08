@@ -41,8 +41,8 @@ def reset_demo(api_url: str = DEFAULT_API_URL) -> dict[str, Any]:
             payload: object = json.loads(response.read().decode("utf-8"))
     except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as error:
         raise DemoResetError(
-            "The local demo API could not be reset. Start it with 'make dev' or use "
-            "'make demo-preview'."
+            "The local demo API could not be reset. Start it with 'python scripts/dev.py' or use "
+            "'python scripts/demo/reset_demo.py --seed-preview'."
         ) from error
     if not isinstance(payload, dict) or not isinstance(payload.get("scenario_id"), str):
         raise DemoResetError("The local demo API returned an invalid reset response.")

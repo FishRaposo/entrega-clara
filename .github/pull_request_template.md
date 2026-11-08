@@ -4,7 +4,7 @@ Describe the problem and the scoped change.
 
 ## Validation
 
-- [ ] `make check`
+- [ ] `python scripts/check.py`
 - [ ] Focused tests or manual demo steps are listed below
 - [ ] `docker compose config` was run when container wiring changed
 

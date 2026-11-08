@@ -27,7 +27,7 @@ This page lists what would make Entrega Clara a stronger portfolio piece, and ho
 | R2 README first screen | ✅ done | recruiter section + media embeds |
 | R3 verification record | ✅ done | `docs/verification.md` exact counts |
 | W1 check.py / W2 dev.py | ✅ done | `scripts/check.py` runs the full gate; the planned `--fast`/`--e2e` flags were not added because the browser suite has its own command. `scripts/dev.py` starts both servers. |
-| W3 Makefile | ✅ done | `dev` de-Dockered |
+| W3 command cleanup | ✅ done | build wrapper removed; direct commands documented |
 | W4 CI matrix | ✅ done | ubuntu+windows backend, e2e job, benchmark smoke |
 | O1 ops timeline/ETA | ✅ done | `GET /operations/timeline` + panel table |
 | O2 route-following GPS | ✅ done | `courier.route_step`, polyline-constrained pings |
@@ -67,7 +67,7 @@ real providers, or a graph larger than one city district.
 
 ## Constraints every item respects
 
-- **Toolchain:** Python 3.11+ and Node 24.15+ only. No Docker, no WSL, no database, no `make` required, no provider accounts.
+- **Toolchain:** Python 3.11+ and Node 24.15+ only. No Docker, no WSL, no database, no provider accounts.
 - **Windows is a first-class host.** Every command must run in PowerShell.
 - **No new runtime or dev dependencies.** Everything below the "Future maybe" section uses the Python standard library, the packages already in `pyproject.toml` / `package.json`, or tools already installed (Playwright).
 - **New dependencies are listed only under [Future maybe](#future-maybe-new-dependencies),** each with what it would unlock.
@@ -118,8 +118,8 @@ So the courier is sent on a route that is not time-optimal, and the displayed ET
 
 ### F4. Windows and no-Docker drift
 
-- `Makefile` `dev` still runs `docker compose up --build`.
-- `Makefile` `test` uses POSIX `PYTHONPATH=... python ...`, which fails in PowerShell and cmd.
+- The build wrapper was removed; `python scripts/dev.py` starts both servers without Docker.
+- Tests use the root `pyproject.toml` `pythonpath` setting; no POSIX `PYTHONPATH` wrapper is needed.
 - `.env.example` sets `DATABASE_URL` to the Docker host `db`.
 - `app/web/test-results/` exists locally and is not in `.gitignore`.
 
@@ -299,17 +299,17 @@ A standard-library script that runs, in order: seed validation, requirement cove
 - `--fast` skips the build.
 - `--e2e` adds Playwright.
 
-Point the README, `docs/testing/quality-gates.md` and the Makefile `check` target at it.
+The README and `docs/testing/quality-gates.md` point at it.
 
 ### W2. `scripts/dev.py`: start both servers with one command
 
-Uses `subprocess.Popen` to start `python -m uvicorn delivery_platform.api.main:create_app --factory --port 8000` and `npm run dev` (`npm.cmd` on Windows, chosen through `shutil.which`). It prefixes each line with `[api]` or `[web]`, and Ctrl+C stops both (on Windows, start the children with `CREATE_NEW_PROCESS_GROUP` and terminate them in a `finally` block). Replace the Makefile `dev` target with `python scripts/dev.py`.
+Uses `subprocess.Popen` to start `python -m uvicorn delivery_platform.api.main:create_app --factory --port 8000` and `npm run dev` (`npm.cmd` on Windows, chosen through `shutil.which`). It prefixes each line with `[api]` or `[web]`, and Ctrl+C stops both (on Windows, start the children with `CREATE_NEW_PROCESS_GROUP` and terminate them in a `finally` block). `python scripts/dev.py` is the entrypoint.
 
-### W3. Makefile cleanup
+### W3. Command cleanup
 
-- `test`: drop the `PYTHONPATH=` prefix. `pyproject.toml` already sets `pythonpath = ["src"]`; confirm the root `pytest.ini` resolves the same way.
-- `dev`: call `scripts/dev.py` (W2).
-- Keep the Makefile as optional aliases, as the README already says.
+- The build wrapper was removed on 2026-11-08.
+- `python scripts/dev.py` starts both servers.
+- The direct commands in the README and quality-gates document the contract.
 
 ### W4. CI that proves the claims
 

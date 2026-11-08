@@ -11,7 +11,7 @@ Verify the public remote before pushing a release: the exact repository exists, 
 From the repository root, run the following commands and record their exit status:
 
 ```bash
-make check
+python scripts/check.py
 python scripts/data/validate_seed.py data/scenarios/lunch-rush.json
 python scripts/quality/check_requirement_coverage.py docs/requirements/traceability.md
 python scripts/repo/check_app_boundary.py

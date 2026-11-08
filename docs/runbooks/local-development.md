@@ -7,7 +7,7 @@ This repository is a staged runtime for a deterministic portfolio demo. It is no
 - Python 3.11 or newer
 - Node 24.15 or newer
 
-Nothing else is required to install, run, demo, or test the project in the default memory mode: no Docker, WSL, database, `make`, or provider accounts. Optional infrastructure (PostgreSQL persistence, MapTiler tiles) is documented with its prerequisites; see [external dependencies](../architecture/external-dependencies.md).
+Nothing else is required to install, run, demo, or test the project in the default memory mode: no Docker, WSL, database or provider accounts. Optional infrastructure (PostgreSQL persistence, MapTiler tiles) is documented with its prerequisites; see [external dependencies](../architecture/external-dependencies.md).
 
 ## Install
 
@@ -38,7 +38,7 @@ The API is available at `http://localhost:8000`, including `GET /api/v1/health`;
 
 ## Quality gate
 
-The Makefile wraps these commands for environments that have `make`; the plain commands below are the contract and run anywhere:
+The plain commands below are the contract and run anywhere:
 
 ```bash
 python scripts/data/validate_seed.py data/scenarios/lunch-rush.json
@@ -64,9 +64,9 @@ The repository smoke test can run before any application tooling exists:
 python -m pytest tests/repo/test_repository_layout.py -q
 ```
 
-`python scripts/check.py` is the cross-platform equivalent of `make check` (stdlib only, works in
-PowerShell): it runs seed validation, requirement coverage, the app boundary, ruff, mypy, pytest,
-web vitest, lint and typecheck in order and prints a pass/fail summary.
+`python scripts/check.py` is the full local gate (stdlib only, works in PowerShell): it runs seed
+validation, requirement coverage, the app boundary, ruff, mypy, pytest, web vitest, lint and
+typecheck in order and prints a pass/fail summary.
 
 ## Routing graph and measured evidence
 

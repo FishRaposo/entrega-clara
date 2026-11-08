@@ -6,7 +6,7 @@ import { resolve } from "node:path";
 // the customer tracking view and the lab race. It writes a tracked file, so it
 // is opt-in:
 //   TOUR=1 npx playwright test e2e/tour.spec.ts
-test.skip(!process.env.TOUR, "set TOUR=1 (or `make tour`) to record the tour");
+test.skip(!process.env.TOUR, "set TOUR=1 to record the tour");
 test.use({ video: { mode: "on", size: { width: 1280, height: 720 } } });
 
 test("tour gravado: demo, console, rastreio e laboratório", async ({ page }) => {
