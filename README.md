@@ -9,7 +9,7 @@ keeps it as the baseline and answers it with a measured solver ladder on **real 
 streets**, wired into a delivery product where the courier drives the computed route, batches orders
 under pickup-before-dropoff precedence, and the customer watches it happen.
 
-![A linha do tempo... ALT contra Dijkstra na mesma rota de entrega](docs/media/lab-alt-vs-dijkstra.gif)
+![The race, same delivery route: ALT versus Dijkstra over the search timeline](docs/media/lab-alt-vs-dijkstra.gif)
 
 *One delivery route in central São Paulo, searched twice. ALT landmarks finish in 70 expansions;
 Dijkstra needs 167. The frame is drawn and encoded by `scripts/media/render_search_gif.py` with
@@ -258,7 +258,8 @@ Run from the repository root (the Makefile wraps the same commands when `make` i
 | `ruff check app/backend/src tests scripts` | Backend lint |
 | `mypy app/backend/src` | Backend type check |
 | `cd app/web && npm run lint` / `typecheck` | Frontend lint and type check |
-| `python scripts/check.py` | Full local gate (fast mode: `--fast`, browser journeys: `--e2e`) |
+| `cd app/web && npm run build` | Next production build |
+| `python scripts/check.py` | Full local gate: seed, coverage, boundary, static lab, benchmark smoke, ruff, mypy, pytest, Vitest, lint and typecheck (no build or browser suite) |
 | `python scripts/bench/routing_benchmark.py` | Regenerate the benchmark artifacts (`--smoke` for CI, `--export-lab-trace` for the replay) |
 | `python scripts/media/render_search_gif.py` | Render the search replay GIF from the committed trace |
 | `python scripts/media/export_static_lab.py` | Rebuild the self-contained static lab (`site/index.html`) |

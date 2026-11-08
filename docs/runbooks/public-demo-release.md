@@ -1,10 +1,10 @@
 # Public demo release
 
-This runbook prepares the local portfolio scaffold for a future public release. It does not publish the repository, create a remote repository, or claim that a public release already exists.
+This runbook records the release gate for the public demo at [FishRaposo/entrega-clara](https://github.com/FishRaposo/entrega-clara). The repository is public and uses `main`; a release tag is created only after the local gate passes. The checklist does not publish anything by itself.
 
-## Intended public location
+## Public location
 
-The intended public repository is [FishRaposo/entrega-clara](https://github.com/FishRaposo/entrega-clara). Before publishing, independently verify that this exact repository exists, is public, and uses `main` as its default branch. Do not invent a remote commit SHA or push to a similarly named repository.
+Verify the public remote before pushing a release: the exact repository exists, is public, uses `main` as its default branch, and its `origin` URL is the canonical one. Do not invent a remote commit SHA or push to a similarly named repository.
 
 ## Local release gate
 
@@ -33,37 +33,28 @@ The final command audits tracked paths only, using the renderer's exact safety r
 - Confirm the governing seed design, application source, `docs/`, `tests/`, and `scripts/` are present.
 - Confirm README setup commands match the commands that passed locally.
 - Create the local release commit and annotated `v0.1.0` tag only after all runnable local checks pass.
-- After the intended remote is independently verified, add it, push `main` and `v0.1.0`, then inspect remote refs and the public README.
+- Push `main` and `v0.1.0` only after the gate passes and the remote check agrees; then inspect the remote refs and the public README.
 
-## Conditional publication sequence
+## Verify the public remote
 
-Do not add a remote or push anything until the local release gate passes and this exact repository is independently verified as public with `main` as its default branch:
+Run the local gate first, then verify the public remote before pushing a release tag:
 
 ```bash
 gh repo view FishRaposo/entrega-clara \
   --json nameWithOwner,url,visibility,defaultBranchRef
-```
-
-Stop if the command fails or its output does not identify `FishRaposo/entrega-clara`, `https://github.com/FishRaposo/entrega-clara`, `PUBLIC`, and default branch `main`. Only after that verification, run:
-
-```bash
-git remote -v
-git remote add origin https://github.com/FishRaposo/entrega-clara.git
 git remote get-url origin
-git push -u origin main
-git push origin v0.1.0
-```
-
-If `origin` already exists, do not overwrite it: verify `git remote get-url origin` is the exact canonical URL above before pushing. After both pushes succeed, verify the remote refs and inspect the README served from the public default branch:
-
-```bash
 git ls-remote --heads origin main
 git ls-remote --tags origin v0.1.0
+```
+
+Stop if the repository is not public, the default branch is not `main`, or `origin` is not `https://github.com/FishRaposo/entrega-clara.git`. Push `main` and `v0.1.0` only after the gate passes and those checks agree. After pushing, compare the remote ref hashes with the local commit and tag, and inspect the README served from the public default branch:
+
+```bash
 curl --fail --location --silent --show-error \
   https://raw.githubusercontent.com/FishRaposo/entrega-clara/main/README.md
 ```
 
-Confirm the returned ref hashes match the intended local commit and tag, and inspect the public README for the verified setup commands and repository boundaries. A failed or mismatched check means publication is not verified and must not be reported as complete.
+A failed or mismatched check means the release is not verified and must not be reported as complete.
 
 ## Demo limitations
 

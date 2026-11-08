@@ -20,3 +20,5 @@ coverage/
 .superpowers/
 docs/superpowers/plans/
 .commandcode/design/
+.mimosa/
+.zcode/

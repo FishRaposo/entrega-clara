@@ -26,7 +26,7 @@ This page lists what would make Entrega Clara a stronger portfolio piece, and ho
 | R1 screenshots | ✅ done | `docs/media/*.png` via `e2e/screenshots.spec.ts` |
 | R2 README first screen | ✅ done | recruiter section + media embeds |
 | R3 verification record | ✅ done | `docs/verification.md` exact counts |
-| W1 check.py / W2 dev.py | ✅ done | `scripts/check.py`, `scripts/dev.py` |
+| W1 check.py / W2 dev.py | ✅ done | `scripts/check.py` runs the full gate; the planned `--fast`/`--e2e` flags were not added because the browser suite has its own command. `scripts/dev.py` starts both servers. |
 | W3 Makefile | ✅ done | `dev` de-Dockered |
 | W4 CI matrix | ✅ done | ubuntu+windows backend, e2e job, benchmark smoke |
 | O1 ops timeline/ETA | ✅ done | `GET /operations/timeline` + panel table |
@@ -41,7 +41,7 @@ This page lists what would make Entrega Clara a stronger portfolio piece, and ho
 | Pathfinding-first README | ✅ done | pitch, replay, chart, screenshots, built-vs-deferred table, origin story |
 | Batch optimization payoff | ✅ done | `RoutePlan.baseline_*`, courier console line (Held-Karp vs nearest-neighbor) |
 | R4 origin story | ✅ done | "Origem / Origin" in the README plus [docs/origin.md](../origin.md): two assignments merged, brute force kept as the legacy router, portfolio layer, iFood chronology |
-| W5 housekeeping leftovers | ⏳ partial | `httpx` TestClient deprecation still shows (upstream) |
+| W5 housekeeping leftovers | ✅ done | local leftovers fixed; the remaining `httpx` TestClient deprecation warning comes from Starlette/FastAPI upstream |
 
 ## Where the project stands
 

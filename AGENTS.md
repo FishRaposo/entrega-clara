@@ -34,14 +34,14 @@
 | Static lab freshness | Root: `python scripts/media/check_static_lab.py` (regenerates `site/index.html` and fails if it changed) |
 | Routing benchmark artifacts | Root: `python scripts/bench/routing_benchmark.py --graph city` and `... --export-lab-trace` |
 
-- `make check` wraps seed validation, requirement coverage, app-boundary checks, static-lab freshness, a routing benchmark smoke, lint, typecheck, and unit tests. It does **not** run the Next build, Playwright, or the PostgreSQL contract. Without make, use the commands above plus these root checks:
+- `python scripts/check.py` runs seed validation, requirement coverage, app-boundary checks, static-lab freshness, a routing benchmark smoke, ruff, mypy, pytest, Vitest, lint and typecheck. `make check` is the shorter alias (seed, coverage, boundary, lint, typecheck, tests); it does **not** run the static lab, benchmark, Next build, Playwright or the PostgreSQL contract. Without make, use the commands above plus these root checks:
   - `python scripts/data/validate_seed.py data/scenarios/lunch-rush.json`
   - `python scripts/quality/check_requirement_coverage.py docs/requirements/traceability.md`
   - `python scripts/repo/check_app_boundary.py`
   - `python scripts/media/check_static_lab.py`
 - Vitest's root is the repository root, with tests in `tests/frontend`, not `app/web`; `next/navigation` is replaced by `tests/frontend/next-navigation.mock.ts`. The web `tsc` configuration does not include these tests.
 - Playwright lives in `app/web/e2e`, **not** root `tests/e2e`. From `app/web`, run `npm run test:e2e` or `npm run test:e2e -- e2e/journeys.spec.ts -g "test title"`. It starts API/web on 8000/3000 and reuses existing servers outside CI; stale in-memory server state can affect journeys.
-- Playwright selects system **Microsoft Edge** locally and downloaded Chromium when `CI` is set. `PLAYWRIGHT_CHANNEL` is not read by the config; installing Chromium alone does not satisfy the local Edge selection. E2E is not currently run by `.github/workflows/ci.yml`.
+- Playwright selects system **Microsoft Edge** locally and downloaded Chromium when `CI` is set. `PLAYWRIGHT_CHANNEL` is not read by the config; installing Chromium alone does not satisfy the local Edge selection. CI runs the journeys and a11y scans in the `e2e` job of `.github/workflows/ci.yml`, with downloaded Chromium on ubuntu-24.04.
 
 ## Wiring and invariants
 
