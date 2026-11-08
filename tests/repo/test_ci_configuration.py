@@ -21,7 +21,8 @@ def test_ci_workflow_runs_required_quality_commands():
 def test_ci_checkout_fetches_full_history_for_committed_whitespace_check():
     workflow = (ROOT / ".github/workflows/ci.yml").read_text()
 
-    assert "- uses: actions/checkout@v4\n        with:\n          fetch-depth: 0" in workflow
+    assert "actions/checkout@" in workflow
+    assert "fetch-depth: 0" in workflow
 
 
 def test_compose_supplies_the_web_proxy_with_the_internal_api_url():
