@@ -67,7 +67,7 @@ real providers, or a graph larger than one city district.
 
 ## Constraints every item respects
 
-- **Toolchain:** Python 3.11+ and Node 22+ only. No Docker, no WSL, no database, no `make` required, no provider accounts.
+- **Toolchain:** Python 3.11+ and Node 24.15+ only. No Docker, no WSL, no database, no `make` required, no provider accounts.
 - **Windows is a first-class host.** Every command must run in PowerShell.
 - **No new runtime or dev dependencies.** Everything below the "Future maybe" section uses the Python standard library, the packages already in `pyproject.toml` / `package.json`, or tools already installed (Playwright).
 - **New dependencies are listed only under [Future maybe](#future-maybe-new-dependencies),** each with what it would unlock.

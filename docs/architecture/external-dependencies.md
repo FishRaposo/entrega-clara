@@ -11,7 +11,7 @@ The project is designed so that the complete product story runs with the smalles
 | Dependency | Purpose |
 | --- | --- |
 | Python 3.11+ and pip | FastAPI backend, domain/application code, repository and quality scripts |
-| Node 22+ and npm | Next.js web shell, frontend tests and build |
+| Node 24.15+ and npm | Next.js web shell, frontend tests and build |
 
 Development-only tooling installed through the manifests above: pytest, ruff, and mypy for the backend; vitest, eslint, and TypeScript for the web; Playwright browsers for the end-to-end suite (downloaded by `npx playwright install`, test tooling only).
 

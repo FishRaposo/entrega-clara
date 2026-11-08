@@ -16,7 +16,7 @@
 
 ## Setup and commands
 
-- Requires Python 3.11+ and Node 22+. Install from root with `python -m pip install -e "app/backend[dev]"`; run `npm ci` in `app/web` (the only npm package/lockfile, not a root workspace).
+- Requires Python 3.11+ and Node 24.15+. Install from root with `python -m pip install -e "app/backend[dev]"`; run `npm ci` in `app/web` (the only npm package/lockfile, not a root workspace).
 - On Windows PowerShell, if execution policy blocks `npm.ps1`, use `npm.cmd` instead of changing the execution policy.
 - No database, Docker, or provider accounts are required for the default `PERSISTENCE_MODE=memory`. The PostgreSQL adapter is implemented behind the optional extra (`pip install -e "app/backend[postgres]"`) and selected with `PERSISTENCE_MODE=postgres` + `DATABASE_URL`; it stores a transactional snapshot plus an outbox and is single-writer (ADR 0012, `docs/runbooks/postgres.md`).
 - From root, `python scripts/dev.py` starts both servers. Alternatively run `python -m uvicorn delivery_platform.api.main:app --port 8000` from root and `npm run dev` in `app/web` in separate terminals.

@@ -5,7 +5,7 @@ This repository is a staged runtime for a deterministic portfolio demo. It is no
 ## Prerequisites
 
 - Python 3.11 or newer
-- Node 22 or newer
+- Node 24.15 or newer
 
 Nothing else is required to install, run, demo, or test the project in the default memory mode: no Docker, WSL, database, `make`, or provider accounts. Optional infrastructure (PostgreSQL persistence, MapTiler tiles) is documented with its prerequisites; see [external dependencies](../architecture/external-dependencies.md).
 

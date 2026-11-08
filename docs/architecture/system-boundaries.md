@@ -14,7 +14,7 @@ Entrega Clara is a modular monolith with explicit interfaces. Application source
 
 ## Runtime boundary
 
-Docker Compose provides four local services: `db`, `api`, `worker`, and `web`. `api` runs the FastAPI package from the root Python image and reads the versioned `data/` files; `worker` drains the PostgreSQL outbox; `web` runs the Node 22 package in `app/web`. The database service is optional infrastructure: the default memory mode does not connect to it, and `PERSISTENCE_MODE=postgres` selects the adapter described in the [persistence guide](persistence-and-seeding.md).
+Docker Compose provides four local services: `db`, `api`, `worker`, and `web`. `api` runs the FastAPI package from the root Python image and reads the versioned `data/` files; `worker` drains the PostgreSQL outbox; `web` runs the Node 24.15 package in `app/web`. The database service is optional infrastructure: the default memory mode does not connect to it, and `PERSISTENCE_MODE=postgres` selects the adapter described in the [persistence guide](persistence-and-seeding.md).
 
 Configuration values are supplied at runtime, not baked into images. The root Python image copies only `app/backend` and `data`, so it excludes `.env` files and other secrets. The fixed Compose database credentials are local demo values, not deployable credentials.
 

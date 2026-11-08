@@ -19,6 +19,7 @@ postgres = [
 ]
 dev = [
   "httpx>=0.28,<1",
+  "httpx2>=2.16,<3",
   "mypy>=1.15,<2",
   # The optional PostgreSQL adapter is imported by the type checker and by the
   # persistence contract tests, so development installs include its drivers.

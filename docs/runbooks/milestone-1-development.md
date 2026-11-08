@@ -28,7 +28,7 @@ M1 does not require real payment, GPS, geocoding, notification, or authenticatio
 ## 2. Prerequisites
 
 - Python 3.11.
-- Node 22, matching CI and the web package engine.
+- Node 24.15, matching CI and the web package engine.
 - Docker Compose for PostgreSQL/restart/Compose checks; Docker is optional for memory-mode work.
 - A MapTiler browser key only if a real basemap is desired locally. It must be origin-restricted and never be a service token.
 - A clean, public-safe fixture set. Do not copy personal, payment, courier, or private source data into the repository.

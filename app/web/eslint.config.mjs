@@ -1,14 +1,18 @@
-import { FlatCompat } from "@eslint/eslintrc";
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
 
-const compat = new FlatCompat({
-  baseDirectory: import.meta.dirname,
-});
-
-const config = [
+export default defineConfig([
+  ...nextVitals,
   {
-    ignores: [".next/**", "node_modules/**", "test-results/**", "playwright-report/**"],
+    rules: {
+      // Existing effects intentionally synchronize stream and demo state.
+      "react-hooks/set-state-in-effect": "off",
+    },
   },
-  ...compat.extends("next/core-web-vitals"),
-];
-
-export default config;
+  globalIgnores([
+    ".next/**",
+    "node_modules/**",
+    "test-results/**",
+    "playwright-report/**",
+  ]),
+]);

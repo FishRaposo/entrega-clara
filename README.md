@@ -214,7 +214,7 @@ guided scenario at `/demo`. Each surface sends a fixed `X-Demo-Identity` header 
 
 ## Local setup
 
-Requires only Python 3.11+ and Node 22+ for the default memory mode — no Docker, database, `make`,
+Requires only Python 3.11+ and Node 24.15+ for the default memory mode — no Docker, database, `make`,
 or provider accounts.
 
 1. Copy `.env.example` to `.env` (optional; safe defaults, no credentials needed).
