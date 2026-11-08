@@ -34,3 +34,5 @@ The arithmetic is fixed: 1000×750 card at 2× = 2000×1500, then a single Lancz
 **Provenance.** The street graph is a dated OpenStreetMap snapshot (ODbL), not a live map. The
 screenshots come from the running app in deterministic demo mode; the limits in the card footers are
 part of the image.
+
+**Social preview:** `docs/media/social-preview.png` is the 1280×640 GitHub card (a composite of the cover card with the repository name and thesis). Upload it in Settings → Social preview; a repo edit cannot set it.
