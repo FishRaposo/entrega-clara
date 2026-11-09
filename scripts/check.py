@@ -1,7 +1,7 @@
 """Cross-platform quality gate runner — stdlib only (Windows-friendly).
 
-Runs the full local gate without needing POSIX env syntax. Exit non-zero on the
-first failing gate.
+Runs the full local gate without needing POSIX env syntax. Runs every gate and
+exits non-zero if any gate fails.
 """
 
 import subprocess
