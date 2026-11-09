@@ -153,6 +153,7 @@ TEMPLATE = """<!doctype html>
   th, td { text-align:left; padding:.3rem .4rem; border-bottom:1px solid var(--line); }
   th { color:var(--muted); font-size:.875rem; line-height:1.2; text-transform:uppercase; letter-spacing:.05em; }
   .table-wrap { overflow-x:auto; }
+  .table-wrap:focus-visible { outline:3px solid var(--focus); outline-offset:2px; }
   .table-wrap table { min-width:560px; }
   caption { text-align:left; color:var(--muted); font-size:.875rem; line-height:1.4; padding:.2rem 0; }
   @media (max-width:640px) {
@@ -162,6 +163,7 @@ TEMPLATE = """<!doctype html>
   }
   footer { max-width:1100px; margin:0 auto; padding:0 1.2rem 2rem; color:var(--muted);
            font-size:.875rem; line-height:1.45; }
+  footer a { display:inline-flex; align-items:center; min-height:44px; }
 </style>
 </head>
 <body>
@@ -231,7 +233,7 @@ TEMPLATE = """<!doctype html>
 
   <section class="panel" id="bench-panel" hidden>
     <h2>Benchmarks publicados: matrizes de rua</h2>
-    <div class="table-wrap">
+    <div class="table-wrap" tabindex="0" aria-label="Published benchmark table">
       <table>
         <caption>paradas · custo e tempo por solver</caption>
         <thead><tr><th scope="col">paradas</th><th scope="col">Held-Karp</th><th scope="col">2-opt</th><th scope="col">vizinho</th><th scope="col">força bruta</th></tr></thead>

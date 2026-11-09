@@ -195,6 +195,7 @@ button:active:not(:disabled) { transform: translateY(1px); }
 .role-links a:hover, .role-links a[aria-current="page"] { background: var(--ink); color: white; }
 .role-note { margin: .75rem 0 0; font-size: var(--text-ui); line-height: 1.5; }
 .site-footer { border-top: 1px solid var(--line); margin-top: 3rem; padding: 1.5rem 0 2.5rem; }
+.site-footer a { display: inline-flex; align-items: center; min-height: var(--control-height); }
 .panel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: var(--gap-panel); margin: 1.25rem 0; }
 .panel { border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface); padding: 1.25rem; }
 .panel h2 { font-size: 1.2rem; line-height: 1.25; margin-top: 0; }
